@@ -149,7 +149,7 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
-                this.Color = NodeColor.Black;
+                this.Color = NodeColor.Error;
             }
 
             internal void ColorBlack() => this.Color = NodeColor.Black;
@@ -532,10 +532,12 @@ namespace Arc.Collection
         {
             Node? f; // Node to fix.
             int dir = 0;
-            var originalColor = node.Color;
 
-            this.version++;
-            this.Count--;
+            var originalColor = node.Color;
+            if (node.Color == NodeColor.Error)
+            {// empty
+                return;
+            }
 
             f = node.Parent;
             if (node.Parent == null)
@@ -550,6 +552,9 @@ namespace Arc.Collection
             {
                 dir = 1;
             }
+
+            this.version++;
+            this.Count--;
 
             if (node.Left == null)
             {

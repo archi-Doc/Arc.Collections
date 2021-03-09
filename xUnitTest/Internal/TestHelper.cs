@@ -29,7 +29,7 @@ namespace xUnitTest
             return result;
         }
 
-        public static void Shuffle(Random r, int[] array)
+        public static void Shuffle<T>(Random r, T[] array)
         {
             var n = array.Length;
             while (n > 1)
