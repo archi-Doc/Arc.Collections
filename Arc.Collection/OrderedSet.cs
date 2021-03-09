@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1602 // Enumeration items should be documented
+#pragma warning disable SA1124 // Do not use regions
 
 namespace Arc.Collection
 {
@@ -24,7 +25,7 @@ namespace Arc.Collection
     /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
-    public class OrderedSet<T> : IEnumerable<T>, IEnumerable
+    public class OrderedSet<T> : IEnumerable<T>, IEnumerable, ICollection<T>, IReadOnlyCollection<T>, ICollection
     {
         /// <summary>
         /// Represents a node in a <see cref="OrderedSet{T}"/>.
@@ -183,6 +184,8 @@ namespace Arc.Collection
             this.Comparer = comparer ?? Comparer<T>.Default;
         }
 
+        #region Enumerator
+
         /// <summary>
         /// Returns an Enumerator for the <see cref="OrderedSet{T}"/>.
         /// </summary>
@@ -266,6 +269,7 @@ namespace Arc.Collection
                 this.current = null;
             }
         }
+        #endregion
 
         /// <summary>
         /// Gets the first node in the <see cref="OrderedSet{T}"/>.
@@ -310,6 +314,103 @@ namespace Arc.Collection
                 return node;
             }
         }
+
+        #region ICollection
+
+        public bool IsReadOnly => false;
+
+        void ICollection<T>.Add(T item) => this.Add(item);
+
+        public bool Contains(T item) => this.FindNode(item) != null;
+
+        public void CopyTo(T[] array, int index)
+        {
+            if (array == null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+            else if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+            else if (this.Count > array.Length - index)
+            {
+                throw new ArgumentOutOfRangeException(nameof(array));
+            }
+
+            var node = this.First;
+            for (var n = index; n < (index + this.Count); n++)
+            {
+                if (node == null)
+                {
+                    break;
+                }
+
+                array[n] = node.Value;
+                node = node.Next;
+            }
+        }
+
+        void ICollection.CopyTo(Array array, int index)
+        {
+            if (array == null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+            else if (array.Rank != 1 || array.GetLowerBound(0) != 0)
+            {
+                throw new ArgumentException(nameof(array));
+            }
+            else if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+            else if (array.Length - index < this.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(array));
+            }
+
+            T[]? tarray = array as T[];
+            if (tarray != null)
+            {
+                this.CopyTo(tarray, index);
+            }
+            else
+            {
+                object?[]? objects = array as object[];
+                if (objects == null)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+
+                try
+                {
+                    var node = this.First;
+                    for (var n = index; n < (index + this.Count); n++)
+                    {
+                        if (node == null)
+                        {
+                            break;
+                        }
+
+                        objects[n] = node.Value;
+                        node = node.Next;
+                    }
+                }
+                catch (ArrayTypeMismatchException)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+            }
+        }
+
+        public bool IsSynchronized => false;
+
+        object ICollection.SyncRoot => this;
+
+        #endregion
+
+        #region Validate
 
         /// <summary>
         /// Validate Red-Black Tree.
@@ -821,6 +922,7 @@ namespace Arc.Collection
             var cmp = this.Comparer.Compare(node.Value, value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
             return cmp == 1 && this.IsLarger(node.Left, value) && this.IsLarger(node.Right, value);
         }
+        #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TransplantNode(Node? node, Node destination)
