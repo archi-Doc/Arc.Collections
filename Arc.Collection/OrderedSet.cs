@@ -184,6 +184,20 @@ namespace Arc.Collection
             this.Comparer = comparer ?? Comparer<T>.Default;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// </summary>
+        /// <param name="collection">The enumerable collection to be copied.</param>
+        public OrderedSet(IEnumerable<T> collection)
+        {
+            this.Comparer = Comparer<T>.Default;
+
+            foreach (var x in collection)
+            {
+                this.Add(x);
+            }
+        }
+
         #region Enumerator
 
         /// <summary>
