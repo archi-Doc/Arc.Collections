@@ -3,7 +3,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
@@ -11,23 +10,37 @@ using System.Runtime.CompilerServices;
 
 namespace Arc.Collection
 {
-    public enum NodeColor : byte
+    /// <summary>
+    /// Color of a node in a Red-Black tree.
+    /// </summary>
+    internal enum NodeColor : byte
     {
         Black,
         Red,
         Error,
     }
 
+    /// <summary>
+    /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the set.</typeparam>
     public class OrderedSet<T> : IEnumerable<T>, IEnumerable
     {
+        /// <summary>
+        /// Represents a node in a <see cref="OrderedSet{T}"/>.
+        /// </summary>
         public sealed class Node
         {
-            public Node(T value, NodeColor color)
+            internal Node(T value, NodeColor color)
             {
                 this.Value = value;
                 this.Color = color;
             }
 
+            /// <summary>
+            /// Gets the previous node in the <see cref="OrderedSet{T}"/>.
+            /// <br/>O(log n) operation.
+            /// </summary>
             public Node? Previous
             {
                 get
@@ -58,6 +71,10 @@ namespace Arc.Collection
                 }
             }
 
+            /// <summary>
+            /// Gets the next node in the <see cref="OrderedSet{T}"/>
+            /// <br/>O(log n) operation.
+            /// </summary>
             public Node? Next
             {
                 get
@@ -88,33 +105,44 @@ namespace Arc.Collection
                 }
             }
 
-            public static bool IsNonNullBlack(Node? node) => node != null && node.IsBlack;
+            internal static bool IsNonNullBlack(Node? node) => node != null && node.IsBlack;
 
-            public static bool IsNonNullRed(Node? node) => node != null && node.IsRed;
+            internal static bool IsNonNullRed(Node? node) => node != null && node.IsRed;
 
-            public static bool IsNullOrBlack(Node? node) => node == null || node.IsBlack;
+            internal static bool IsNullOrBlack(Node? node) => node == null || node.IsBlack;
 
-            public T Value { get; set; }
+            /// <summary>
+            /// Gets the value contained in the node.
+            /// </summary>
+            public T Value { get; internal set; }
 
-            public Node? Parent { get; set; }
+            /// <summary>
+            /// Gets or sets the parent node in the <see cref="OrderedSet{T}"/>.
+            /// </summary>
+            internal Node? Parent { get; set; }
 
-            public Node? Left { get; set; }
+            /// <summary>
+            /// Gets or sets the left node in the <see cref="OrderedSet{T}"/>.
+            /// </summary>
+            internal Node? Left { get; set; }
 
-            public Node? Right { get; set; }
+            /// <summary>
+            /// Gets or sets the right node in the <see cref="OrderedSet{T}"/>.
+            /// </summary>
+            internal Node? Right { get; set; }
 
-            public NodeColor Color { get; set; }
+            /// <summary>
+            /// Gets or sets the color of the node.
+            /// </summary>
+            internal NodeColor Color { get; set; }
 
-            public bool IsBlack => this.Color == NodeColor.Black;
+            internal bool IsBlack => this.Color == NodeColor.Black;
 
-            public bool IsRed => this.Color == NodeColor.Red;
-
-            public void ColorBlack() => this.Color = NodeColor.Black;
-
-            public void ColorRed() => this.Color = NodeColor.Red;
+            internal bool IsRed => this.Color == NodeColor.Red;
 
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
-            public void Clear()
+            internal void Clear()
             {
                 this.Value = default(T)!;
                 this.Parent = null;
@@ -122,31 +150,54 @@ namespace Arc.Collection
                 this.Right = null;
                 this.Color = NodeColor.Black;
             }
+
+            internal void ColorBlack() => this.Color = NodeColor.Black;
+
+            internal void ColorRed() => this.Color = NodeColor.Red;
         }
 
         private Node? root;
         private int version;
 
+        /// <summary>
+        /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
+        /// </summary>
         public int Count { get; private set; }
 
         public IComparer<T> Comparer { get; private set; } = default!;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// </summary>
         public OrderedSet()
         {
             this.Comparer = Comparer<T>.Default;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// </summary>
+        /// <param name="comparer">The default comparer to use for comparing objects.</param>
         public OrderedSet(IComparer<T>? comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
         }
 
+        /// <summary>
+        /// Returns an Enumerator for the <see cref="OrderedSet{T}"/>.
+        /// </summary>
+        /// <returns>Enumerator.</returns>
         public Enumerator GetEnumerator() => new Enumerator(this);
 
+        /// <inheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.GetEnumerator();
 
+        /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="OrderedSet{T}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<T>, IEnumerator
         {
             private readonly OrderedSet<T> set;
@@ -169,6 +220,7 @@ namespace Arc.Collection
                 this.current = null;
             }
 
+            /// <inheritdoc/>
             public bool MoveNext()
             {
                 if (this.version != this.set.version)
@@ -189,14 +241,18 @@ namespace Arc.Collection
                 return this.current != null;
             }
 
+            /// <inheritdoc/>
             public void Dispose()
             {
             }
 
+            /// <inheritdoc/>
             public T Current => this.current != null ? this.current.Value : default(T)!;
 
+            /// <inheritdoc/>
             object? System.Collections.IEnumerator.Current => this.current != null ? this.current.Value : default(T)!;
 
+            /// <inheritdoc/>
             void System.Collections.IEnumerator.Reset() => this.Reset();
 
             internal void Reset()
@@ -211,6 +267,9 @@ namespace Arc.Collection
             }
         }
 
+        /// <summary>
+        /// Gets the first node in the <see cref="OrderedSet{T}"/>.
+        /// </summary>
         public Node? First
         {
             get
@@ -230,6 +289,9 @@ namespace Arc.Collection
             }
         }
 
+        /// <summary>
+        /// Gets the last node in the <see cref="OrderedSet{T}"/>. O(log n) operation.
+        /// </summary>
         public Node? Last
         {
             get
@@ -249,6 +311,10 @@ namespace Arc.Collection
             }
         }
 
+        /// <summary>
+        /// Validate Red-Black Tree.
+        /// </summary>
+        /// <returns>True if the tree is valid.</returns>
         public bool Validate()
         {
             bool result = true;
@@ -259,6 +325,9 @@ namespace Arc.Collection
             return result;
         }
 
+        /// <summary>
+        /// Removes all elements from the set.
+        /// </summary>
         public void Clear()
         {
             this.root = null;
@@ -266,8 +335,22 @@ namespace Arc.Collection
             this.Count = 0;
         }
 
+        /// <summary>
+        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The element to add to the set.</param>
+        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// newlyAdded: True if the node is created.</returns>
         public (Node node, bool newlyAdded) Add(T value) => this.Probe(value);
 
+        /// <summary>
+        /// Adds an element to the set. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The element to add to the set.</param>
+        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// replaced: True if the node is replaced.</returns>
         public (Node node, bool replaced) Replace(T value)
         {
             var result = this.Probe(value);
@@ -282,6 +365,12 @@ namespace Arc.Collection
             return (result.node, true);
         }
 
+        /// <summary>
+        /// Removes a specified item from the <see cref="OrderedSet{T}"/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
         public bool Remove(T value)
         {
             Node? p; // Node to delete.
@@ -319,6 +408,11 @@ namespace Arc.Collection
             return true;
         }
 
+        /// <summary>
+        /// Removes a specified node from the <see cref="OrderedSet{T}"/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to remove.</param>
         public void RemoveNode(Node node)
         {
             Node? f; // Node to fix.
@@ -494,228 +588,6 @@ namespace Arc.Collection
             return;
         }
 
-        /*public void RemoveNode(Node node)
-        {
-            int cmp;
-            Node? p; // Parent of node.
-
-            // cmp -1: node.Parent?.Left == node
-            // cmp  1: node.Parent?.Right == node
-            // cmp  0: node.Parent == null (node is root)
-            p = node.Parent;
-            if (p == null)
-            {
-                p = null!;
-                cmp = 0;
-            }
-            else if (p.Left == node)
-            {
-                cmp = -1;
-            }
-            else
-            {
-                cmp = 1;
-            }
-
-            Node? f; // Node at which we are rebalancing.
-            Node? s;
-            if (node.Right == null)
-            {// checked
-                if (cmp < 0)
-                {// Left
-                    p.Left = node.Left;
-                }
-                else if (cmp > 0)
-                {// Right
-                    p.Right = node.Left;
-                }
-                else
-                {// Root
-                    this.root = node.Left;
-                }
-
-                if (node.Left != null)
-                {
-                    node.Left.Parent = node.Parent;
-                }
-
-                f = p;
-            }
-            else
-            {
-                NodeColor t;
-                Node r = node.Right;
-
-                if (r.Left == null)
-                {
-                    r.Left = node.Left;
-                    if (cmp < 0)
-                    {// Left
-                        p.Left = r;
-                    }
-                    else if (cmp > 0)
-                    {// Right
-                        p.Right = r;
-                    }
-                    else
-                    {// Root
-                        this.root = r;
-                    }
-
-                    r.Parent = node.Parent;
-                    if (r.Left != null)
-                    {
-                        r.Left.Parent = r;
-                    }
-
-                    t = node.Color;
-                    node.Color = r.Color;
-                    r.Color = t;
-
-                    f = r;
-                    cmp = 1;
-                }
-                else
-                {
-                    s = r.Left;
-                    while (s.Left != null)
-                    {
-                        s = s.Left;
-                    }
-
-                    r = s.Parent!;
-                    r.Left = s.Right;
-                    s.Left = node.Left;
-                    s.Right = node.Right;
-                    if (cmp < 0)
-                    {// Left
-                        p.Left = s;
-                    }
-                    else if (cmp > 0)
-                    {// Right
-                        p.Right = s;
-                    }
-                    else
-                    {// Root
-                        this.root = s;
-                    }
-
-                    if (s.Left != null)
-                    {
-                        s.Left.Parent = s;
-                    }
-
-                    s.Right.Parent = s;
-                    s.Parent = node.Parent;
-                    if (r.Left != null)
-                    {
-                        r.Left.Parent = r;
-                    }
-
-                    t = node.Color;
-                    node.Color = s.Color;
-                    s.Color = t;
-
-                    f = r;
-                    cmp = -1;
-                }
-            }
-
-            if (f == null)
-            {
-                this.root?.ColorBlack();
-                return;
-            }
-            else if (node.IsRed)
-            {
-                return;
-            }
-
-#nullable disable
-            while (f != this.root && f.IsBlack)
-            {
-                if (f == f.Parent!.Left)
-                {
-                    s = f.Parent.Right;
-                    if (s.IsRed)
-                    {
-                        // case 3.1
-                        s.ColorBlack();
-                        f.Parent.ColorBlack();
-                        this.RotateLeft(f.Parent);
-                        s = f.Parent.Right;
-                    }
-
-                    if (s.Left.IsBlack && s.Right.IsBlack)
-                    {
-                        // case 3.2
-                        s.ColorRed();
-                        f = f.Parent;
-                    }
-                    else
-                    {
-                        if (s.Right.IsBlack)
-                        {
-                            // case 3.3
-                            s.Left.ColorBlack();
-                            s.ColorRed();
-                            this.RotateRight(s);
-                            s = f.Parent.Right;
-                        }
-
-                        // case 3.4
-                        s.Color = f.Parent.Color;
-                        f.Parent.ColorBlack();
-                        s.Right.ColorBlack();
-                        this.RotateLeft(f.Parent);
-                        f = this.root;
-                    }
-                }
-                else
-                {
-                    s = f.Parent.Left;
-                    if (s.IsRed)
-                    {
-                        // case 3.1
-                        s.ColorBlack();
-                        f.Parent.ColorRed();
-                        this.RotateRight(f.Parent);
-                        s = f.Parent.Left;
-                    }
-
-                    if (s.Right.IsBlack && s.Right.IsBlack)
-                    {
-                        // case 3.2
-                        s.ColorRed();
-                        f = f.Parent;
-                    }
-                    else
-                    {
-                        if (s.Left.IsBlack)
-                        {
-                            // case 3.3
-                            s.Right.ColorBlack();
-                            s.ColorRed();
-                            this.RotateLeft(s);
-                            s = f.Parent.Left;
-                        }
-
-                        // case 3.4
-                        s.Color = f.Parent.Color;
-                        f.Parent.ColorBlack();
-                        s.Left.ColorBlack();
-                        this.RotateRight(f.Parent);
-                        f = this.root;
-                    }
-                }
-            }
-
-            f.ColorBlack();
-#nullable enable
-
-            return;
-        }*/
-
         public Node? FindNode(T value)
         {
             var p = this.root;
@@ -741,11 +613,12 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Adds the value to the tree.
-        /// If a duplicate node is found in the tree, returns the duplicate node without creating a new node.
+        /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
+        /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The value to add to the set.</param>
-        /// <returns>node: New node. newlyAdded: true if the new node is created.</returns>
+        /// <param name="value">The element to add to the set.</param>
+        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// newlyAdded: True if the node is created.</returns>
         private (Node node, bool newlyAdded) Probe(T value)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
@@ -963,28 +836,6 @@ namespace Arc.Collection
             else
             {
                 destination.Parent.Right = node;
-            }
-
-            if (node != null)
-            {
-                node.Parent = destination.Parent;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void TransplantNode(Node? node, Node destination, int dir)
-        {// Transplant Node node to Node destination
-            if (dir < 0)
-            {
-                destination.Parent!.Left = node;
-            }
-            else if (dir > 0)
-            {
-                destination.Parent!.Right = node;
-            }
-            else
-            {
-                this.root = node;
             }
 
             if (node != null)
