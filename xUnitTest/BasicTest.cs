@@ -4,6 +4,8 @@ using Arc.Collection;
 using System.Collections.Generic;
 using System.Linq;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace xUnitTest
 {
     public class BasicTest
@@ -92,8 +94,9 @@ namespace xUnitTest
             for (var n = 0; n < 10; n++)
             {
                 RandomTest(r, -100, 100, 100, false);
+                RandomTest(r, -100, 100, 100, true);
                 RandomTest(r, -500, 500, 100, false);
-                RandomTest(r, -600, 600, 1000, false);
+                RandomTest(r, -600, 600, 1000, true);
             }
         }
 
@@ -162,8 +165,8 @@ namespace xUnitTest
 
             ss.SequenceEqual(os).IsTrue();
 
-            var shuffle = r.Next(3);
-            if (shuffle == 1)
+            var branch = r.Next(3);
+            if (branch == 1)
             {
                 e = TestHelper.GetRandomNumbers(r, start, end, count);
                 array = e.ToArray();
@@ -181,7 +184,107 @@ namespace xUnitTest
             }
 
             ss.SequenceEqual(os).IsTrue();
-            if (shuffle != 1)
+            if (branch != 1)
+            {
+                ss.Count.Is(0);
+                os.Count.Is(0);
+            }
+        }
+
+        [Fact]
+        void Node()
+        {
+            var r = new Random(14);
+
+            for (var n = 0; n < 10; n++)
+            {
+                NodeTest(r, -100, 100, 100, false);
+                NodeTest(r, -100, 100, 100, true);
+                NodeTest(r, -500, 500, 100, false);
+                NodeTest(r, -600, 600, 1000, true);
+            }
+        }
+
+        private void NodeTest(Random r, int start, int end, int count, bool duplicate)
+        {
+            var ss = new SortedSet<int>();
+            var os = new OrderedSet<int>();
+            IEnumerable<int> e;
+            OrderedSet<int>.Node[] nodes;
+
+            if (duplicate)
+            {
+                e = TestHelper.GetRandomNumbers(r, start, end, count);
+            }
+            else
+            {
+                e = TestHelper.GetUniqueRandomNumbers(r, start, end, count);
+            }
+
+            var array = e.ToArray();
+            nodes = new OrderedSet<int>.Node[array.Length];
+            var n = 0;
+            foreach (var x in array)
+            {
+                ss.Add(x);
+                (nodes[n++], _) = os.Add(x);
+                os.Validate().IsTrue();
+            }
+
+            ss.SequenceEqual(os).IsTrue();
+
+            var branch = r.Next(3);
+            if (branch == 0)
+            {
+                e = TestHelper.GetRandomNumbers(r, start, end, count);
+                array = e.ToArray();
+            }
+            else if (branch == 1)
+            {
+                TestHelper.Shuffle(r, nodes);
+            }
+
+            var branch2 = r.Next(3);
+            if (branch2 == 0 && branch == 2)
+            {// mixed
+                n = 0;
+                foreach (var x in array)
+                {
+                    ss.Remove(x);
+                    if (n % 2 == 0)
+                    {
+                        os.RemoveNode(nodes[n]);
+                    }
+                    else
+                    {
+                        os.Remove(x);
+                    }
+                    n++;
+                    os.Validate().IsTrue();
+                }
+            }
+            else if (branch2 == 1 && branch == 2)
+            {// Node[]
+                n = 0;
+                foreach (var x in array)
+                {
+                    ss.Remove(x);
+                    os.RemoveNode(nodes[n++]);
+                    os.Validate().IsTrue();
+                }
+            }
+            else
+            {// int[]
+                foreach (var x in array)
+                {
+                    ss.Remove(x);
+                    os.Remove(x);
+                    os.Validate().IsTrue();
+                }
+            }
+
+            ss.SequenceEqual(os).IsTrue();
+            if (branch == 2)
             {
                 ss.Count.Is(0);
                 os.Count.Is(0);
