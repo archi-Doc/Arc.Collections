@@ -9,7 +9,7 @@ namespace Benchmark
     [Config(typeof(BenchmarkConfig))]
     public class TestBenchmark
     {
-        [Params(10, 100, 10_000)]
+        [Params(10_000)]
         public int Length;
 
         public int[] IntArray = default!;
