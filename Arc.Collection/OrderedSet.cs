@@ -18,7 +18,8 @@ namespace Arc.Collection
     {
         Black,
         Red,
-        Error,
+        Unused,
+        LinkedList,
     }
 
     /// <summary>
@@ -141,6 +142,8 @@ namespace Arc.Collection
 
             internal bool IsRed => this.Color == NodeColor.Red;
 
+            internal bool IsUnused => this.Color == NodeColor.Unused;
+
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
             internal void Clear()
@@ -149,7 +152,16 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
-                this.Color = NodeColor.Error;
+                this.Color = NodeColor.Unused;
+            }
+
+            internal void Reset(T value, NodeColor color)
+            {
+                this.Value = value;
+                this.Parent = null;
+                this.Left = null;
+                this.Right = null;
+                this.Color = color;
             }
 
             internal void ColorBlack() => this.Color = NodeColor.Black;
@@ -457,7 +469,17 @@ namespace Arc.Collection
         /// <param name="value">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
         /// newlyAdded: True if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value) => this.Probe(value);
+        public (Node node, bool newlyAdded) Add(T value) => this.Probe(value, null);
+
+        /// <summary>
+        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The element to add to the set.</param>
+        /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
+        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// newlyAdded: True if the node is created.</returns>
+        public (Node node, bool newlyAdded) Add(T value, Node reuse) => this.Probe(value, reuse);
 
         /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
@@ -468,7 +490,7 @@ namespace Arc.Collection
         /// replaced: True if the node is replaced.</returns>
         public (Node node, bool replaced) Replace(T value)
         {
-            var result = this.Probe(value);
+            var result = this.Probe(value, null);
             if (result.newlyAdded)
             {// New
                 return (result.node, false);
@@ -534,7 +556,7 @@ namespace Arc.Collection
             int dir = 0;
 
             var originalColor = node.Color;
-            if (node.Color == NodeColor.Error)
+            if (node.Color == NodeColor.Unused)
             {// empty
                 return;
             }
@@ -739,7 +761,7 @@ namespace Arc.Collection
         /// <param name="value">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
         /// newlyAdded: True if the node is created.</returns>
-        private (Node node, bool newlyAdded) Probe(T value)
+        private (Node node, bool newlyAdded) Probe(T value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.
@@ -765,7 +787,18 @@ namespace Arc.Collection
 
             this.version++;
             this.Count++;
-            var n = new Node(value, NodeColor.Red); // Newly inserted node.
+
+            Node n;
+            if (reuse != null && reuse.IsUnused)
+            {
+                reuse.Reset(value, NodeColor.Red);
+                n = reuse;
+            }
+            else
+            {
+                n = new Node(value, NodeColor.Red); // Newly inserted node.
+            }
+
             n.Parent = p;
             n.Value = value;
             if (p != null)
@@ -857,9 +890,9 @@ namespace Arc.Collection
             var color = node.Color;
             var leftColor = this.ValidateColor(node.Left);
             var rightColor = this.ValidateColor(node.Right);
-            if (leftColor == NodeColor.Error || rightColor == NodeColor.Error)
-            {
-                return NodeColor.Error;
+            if (leftColor == NodeColor.Unused || rightColor == NodeColor.Unused)
+            { // Error
+                return NodeColor.Unused;
             }
 
             if (color == NodeColor.Black)
@@ -871,7 +904,7 @@ namespace Arc.Collection
                 return color;
             }
 
-            return NodeColor.Error;
+            return NodeColor.Unused; // Error
         }
 
         private int ValidateBlackHeight(Node? node)

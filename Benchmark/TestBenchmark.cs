@@ -185,5 +185,21 @@ namespace Benchmark
 
             return this.IntSet.Count;
         }
+
+        [Benchmark]
+        public int AddRemoveReuse()
+        {
+            this.IntSet.RemoveNode(this.Node0);
+            this.IntSet.RemoveNode(this.Node7);
+            this.IntSet.RemoveNode(this.Node11);
+            this.IntSet.RemoveNode(this.Node55);
+
+            (this.Node0, _) = this.IntSet.Add(0, this.Node0);
+            (this.Node7, _) = this.IntSet.Add(7, this.Node7);
+            (this.Node11, _) = this.IntSet.Add(11, this.Node11);
+            (this.Node55, _) = this.IntSet.Add(55, this.Node55);
+
+            return this.IntSet.Count;
+        }
     }
 }
