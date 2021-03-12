@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace xUnitTest
 {
-    public class BasicTest
+    public class OrderedSetTest
     {
         [Fact]
         public void Test1()

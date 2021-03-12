@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace Benchmark
 {
     [Config(typeof(BenchmarkConfig))]
-    public class TestBenchmark
+    public class OrderedSetTest
     {
         [Params(10_000)]
         public int Length;
@@ -41,7 +41,7 @@ namespace Benchmark
             return work.Take(count);
         }
 
-        public TestBenchmark()
+        public OrderedSetTest()
         {
         }
 
@@ -72,7 +72,7 @@ namespace Benchmark
         {
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int EnumerateRef()
         {
             var total = 0;
@@ -168,7 +168,7 @@ namespace Benchmark
             this.IntSet.Add(55);
 
             return this.IntSet.Count;
-        }*/
+        }
 
         [Benchmark]
         public int AddRemoveNode()

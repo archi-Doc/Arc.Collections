@@ -75,6 +75,21 @@ namespace Arc.Collection
         /// <param name="value">The value to be added to the list.</param>
         public new void Add(T value)
         {
+            var pos = this.BinarySearch(value);
+            if (pos < 0)
+            {
+                this.Insert(~pos, value);
+            }
+            else
+            {// Adds to the end of the same values.
+                pos++;
+                while (pos < this.size && this.Comparer.Compare(this.items[pos], value) == 0)
+                {
+                    pos++;
+                }
+
+                this.Insert(pos, value);
+            }
         }
 
         /// <summary>
@@ -82,11 +97,12 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The value to search for.</param>
         /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-        public int BinarySearch(T value)
-        {
+        public int BinarySearch(T value)// => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+        {// Slow
             var min = 0;
             var max = this.size - 1;
             var mid = 0;
+            // var ic = value as IComparable<T>;
             while (min <= max)
             {
                 mid = min + ((max - min) / 2);
@@ -109,6 +125,8 @@ namespace Arc.Collection
 
             return ~min;
         }
+
+        public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
 
         /// <summary>
         /// Determines whether an element is in the list.
