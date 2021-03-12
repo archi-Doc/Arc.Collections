@@ -72,7 +72,7 @@ namespace Benchmark
         {
         }
 
-        [Benchmark]
+        /*[Benchmark]
         public int EnumerateRef()
         {
             var total = 0;
@@ -168,7 +168,7 @@ namespace Benchmark
             this.IntSet.Add(55);
 
             return this.IntSet.Count;
-        }
+        }*/
 
         [Benchmark]
         public int AddRemoveNode()
@@ -198,6 +198,17 @@ namespace Benchmark
             (this.Node7, _) = this.IntSet.Add(7, this.Node7);
             (this.Node11, _) = this.IntSet.Add(11, this.Node11);
             (this.Node55, _) = this.IntSet.Add(55, this.Node55);
+
+            return this.IntSet.Count;
+        }
+
+        [Benchmark]
+        public int AddRemoveReplace()
+        {
+            this.IntSet.ReplaceNode(this.Node0, 0);
+            this.IntSet.ReplaceNode(this.Node7, 7);
+            this.IntSet.ReplaceNode(this.Node11, 11);
+            this.IntSet.ReplaceNode(this.Node55, 55);
 
             return this.IntSet.Count;
         }

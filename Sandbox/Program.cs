@@ -30,6 +30,11 @@ namespace Sandbox
             result = os.Validate();
             os.Remove(1);
             result = os.Validate();
+
+            var ol = new OrderedList<int>();
+            ol.Add(2);
+            ol.Add(3);
+            ol.Add(1);
         }
     }
 }

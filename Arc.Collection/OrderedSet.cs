@@ -26,7 +26,7 @@ namespace Arc.Collection
     /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
-    public class OrderedSet<T> : IEnumerable<T>, IEnumerable, ICollection<T>, IReadOnlyCollection<T>, ICollection
+    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
     {
         /// <summary>
         /// Represents a node in a <see cref="OrderedSet{T}"/>.
@@ -144,6 +144,8 @@ namespace Arc.Collection
 
             internal bool IsUnused => this.Color == NodeColor.Unused;
 
+            internal bool IsLinkedList => this.Color == NodeColor.LinkedList;
+
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
             internal void Clear()
@@ -177,7 +179,7 @@ namespace Arc.Collection
         /// </summary>
         public int Count { get; private set; }
 
-        public IComparer<T> Comparer { get; private set; } = default!;
+        public IComparer<T> Comparer { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
@@ -191,7 +193,7 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IComparer<T>? comparer)
+        public OrderedSet(IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
         }
@@ -201,8 +203,18 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
         public OrderedSet(IEnumerable<T> collection)
+            : this(collection, Comparer<T>.Default)
         {
-            this.Comparer = Comparer<T>.Default;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// </summary>
+        /// <param name="collection">The enumerable collection to be copied.</param>
+        /// <param name="comparer">The default comparer to use for comparing objects.</param>
+        public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
+        {
+            this.Comparer = comparer ?? Comparer<T>.Default;
 
             foreach (var x in collection)
             {
@@ -254,7 +266,7 @@ namespace Arc.Collection
             {
                 if (this.version != this.set.version)
                 {
-                    throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
+                    throw ThrowVersionMismatch();
                 }
 
                 if (!this.firstFlag)
@@ -288,11 +300,16 @@ namespace Arc.Collection
             {
                 if (this.version != this.set.version)
                 {
-                    throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
+                    throw ThrowVersionMismatch();
                 }
 
                 this.firstFlag = false;
                 this.current = null;
+            }
+
+            private static Exception ThrowVersionMismatch()
+            {
+                throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
             }
         }
         #endregion
@@ -441,7 +458,7 @@ namespace Arc.Collection
         /// <summary>
         /// Validate Red-Black Tree.
         /// </summary>
-        /// <returns>True if the tree is valid.</returns>
+        /// <returns>true if the tree is valid.</returns>
         public bool Validate()
         {
             bool result = true;
@@ -468,7 +485,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
-        /// newlyAdded: True if the node is created.</returns>
+        /// newlyAdded: true if the node is created.</returns>
         public (Node node, bool newlyAdded) Add(T value) => this.Probe(value, null);
 
         /// <summary>
@@ -478,7 +495,7 @@ namespace Arc.Collection
         /// <param name="value">The element to add to the set.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
-        /// newlyAdded: True if the node is created.</returns>
+        /// newlyAdded: true if the node is created.</returns>
         public (Node node, bool newlyAdded) Add(T value, Node reuse) => this.Probe(value, reuse);
 
         /// <summary>
@@ -487,7 +504,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
-        /// replaced: True if the node is replaced.</returns>
+        /// replaced: true if the node is replaced.</returns>
         public (Node node, bool replaced) Replace(T value)
         {
             var result = this.Probe(value, null);
@@ -500,6 +517,25 @@ namespace Arc.Collection
             this.version++;
             result.node.Value = value;
             return (result.node, true);
+        }
+
+        /// <summary>
+        /// Updates the node's value with the specified value. Removes the node and inserts in the correct position if necessary.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to replace.</param>
+        /// <param name="value">The value to set.</param>
+        /// <returns>true if the node is replaced.</returns>
+        public bool ReplaceNode(Node node, T value)
+        {
+            if (this.Comparer.Compare(node.Value, value) == 0)
+            {// Identical
+                return false;
+            }
+
+            this.RemoveNode(node);
+            this.Probe(value, node);
+            return true;
         }
 
         /// <summary>
@@ -730,6 +766,11 @@ namespace Arc.Collection
             return;
         }
 
+        /// <summary>
+        /// Searches for a <see cref="OrderedSet{T}.Node"/> with the specified value.
+        /// </summary>
+        /// <param name="value">The value to search in the set.</param>
+        /// <returns>The node with the specified value.</returns>
         public Node? FindNode(T value)
         {
             var p = this.root;
@@ -760,7 +801,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
-        /// newlyAdded: True if the node is created.</returns>
+        /// newlyAdded: true if the node is created.</returns>
         private (Node node, bool newlyAdded) Probe(T value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.

@@ -159,6 +159,7 @@ csharp_prefer_braces = true:silent
 dotnet_diagnostic.SA1000.severity = silent
 # SA1011: Closing square brackets should be spaced correctly
 dotnet_diagnostic.SA1011.severity = silent
+dotnet_diagnostic.SA1124.severity = silent
 # SA1200: Using directives should be placed correctly
 dotnet_diagnostic.SA1200.severity = none
 # SA1201: Elements should appear in the correct order
