@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collection.HotMethod
@@ -11,26 +12,44 @@ namespace Arc.Collection.HotMethod
     public interface IHotMethodResolver
     {
         /// <summary>
-        /// Gets an <see cref="IHotMethod{T}"/> instance that can serialize or deserialize some type <typeparamref name="T"/>.
+        /// Gets an <see cref="IHotMethod{T}"/> instance that can process some type <typeparamref name="T"/>.
         /// </summary>
-        /// <typeparam name="T">The type of value to be serialized or deserialized.</typeparam>
-        /// <returns>A formatter, if this resolver supplies one for type <typeparamref name="T"/>; otherwise <c>null</c>.</returns>
-        IHotMethod<T>? TryGetFormatter<T>();
+        /// <typeparam name="T">The type of value to be processed.</typeparam>
+        /// <returns><see cref="IHotMethod{T}"/>, if this resolver supplies one for type <typeparamref name="T"/>; otherwise <c>null</c>.</returns>
+        IHotMethod<T>? TryGet<T>();
     }
 
-    public static class ResolverExtensions
+    public static class HotMethodResolver
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ITinyhandFormatter<T> GetFormatter<T>(this IFormatterResolver resolver)
+        public static IHotMethod<T>? Get<T>(IComparer<T> comparer)
         {
-            ITinyhandFormatter<T>? formatter;
+            IHotMethod<T>? method = null;
 
-            formatter = resolver.TryGetFormatter<T>();
-            if (formatter == null)
+            if (comparer == Comparer<T>.Default)
             {
-                Throw(typeof(T), resolver);
+                method = PrimitiveResolver.Instance.TryGet<T>();
             }
 
-            return formatter!;
+            /*else
+            {
+                method = StandardResolver.Instance.TryGet<T>();
+            }
+
+            if (method == null)
+            {
+                throw new FormatterNotRegisteredException(typeof(T).FullName + " is not registered in resolver.");
+            }*/
+
+            return method;
         }
     }
+
+    public class FormatterNotRegisteredException : Exception
+    {
+        public FormatterNotRegisteredException(string message)
+            : base(message)
+        {
+        }
+    }
+}

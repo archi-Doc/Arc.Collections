@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 namespace Arc.Collection.HotMethod
 {
@@ -19,26 +17,13 @@ namespace Arc.Collection.HotMethod
     public interface IHotMethod<T> : IHotMethod
     {
         /// <summary>
-        /// Serializes a value.
+        /// Searches a list for the specific value.
         /// </summary>
-        /// <param name="writer">The writer to use when serializing the value.</param>
-        /// <param name="value">The value to be serialized.</param>
-        /// <param name="options">The serialization settings to use, including the resolver to use to obtain formatters for types that make up the composite type <typeparamref name="T"/>.</param>
-        void Serialize(ref TinyhandWriter writer, T? value, TinyhandSerializerOptions options);
-
-        /// <summary>
-        /// Deserializes a value.
-        /// </summary>
-        /// <param name="reader">The reader to deserialize from.</param>
-        /// <param name="options">The serialization settings to use, including the resolver to use to obtain formatters for types that make up the composite type <typeparamref name="T"/>.</param>
-        /// <returns>The deserialized value.</returns>
-        T? Deserialize(ref TinyhandReader reader, TinyhandSerializerOptions options);
-
-        /// <summary>
-        /// Create a new object.
-        /// </summary>
-        /// <param name="options">The serialization settings to use, including the resolver to use to obtain formatters for types that make up the composite type <typeparamref name="T"/>.</param>
-        /// <returns>The new object.</returns>
-        T Reconstruct(TinyhandSerializerOptions options);
+        /// <param name="array">The sorted one-dimensional, zero-based Array to search.</param>
+        /// <param name="index">The starting index of the range to search.</param>
+        /// <param name="length">The length of the range to search.</param>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
+        int BinarySearch(T[] array, int index, int length, T value);
     }
 }

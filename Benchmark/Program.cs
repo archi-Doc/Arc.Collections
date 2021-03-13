@@ -24,6 +24,7 @@ namespace Benchmark
             {
                 typeof(IComparerTest),
                 typeof(BinarySearchTest),
+                typeof(BinarySearchStringTest),
                 typeof(OrderedSetTest),
             });
             switcher.Run(args);

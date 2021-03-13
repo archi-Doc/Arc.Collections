@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Arc.Collection.HotMethod;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 
@@ -17,6 +18,7 @@ namespace Arc.Collection
         public OrderedList()
         {
             this.Comparer = Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
@@ -27,6 +29,7 @@ namespace Arc.Collection
             : base(capacity)
         {
             this.Comparer = Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
@@ -36,6 +39,7 @@ namespace Arc.Collection
         public OrderedList(IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
@@ -55,6 +59,7 @@ namespace Arc.Collection
         public OrderedList(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
             if (collection == null)
             {
                 throw new ArgumentNullException(nameof(collection));
@@ -67,6 +72,8 @@ namespace Arc.Collection
         }
 
         public IComparer<T> Comparer { get; private set; }
+
+        public IHotMethod<T>? HotMethod { get; private set; }
 
         /// <summary>
         /// Adds an object to the list in order.
@@ -97,15 +104,22 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The value to search for.</param>
         /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-        public int BinarySearch(T value)// => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
-        {// Slow
+        public int BinarySearch(T value)
+        {// => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+            if (this.HotMethod != null)
+            {
+                return this.HotMethod.BinarySearch(this.items, 0, this.size, value);
+            }
+            else if (this.size >= 1000)
+            {
+                return Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+            }
+
             var min = 0;
             var max = this.size - 1;
-            var mid = 0;
-            // var ic = value as IComparable<T>;
             while (min <= max)
             {
-                mid = min + ((max - min) / 2);
+                var mid = min + ((max - min) / 2);
                 var cmp = this.Comparer.Compare(value, this.items[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                 if (cmp < 0)
                 {

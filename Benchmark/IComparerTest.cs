@@ -102,7 +102,7 @@ namespace Benchmark
         {
             this.IntArray = new int[this.Length];
             this.ClassArray = new OrderedListClass[this.Length];
-            var r = new Random();
+            var r = new Random(1);
             for (var n = 0; n < this.Length; n++)
             {
                 this.IntArray[n] = r.Next(this.Length);
@@ -120,7 +120,7 @@ namespace Benchmark
         {
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public OrderedList<OrderedListClass> Add_Comparable()
         {
             var ol = new OrderedList<OrderedListClass>();
@@ -142,7 +142,7 @@ namespace Benchmark
             }
 
             return ol;
-        }*/
+        }
 
         [Benchmark]
         public int Search_Comparable()
