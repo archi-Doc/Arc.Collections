@@ -104,8 +104,8 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The value to search for.</param>
         /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-        public int BinarySearch(T value)
-        {// => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+        public int BinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+        /*{
             if (this.HotMethod != null)
             {
                 return this.HotMethod.BinarySearch(this.items, 0, this.size, value);
@@ -138,7 +138,7 @@ namespace Arc.Collection
             }
 
             return ~min;
-        }
+        }*/
 
         public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
 
