@@ -104,41 +104,68 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="value">The value to search for.</param>
         /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-        public int BinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
-        /*{
+        public int BinarySearch(T value) // => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+        {
             if (this.HotMethod != null)
             {
                 return this.HotMethod.BinarySearch(this.items, 0, this.size, value);
             }
-            else if (this.size >= 1000)
+
+            /*else if (this.size >= 1000)
             {
                 return Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
-            }
+            }*/
 
             var min = 0;
             var max = this.size - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                var cmp = this.Comparer.Compare(value, this.items[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
+
+            if (this.Comparer == Comparer<T>.Default && value is IComparable<T> ic)
+            {// IComparable<T>
+                while (min <= max)
                 {
-                    max = mid - 1;
-                    continue;
+                    var mid = min + ((max - min) / 2);
+                    var cmp = ic.CompareTo(this.items[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    if (cmp < 0)
+                    {
+                        max = mid - 1;
+                        continue;
+                    }
+                    else if (cmp > 0)
+                    {
+                        min = mid + 1;
+                        continue;
+                    }
+                    else
+                    {// Found
+                        return mid;
+                    }
                 }
-                else if (cmp > 0)
+            }
+            else
+            {// IComparer<T>
+                while (min <= max)
                 {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
+                    var mid = min + ((max - min) / 2);
+                    var cmp = this.Comparer.Compare(value, this.items[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    if (cmp < 0)
+                    {
+                        max = mid - 1;
+                        continue;
+                    }
+                    else if (cmp > 0)
+                    {
+                        min = mid + 1;
+                        continue;
+                    }
+                    else
+                    {// Found
+                        return mid;
+                    }
                 }
             }
 
             return ~min;
-        }*/
+        }
 
         public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
 

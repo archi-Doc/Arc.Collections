@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using Arc.Collection;
 using System.Linq;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Benchmark
 {
@@ -20,6 +21,10 @@ namespace Benchmark
 
         public OrderedList<int> OrderedList = default!;
 
+        public IComparer<int> Comparer { get; private set; } = default!;
+
+        public bool IsDefaultComparer { get; private set; } = true;
+
         public BinarySearchTest()
         {
         }
@@ -27,6 +32,7 @@ namespace Benchmark
         [GlobalSetup]
         public void Setup()
         {
+            this.Comparer = Comparer<int>.Default;
             this.IntArray = new int[this.Length];
             var r = new Random();
             for (var n = 0; n < this.Length; n++)
@@ -43,6 +49,18 @@ namespace Benchmark
         public void Cleanup()
         {
         }
+
+        /*[Benchmark]
+        public bool Comparer_IsDefault()
+        {
+            return this.IsDefaultComparer;
+        }
+
+        [Benchmark]
+        public bool Comparer_Equal()
+        {
+            return this.Comparer == Comparer<int>.Default;
+        }*/
 
         [Benchmark]
         public int Array_BinarySearch()
