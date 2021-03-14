@@ -211,15 +211,18 @@ namespace Arc.Collection
                 try
                 {
                     var node = this.First;
-                    for (var n = index; n < (index + this.Count); n++)
+                    if (node != null)
                     {
-                        if (node == null)
+                        for (var n = index; n < (index + this.Count); n++)
                         {
-                            break;
-                        }
+                            objects[n] = node!.Value;
+                            node = node.next;
 
-                        objects[n] = node.Value;
-                        node = node.Next;
+                            if (node == this.head)
+                            {
+                                break;
+                            }
+                        }
                     }
                 }
                 catch (ArrayTypeMismatchException)
@@ -304,6 +307,11 @@ namespace Arc.Collection
 
                 this.current = this.node.Value;
                 this.node = this.node.next;
+                if (this.node == this.list.head)
+                {
+                    this.node = null;
+                }
+
                 return true;
             }
 
@@ -340,35 +348,39 @@ namespace Arc.Collection
 
         public Node? Find(T value)
         {
-            var n = this.First;
+            var node = this.head;
             var c = EqualityComparer<T>.Default;
-
-            if (value == null)
+            if (node != null)
             {
-                while (n != null)
+                if (value != null)
                 {
-                    if (n.Value == null)
+                    do
                     {
-                        break;
-                    }
+                        if (c.Equals(node!.value, value))
+                        {
+                            return node;
+                        }
 
-                    n = n.Next;
+                        node = node.next;
+                    }
+                    while (node != this.head);
+                }
+                else
+                {
+                    do
+                    {
+                        if (node!.value == null)
+                        {
+                            return node;
+                        }
+
+                        node = node.next;
+                    }
+                    while (node != this.head);
                 }
             }
-            else
-            {
-                while (n != null)
-                {
-                    if (c.Equals(n.Value, value))
-                    {
-                        break;
-                    }
 
-                    n = n.Next;
-                }
-            }
-
-            return n;
+            return null;
         }
 
         public Node AddAfter(Node node, T value)
@@ -381,105 +393,146 @@ namespace Arc.Collection
 
         public void AddAfter(Node node, Node newNode)
         {
-            ValidateNode(node);
-            ValidateNewNode(newNode);
-            InternalInsertNodeBefore(node.next!, newNode);
+            this.ValidateNode(node);
+            this.ValidateNewNode(newNode);
+            this.InternalInsertNodeBefore(node.next!, newNode);
             newNode.list = this;
         }
 
         public Node AddBefore(Node node, T value)
         {
-            ValidateNode(node);
-            Node result = new Node(node.list!, value);
-            InternalInsertNodeBefore(node, result);
-            if (node == head)
+            this.ValidateNode(node);
+            var result = new Node(node.list!, value);
+            this.InternalInsertNodeBefore(node, result);
+            if (node == this.head)
             {
-                head = result;
+                this.head = result;
             }
+
             return result;
         }
 
         public void AddBefore(Node node, Node newNode)
         {
-            ValidateNode(node);
-            ValidateNewNode(newNode);
-            InternalInsertNodeBefore(node, newNode);
+            this.ValidateNode(node);
+            this.ValidateNewNode(newNode);
+            this.InternalInsertNodeBefore(node, newNode);
             newNode.list = this;
-            if (node == head)
+            if (node == this.head)
             {
-                head = newNode;
+                this.head = newNode;
             }
         }
 
         public Node AddFirst(T value)
         {
-            Node result = new Node(this, value);
-            if (head == null)
+            var result = new Node(this, value);
+            if (this.head == null)
             {
-                InternalInsertNodeToEmptyList(result);
+                this.InternalInsertNodeToEmptyList(result);
             }
             else
             {
-                InternalInsertNodeBefore(head, result);
-                head = result;
+                this.InternalInsertNodeBefore(this.head, result);
+                this.head = result;
             }
+
             return result;
         }
 
         public void AddFirst(Node node)
         {
-            ValidateNewNode(node);
+            this.ValidateNewNode(node);
 
-            if (head == null)
+            if (this.head == null)
             {
-                InternalInsertNodeToEmptyList(node);
+                this.InternalInsertNodeToEmptyList(node);
             }
             else
             {
-                InternalInsertNodeBefore(head, node);
-                head = node;
+                this.InternalInsertNodeBefore(this.head, node);
+                this.head = node;
             }
+
             node.list = this;
         }
 
         public Node AddLast(T value)
         {
-            Node result = new Node(this, value);
-            if (head == null)
+            var result = new Node(this, value);
+            if (this.head == null)
             {
-                InternalInsertNodeToEmptyList(result);
+                this.InternalInsertNodeToEmptyList(result);
             }
             else
             {
-                InternalInsertNodeBefore(head, result);
+                this.InternalInsertNodeBefore(this.head, result);
             }
+
             return result;
         }
 
         public void AddLast(Node node)
         {
-            ValidateNewNode(node);
+            this.ValidateNewNode(node);
 
-            if (head == null)
+            if (this.head == null)
             {
-                InternalInsertNodeToEmptyList(node);
+                this.InternalInsertNodeToEmptyList(node);
             }
             else
             {
-                InternalInsertNodeBefore(head, node);
+                this.InternalInsertNodeBefore(this.head, node);
             }
+
             node.list = this;
         }
 
+        public void Remove(Node node)
+        {
+            this.ValidateNode(node);
+            this.InternalRemoveNode(node);
+        }
+
+        public void RemoveFirst()
+        {
+            if (this.head == null)
+            {
+                throw new InvalidOperationException("The LinkedList is empty.'");
+            }
+
+            this.InternalRemoveNode(this.head);
+        }
+
+        public void RemoveLast()
+        {
+            if (this.head == null)
+            {
+                throw new InvalidOperationException("The LinkedList is empty.'");
+            }
+
+            this.InternalRemoveNode(this.head.previous!);
+        }
+
+        internal void InternalInsertNodeToEmptyList(Node newNode)
+        {
+            Debug.Assert(this.head == null && this.size == 0, "LinkedList must be empty when this method is called!");
+            newNode.next = newNode;
+            newNode.previous = newNode;
+            this.head = newNode;
+            this.version++;
+            this.size++;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void InternalInsertNodeBefore(Node node, Node newNode)
+        internal void InternalInsertNodeBefore(Node node, Node newNode)
         {
             newNode.next = node;
-            newNode.prev = node.prev;
-            node.prev!.next = newNode;
-            node.prev = newNode;
-            version++;
-            count++;
+            newNode.previous = node.previous;
+            node.previous!.next = newNode;
+            node.previous = newNode;
+            this.version++;
+            this.size++;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -495,8 +548,8 @@ namespace Arc.Collection
             }
             else
             {
-                node.next!.prev = node.prev;
-                node.prev!.next = node.next;
+                node.next!.previous = node.previous;
+                node.previous!.next = node.next;
                 if (this.head == node)
                 {
                     this.head = node.next;
@@ -506,6 +559,20 @@ namespace Arc.Collection
             node.Clear();
             this.size--;
             this.version++;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ValidateNewNode(Node node)
+        {
+            if (node == null)
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+
+            if (node.list != null)
+            {
+                throw new InvalidOperationException("The LinkedList node already belongs to a LinkedList.");
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
