@@ -70,12 +70,12 @@ namespace xUnitTest
         [Fact]
         public void Test1()
         {
-            var ol = new OrderedList<int>() { 1, 3, 2, 0, 5, -10, 0, };
+            var ol = new OrderedListObsolete<int>() { 1, 3, 2, 0, 5, -10, 0, };
             var array = new int[] { 1, 3, 2, 0, 5, -10, 0, };
             Array.Sort(array);
             ol.SequenceEqual(array).IsTrue();
 
-            var ol2 = new OrderedList<OrderedListClass>();
+            var ol2 = new OrderedListObsolete<OrderedListClass>();
             ol2.Add(new OrderedListClass(1)); // 0
             ol2.Add(new OrderedListClass(3)); // 1
             ol2.Add(new OrderedListClass(2)); // 2
@@ -140,10 +140,10 @@ namespace xUnitTest
             var sortedArray = (int[])array.Clone();
             Array.Sort(sortedArray);
 
-            var ol = new OrderedList<int>(array);
+            var ol = new OrderedListObsolete<int>(array);
             ol.SequenceEqual(sortedArray).IsTrue();
 
-            ol = new OrderedList<int>();
+            ol = new OrderedListObsolete<int>();
             foreach (var x in array)
             {
                 ol.Add(x);
@@ -151,10 +151,10 @@ namespace xUnitTest
 
             ol.SequenceEqual(sortedArray).IsTrue();
 
-            ol = new OrderedList<int>(array, new IntComparer());
+            ol = new OrderedListObsolete<int>(array, new IntComparer());
             ol.SequenceEqual(sortedArray).IsTrue();
 
-            ol = new OrderedList<int>();
+            ol = new OrderedListObsolete<int>();
             foreach (var x in array)
             {
                 ol.Add(x);

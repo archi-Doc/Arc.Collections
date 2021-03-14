@@ -18,7 +18,7 @@ namespace Benchmark
 
         public string Value = default!;
 
-        public OrderedList<string> OrderedList = default!;
+        public OrderedListObsolete<string> OrderedList = default!;
 
         public BinarySearchStringTest()
         {

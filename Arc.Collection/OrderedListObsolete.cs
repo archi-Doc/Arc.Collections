@@ -14,22 +14,22 @@ namespace Arc.Collection
     /// Represents a list of objects that can be accessed by index and maintained in sorted order.
     /// </summary>
     /// <typeparam name="T">The type of elements in the list.</typeparam>
-    public class OrderedList<T> : UnorderedList<T>
+    public class OrderedListObsolete<T> : UnorderedList<T>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedListObsolete{T}"/> class.
         /// </summary>
-        public OrderedList()
+        public OrderedListObsolete()
         {
             this.Comparer = Comparer<T>.Default;
             this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedListObsolete{T}"/> class.
         /// </summary>
         /// <param name="capacity">The number of elements that the new list can initially store.</param>
-        public OrderedList(int capacity)
+        public OrderedListObsolete(int capacity)
             : base(capacity)
         {
             this.Comparer = Comparer<T>.Default;
@@ -37,30 +37,30 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedListObsolete{T}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedList(IComparer<T> comparer)
+        public OrderedListObsolete(IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
             this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedListObsolete{T}"/> class.
         /// </summary>
         /// <param name="collection">The collection whose elements are copied to the new list.</param>
-        public OrderedList(IEnumerable<T> collection)
+        public OrderedListObsolete(IEnumerable<T> collection)
             : this(collection, Comparer<T>.Default)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedListObsolete{T}"/> class.
         /// </summary>
         /// <param name="collection">The collection whose elements are copied to the new list.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedList(IEnumerable<T> collection, IComparer<T> comparer)
+        public OrderedListObsolete(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
             this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);

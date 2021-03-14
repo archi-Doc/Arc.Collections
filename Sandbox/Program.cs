@@ -31,7 +31,7 @@ namespace Sandbox
             os.Remove(1);
             result = os.Validate();
 
-            var ol = new OrderedList<int>();
+            var ol = new OrderedListObsolete<int>();
             ol.Add(2);
             ol.Add(3);
             ol.Add(1);
