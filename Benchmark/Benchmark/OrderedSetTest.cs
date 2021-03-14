@@ -72,7 +72,7 @@ namespace Benchmark
         {
         }
 
-        [Benchmark]
+        /*[Benchmark]
         public int EnumerateRef()
         {
             var total = 0;
@@ -184,7 +184,7 @@ namespace Benchmark
             (this.Node55, _) = this.IntSet.Add(55);
 
             return this.IntSet.Count;
-        }
+        }*/
 
         [Benchmark]
         public int AddRemoveReuse()

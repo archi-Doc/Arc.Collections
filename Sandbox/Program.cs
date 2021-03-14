@@ -31,10 +31,10 @@ namespace Sandbox
             os.Remove(1);
             result = os.Validate();
 
-            var ol = new OrderedListObsolete<int>();
-            ol.Add(2);
-            ol.Add(3);
-            ol.Add(1);
+            var ol = new OrderedKeyValueList<int, int>();
+            ol.Add(2, 0);
+            ol.Add(3, 0);
+            ol.Add(1, 1);
         }
     }
 }

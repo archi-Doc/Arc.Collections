@@ -87,9 +87,9 @@ namespace Benchmark
 
         public int Value;
 
-        public OrderedListObsolete<OrderedListClass> OrderedListComparable = default!;
+        public OrderedList<OrderedListClass> OrderedListComparable = default!;
 
-        public OrderedListObsolete<OrderedListClass> OrderedListComparer = default!;
+        public OrderedList<OrderedListClass> OrderedListComparer = default!;
 
         public OrderedListClass ValueClass = default!;
 
@@ -121,9 +121,9 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public OrderedListObsolete<OrderedListClass> Add_Comparable()
+        public OrderedList<OrderedListClass> Add_Comparable()
         {
-            var ol = new OrderedListObsolete<OrderedListClass>();
+            var ol = new OrderedList<OrderedListClass>();
             foreach (var x in this.ClassArray)
             {
                 ol.Add(x);
@@ -133,9 +133,9 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public OrderedListObsolete<OrderedListClass> Add_Comparer()
+        public OrderedList<OrderedListClass> Add_Comparer()
         {
-            var ol = new OrderedListObsolete<OrderedListClass>(new OrderedListClassComparer());
+            var ol = new OrderedList<OrderedListClass>(new OrderedListClassComparer());
             foreach (var x in this.ClassArray)
             {
                 ol.Add(x);

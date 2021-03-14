@@ -19,7 +19,7 @@ namespace Benchmark
 
         public int Value;
 
-        public OrderedListObsolete<int> OrderedList = default!;
+        public OrderedList<int> OrderedList = default!;
 
         public IComparer<int> Comparer { get; private set; } = default!;
 

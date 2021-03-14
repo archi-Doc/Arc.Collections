@@ -345,6 +345,11 @@ namespace Arc.Collection
 
         #region LinkedList
 
+        /// <summary>
+        /// Finds the first node that contains the specified value.
+        /// </summary>
+        /// <param name="value">The value to locate in the list.</param>
+        /// <returns>The first <see cref="Node"/> that contains the specified value, if found; otherwise, null.</returns>
         public Node? Find(T value)
         {
             var node = this.head;
@@ -382,6 +387,12 @@ namespace Arc.Collection
             return null;
         }
 
+        /// <summary>
+        /// Adds a new node or value after an existing node in the list.
+        /// </summary>
+        /// <param name="node">The <see cref="Node"/> after which to insert a new <see cref="Node"/> containing value.</param>
+        /// <param name="value">The value to add to the list.</param>
+        /// <returns>The new <see cref="Node"/> containing value.</returns>
         public Node AddAfter(Node node, T value)
         {
             this.ValidateNode(node);
@@ -390,6 +401,11 @@ namespace Arc.Collection
             return result;
         }
 
+        /// <summary>
+        /// Adds the specified new node after the specified existing node in the list.
+        /// </summary>
+        /// <param name="node">The <see cref="Node"/> after which to insert newNode.</param>
+        /// <param name="newNode">The new <see cref="Node"/> to add to the list.</param>
         public void AddAfter(Node node, Node newNode)
         {
             this.ValidateNode(node);
@@ -398,6 +414,12 @@ namespace Arc.Collection
             newNode.list = this;
         }
 
+        /// <summary>
+        /// Adds a new node containing the specified value before the specified existing node in the list.
+        /// </summary>
+        /// <param name="node">The <see cref="Node"/> before which to insert a new <see cref="Node"/> containing value.</param>
+        /// <param name="value">The value to add to the list.</param>
+        /// <returns>The new <see cref="Node"/> containing value.</returns>
         public Node AddBefore(Node node, T value)
         {
             this.ValidateNode(node);
@@ -411,6 +433,11 @@ namespace Arc.Collection
             return result;
         }
 
+        /// <summary>
+        /// Adds the specified new node before the specified existing node in the list.
+        /// </summary>
+        /// <param name="node">The <see cref="Node"/> before which to insert newNode.</param>
+        /// <param name="newNode">The new <see cref="Node"/> to add to the list.</param>
         public void AddBefore(Node node, Node newNode)
         {
             this.ValidateNode(node);
@@ -423,6 +450,11 @@ namespace Arc.Collection
             }
         }
 
+        /// <summary>
+        /// Adds a new node or value at the start of the list.
+        /// </summary>
+        /// <param name="value">The value to add at the start of the list.</param>
+        /// <returns>The new <see cref="Node"/> containing value.</returns>
         public Node AddFirst(T value)
         {
             var result = new Node(this, value);
@@ -439,6 +471,10 @@ namespace Arc.Collection
             return result;
         }
 
+        /// <summary>
+        /// Adds a new node or value at the start of the list.
+        /// </summary>
+        /// <param name="node">The new <see cref="Node"/> to add at the start of the list.</param>
         public void AddFirst(Node node)
         {
             this.ValidateNewNode(node);
@@ -456,6 +492,11 @@ namespace Arc.Collection
             node.list = this;
         }
 
+        /// <summary>
+        /// Adds a new node or value at the end of the list.
+        /// </summary>
+        /// <param name="value">The value to add at the end of the list.</param>
+        /// <returns>The new <see cref="Node"/> containing value.</returns>
         public Node AddLast(T value)
         {
             var result = new Node(this, value);
@@ -471,6 +512,10 @@ namespace Arc.Collection
             return result;
         }
 
+        /// <summary>
+        /// Adds a new node or value at the end of the list.
+        /// </summary>
+        /// <param name="node">The new <see cref="Node"/> to add at the end of the list.</param>
         public void AddLast(Node node)
         {
             this.ValidateNewNode(node);
@@ -487,12 +532,19 @@ namespace Arc.Collection
             node.list = this;
         }
 
+        /// <summary>
+        /// Removes the specified node from the list.
+        /// </summary>
+        /// <param name="node">The <see cref="Node"/> to remove from the list.</param>
         public void Remove(Node node)
         {
             this.ValidateNode(node);
             this.InternalRemoveNode(node);
         }
 
+        /// <summary>
+        /// Removes the node at the start of the list.
+        /// </summary>
         public void RemoveFirst()
         {
             if (this.head == null)
@@ -503,6 +555,9 @@ namespace Arc.Collection
             this.InternalRemoveNode(this.head);
         }
 
+        /// <summary>
+        /// Removes the node at the end of the list.
+        /// </summary>
         public void RemoveLast()
         {
             if (this.head == null)

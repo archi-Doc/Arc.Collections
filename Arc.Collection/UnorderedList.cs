@@ -280,6 +280,9 @@ namespace Arc.Collection
             }
         }
 
+        /// <summary>
+        /// Gets or sets the total number of elements the internal data structure can hold without resizing.
+        /// </summary>
         public int Capacity
         {
             get => this.items.Length;
@@ -317,7 +320,6 @@ namespace Arc.Collection
             return new Enumerator(this);
         }
 
-        /// <inheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             return new Enumerator(this);

@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace xUnitTest
 {
-    public class OrderedListClass : IComparable<OrderedListClass>
+    public class OrderedKeyValueListClass : IComparable<OrderedKeyValueListClass>
     {
-        public OrderedListClass(int id)
+        public OrderedKeyValueListClass(int id)
         {
             this.Id = id;
             this.Serial = serial++;
@@ -22,7 +22,7 @@ namespace xUnitTest
 
         private static int serial;
 
-        public int CompareTo(OrderedListClass? other)
+        public int CompareTo(OrderedKeyValueListClass? other)
         {
             if (other == null)
             {
@@ -46,68 +46,54 @@ namespace xUnitTest
         public override string ToString() => $"{this.Id} ({this.Serial})";
     }
 
-    public class IntComparer : IComparer<int>
-    {
-        public int Compare(int x, int y)
-        {
-            if (x < y)
-            {
-                return -1;
-            }
-            else if (x > y)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-    }
-
-    public class OrderedListTest
+    public class OrderedKeyValueListTest
     {
         [Fact]
         public void Test1()
         {
-            var ol = new OrderedListObsolete<int>() { 1, 3, 2, 0, 5, -10, 0, };
+            var ol = new OrderedKeyValueList<int, int>();
             var array = new int[] { 1, 3, 2, 0, 5, -10, 0, };
             Array.Sort(array);
-            ol.SequenceEqual(array).IsTrue();
+            foreach (var x in array)
+            {
+                ol.Add(x, x);
+            }
+            ol.Keys.SequenceEqual(array).IsTrue();
+            ol.Values.SequenceEqual(array).IsTrue();
 
-            var ol2 = new OrderedListObsolete<OrderedListClass>();
-            ol2.Add(new OrderedListClass(1)); // 0
-            ol2.Add(new OrderedListClass(3)); // 1
-            ol2.Add(new OrderedListClass(2)); // 2
-            ol2.Add(new OrderedListClass(0)); // 3
-            ol2.Add(new OrderedListClass(5)); // 4
-            ol2.Add(new OrderedListClass(-10)); // 5
-            ol2.Add(new OrderedListClass(2)); // 6
-            ol2.Add(new OrderedListClass(0)); // 7
-            ol2.Add(new OrderedListClass(2)); // 8
-            ol2.Add(new OrderedListClass(2)); // 9
+            var ol2 = new OrderedKeyValueList<int, OrderedKeyValueListClass>();
+            ol2.Add(7, new OrderedKeyValueListClass(0)); // 0
+            ol2.Add(0, new OrderedKeyValueListClass(1)); // 1
+            ol2.Add(5, new OrderedKeyValueListClass(-10)); // 2
+            ol2.Add(3, new OrderedKeyValueListClass(0)); // 3
+            ol2.Add(8, new OrderedKeyValueListClass(2)); // 4
+            ol2.Add(4, new OrderedKeyValueListClass(5)); // 5
+            ol2.Add(6, new OrderedKeyValueListClass(2)); // 6
+            ol2.Add(2, new OrderedKeyValueListClass(2)); // 7
+            ol2.Add(1, new OrderedKeyValueListClass(3)); // 8
+            ol2.Add(9, new OrderedKeyValueListClass(2)); // 9
 
             var n = 0;
-            ol2[n].Id.Is(-10);
-            ol2[n++].Serial.Is(5);
+            ol2[n].Id.Is(1);
+            ol2[n++].Serial.Is(1);
+            ol2[n].Id.Is(3);
+            ol2[n++].Serial.Is(8);
+            ol2[n].Id.Is(2);
+            ol2[n++].Serial.Is(7);
             ol2[n].Id.Is(0);
             ol2[n++].Serial.Is(3);
-            ol2[n].Id.Is(0);
-            ol2[n++].Serial.Is(7);
-            ol2[n].Id.Is(1);
-            ol2[n++].Serial.Is(0);
-            ol2[n].Id.Is(2);
+            ol2[n].Id.Is(5);
+            ol2[n++].Serial.Is(5);
+            ol2[n].Id.Is(-10);
             ol2[n++].Serial.Is(2);
             ol2[n].Id.Is(2);
             ol2[n++].Serial.Is(6);
+            ol2[n].Id.Is(0);
+            ol2[n++].Serial.Is(0);
             ol2[n].Id.Is(2);
-            ol2[n++].Serial.Is(8);
+            ol2[n++].Serial.Is(4);
             ol2[n].Id.Is(2);
             ol2[n++].Serial.Is(9);
-            ol2[n].Id.Is(3);
-            ol2[n++].Serial.Is(1);
-            ol2[n].Id.Is(5);
-            ol2[n++].Serial.Is(4);
         }
 
         [Fact]
@@ -140,27 +126,13 @@ namespace xUnitTest
             var sortedArray = (int[])array.Clone();
             Array.Sort(sortedArray);
 
-            var ol = new OrderedListObsolete<int>(array);
-            ol.SequenceEqual(sortedArray).IsTrue();
-
-            ol = new OrderedListObsolete<int>();
+            var ol = new OrderedKeyValueList<int, int>();
             foreach (var x in array)
             {
-                ol.Add(x);
+                ol.Add(x, x);
             }
-
-            ol.SequenceEqual(sortedArray).IsTrue();
-
-            ol = new OrderedListObsolete<int>(array, new IntComparer());
-            ol.SequenceEqual(sortedArray).IsTrue();
-
-            ol = new OrderedListObsolete<int>();
-            foreach (var x in array)
-            {
-                ol.Add(x);
-            }
-
-            ol.SequenceEqual(sortedArray).IsTrue();
+            ol.Keys.SequenceEqual(sortedArray).IsTrue();
+            ol.Values.SequenceEqual(sortedArray).IsTrue();
         }
     }
 }
