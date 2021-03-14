@@ -10,7 +10,7 @@ namespace Benchmark
     [Config(typeof(BenchmarkConfig))]
     public class OrderedListTest
     {
-        [Params(10, 100, 1000)]
+        [Params(10, 100, 10_000)]
         public int Length;
 
         public int[] IntArray = default!;

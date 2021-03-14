@@ -221,10 +221,13 @@ namespace Arc.Collection
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> keyValuePair)
         {
-            int index = this.IndexOfKey(keyValuePair.Key);
-            if (index >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[index], keyValuePair.Value))
+            var range = this.RangeOfKey(keyValuePair.Key);
+            for (var n = range.start; n < range.end; n++)
             {
-                return true;
+                if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -232,11 +235,14 @@ namespace Arc.Collection
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> keyValuePair)
         {
-            int index = this.IndexOfKey(keyValuePair.Key);
-            if (index >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[index], keyValuePair.Value))
+            var range = this.RangeOfKey(keyValuePair.Key);
+            for (var n = range.start; n < range.end; n++)
             {
-                this.RemoveAt(index);
-                return true;
+                if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
+                {
+                    this.RemoveAt(n);
+                    return true;
+                }
             }
 
             return false;
@@ -381,7 +387,6 @@ namespace Arc.Collection
             return this.IndexOfValue(value) >= 0;
         }
 
-        // Copies the values in this SortedList to an array.
         void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             if (array == null)
@@ -608,6 +613,11 @@ namespace Arc.Collection
             return (ret, n);
         }
 
+        /// <summary>
+        /// Returns the zero-based index of the first occurrence of the specified value in a list.
+        /// </summary>
+        /// <param name="value">The value to locate in the list.</param>
+        /// <returns>The zero-based index of the first occurrence of the value parameter, if value is found in the list; otherwise, -1.</returns>
         public int IndexOfValue(TValue value)
         {
             return Array.IndexOf(this.values, value, 0, this.size);
@@ -715,6 +725,8 @@ namespace Arc.Collection
 
             return key is TKey;
         }
+
+        #region Enumerator
 
         private struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
         {
@@ -1171,5 +1183,7 @@ namespace Arc.Collection
                 throw new NotSupportedException();
             }
         }
+
+        #endregion
     }
 }

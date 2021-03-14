@@ -7,30 +7,45 @@ using System.Runtime.CompilerServices;
 using Arc.Collection.HotMethod;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
-#pragma warning disable SA1602 // Enumeration items should be documented
 #pragma warning disable SA1124 // Do not use regions
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1602 // Enumeration items should be documented
 
 namespace Arc.Collection
 {
     /// <summary>
-    /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
+    /// Color of a node in a Red-Black tree.
     /// </summary>
-    /// <typeparam name="T">The type of elements in the set.</typeparam>
-    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+    internal enum NodeColor : byte
+    {
+        Black,
+        Red,
+        Unused,
+        LinkedList,
+    }
+
+    /// <summary>
+    /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+    /// </summary>
+    /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
+    /// <typeparam name="TValue">The type of values in the collection.</typeparam>
+    public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, ICollection
+        where TKey: notnull
     {
         /// <summary>
-        /// Represents a node in a <see cref="OrderedSet{T}"/>.
+        /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
         /// </summary>
         public sealed class Node
         {
-            internal Node(T value, NodeColor color)
+            internal Node(TKey key, TValue value, NodeColor color)
             {
+                this.Key = key;
                 this.Value = value;
                 this.Color = color;
             }
 
             /// <summary>
-            /// Gets the previous node in the <see cref="OrderedSet{T}"/>.
+            /// Gets the previous node in the <see cref="OrderedMap{TKey, TValue}"/>.
             /// <br/>O(log n) operation.
             /// </summary>
             public Node? Previous
@@ -64,7 +79,7 @@ namespace Arc.Collection
             }
 
             /// <summary>
-            /// Gets the next node in the <see cref="OrderedSet{T}"/>
+            /// Gets the next node in the <see cref="OrderedMap{TKey, TValue}"/>
             /// <br/>O(log n) operation.
             /// </summary>
             public Node? Next
@@ -104,22 +119,27 @@ namespace Arc.Collection
             internal static bool IsNullOrBlack(Node? node) => node == null || node.IsBlack;
 
             /// <summary>
-            /// Gets the value contained in the node.
+            /// Gets the key contained in the node.
             /// </summary>
-            public T Value { get; internal set; }
+            public TKey Key { get; internal set; }
 
             /// <summary>
-            /// Gets or sets the parent node in the <see cref="OrderedSet{T}"/>.
+            /// Gets the value contained in the node.
+            /// </summary>
+            public TValue Value { get; internal set; }
+
+            /// <summary>
+            /// Gets or sets the parent node in the <see cref="OrderedMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Parent { get; set; }
 
             /// <summary>
-            /// Gets or sets the left node in the <see cref="OrderedSet{T}"/>.
+            /// Gets or sets the left node in the <see cref="OrderedMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Left { get; set; }
 
             /// <summary>
-            /// Gets or sets the right node in the <see cref="OrderedSet{T}"/>.
+            /// Gets or sets the right node in the <see cref="OrderedMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Right { get; set; }
 
@@ -140,15 +160,17 @@ namespace Arc.Collection
 
             internal void Clear()
             {
-                this.Value = default(T)!;
+                this.Key = default(TKey)!;
+                this.Value = default(TValue)!;
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
                 this.Color = NodeColor.Unused;
             }
 
-            internal void Reset(T value, NodeColor color)
+            internal void Reset(TKey key, TValue value, NodeColor color)
             {
+                this.Key = key;
                 this.Value = value;
                 this.Parent = null;
                 this.Left = null;
@@ -165,137 +187,60 @@ namespace Arc.Collection
         private int version;
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="OrderedMap{TKey, TValue}"/>.
         /// </summary>
         public int Count { get; private set; }
 
-        public IComparer<T> Comparer { get; private set; }
+        public IComparer<TKey> Comparer { get; private set; }
 
-        public IHotMethod<T>? HotMethod { get; private set; }
+        public IHotMethod<TKey>? HotMethod { get; private set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
-        public OrderedSet()
+        public OrderedMap()
         {
-            this.Comparer = Comparer<T>.Default;
-            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
+            this.Comparer = Comparer<TKey>.Default;
+            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IComparer<T> comparer)
+        public OrderedMap(IComparer<TKey> comparer)
         {
-            this.Comparer = comparer ?? Comparer<T>.Default;
-            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
+            this.Comparer = comparer ?? Comparer<TKey>.Default;
+            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
-        /// <param name="collection">The enumerable collection to be copied.</param>
-        public OrderedSet(IEnumerable<T> collection)
-            : this(collection, Comparer<T>.Default)
+        /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
+        public OrderedMap(IDictionary<TKey, TValue> dictionary)
+            : this(dictionary, Comparer<TKey>.Default)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
-        /// <param name="collection">The enumerable collection to be copied.</param>
+        /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
+        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
         {
-            this.Comparer = comparer ?? Comparer<T>.Default;
-            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
+            this.Comparer = comparer ?? Comparer<TKey>.Default;
+            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
 
-            foreach (var x in collection)
+            foreach (var x in dictionary)
             {
-                this.Add(x);
+                this.Add(x.Key, x.Value);
             }
         }
 
-        #region Enumerator
-
         /// <summary>
-        /// Returns an Enumerator for the <see cref="OrderedSet{T}"/>.
-        /// </summary>
-        /// <returns>Enumerator.</returns>
-        public Enumerator GetEnumerator() => new Enumerator(this);
-
-        /// <inheritdoc/>
-        IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.GetEnumerator();
-
-        /// <inheritdoc/>
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
-
-        /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedSet{T}"/>.
-        /// </summary>
-        public struct Enumerator : IEnumerator<T>, IEnumerator
-        {
-            private readonly OrderedSet<T> set;
-            private readonly int version;
-            private Node? node;
-            private T current;
-
-            internal Enumerator(OrderedSet<T> set)
-            {
-                this.set = set;
-                this.version = set.version;
-                this.node = this.set.First;
-                this.current = default(T)!;
-            }
-
-            public bool MoveNext()
-            {
-                if (this.version != this.set.version)
-                {
-                    throw ThrowVersionMismatch();
-                }
-
-                if (this.node == null)
-                {
-                    this.current = default(T)!;
-                    return false;
-                }
-
-                this.current = this.node.Value;
-                this.node = this.node.Next;
-                return true;
-            }
-
-            public void Dispose()
-            {
-            }
-
-            public T Current => this.current;
-
-            object? System.Collections.IEnumerator.Current => this.current;
-
-            void System.Collections.IEnumerator.Reset() => this.Reset();
-
-            internal void Reset()
-            {
-                if (this.version != this.set.version)
-                {
-                    throw ThrowVersionMismatch();
-                }
-
-                this.node = this.set.First;
-            }
-
-            private static Exception ThrowVersionMismatch()
-            {
-                throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
-            }
-        }
-        #endregion
-
-        /// <summary>
-        /// Gets the first node in the <see cref="OrderedSet{T}"/>.
+        /// Gets the first node in the <see cref="OrderedMap{TKey, TValue}"/>.
         /// </summary>
         public Node? First
         {
@@ -316,8 +261,112 @@ namespace Arc.Collection
             }
         }
 
+        #region Enumerator
+
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
+
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
+
+        IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
+
+        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
+
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
+        {
+            internal const int KeyValuePair = 1;
+            internal const int DictEntry = 2;
+
+            private readonly OrderedMap<TKey, TValue> set;
+            private readonly int version;
+            private readonly int getEnumeratorRetType;
+            private Node? node;
+            private TKey? key;
+            private TValue? value;
+
+            internal Enumerator(OrderedMap<TKey, TValue> set, int getEnumeratorRetType)
+            {
+                this.set = set;
+                this.version = this.set.version;
+                this.getEnumeratorRetType = getEnumeratorRetType;
+                this.node = this.set.First;
+                this.key = default;
+                this.value = default;
+            }
+
+            public void Dispose()
+            {
+                this.node = null;
+                this.key = default;
+                this.value = default;
+            }
+
+            public bool MoveNext()
+            {
+                if (this.version != this.set.version)
+                {
+                    throw ThrowVersionMismatch();
+                }
+
+                if (this.node == null)
+                {
+                    this.key = default(TKey)!;
+                    this.value = default(TValue)!;
+                    return false;
+                }
+
+                this.key = this.node.Key;
+                this.value = this.node.Value;
+                this.node = this.node.Next;
+                return true;
+            }
+
+            DictionaryEntry IDictionaryEnumerator.Entry => new DictionaryEntry(this.key!, this.value!);
+
+            object IDictionaryEnumerator.Key => this.key!;
+
+            object IDictionaryEnumerator.Value => this.value!;
+
+            public KeyValuePair<TKey, TValue> Current => new KeyValuePair<TKey, TValue>(this.key!, this.value!);
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.getEnumeratorRetType == DictEntry)
+                    {
+                        return new DictionaryEntry(this.key!, this.value!);
+                    }
+                    else
+                    {
+                        return new KeyValuePair<TKey, TValue>(this.key!, this.value!);
+                    }
+                }
+            }
+
+            void System.Collections.IEnumerator.Reset() => this.Reset();
+
+            internal void Reset()
+            {
+                if (this.version != this.set.version)
+                {
+                    throw ThrowVersionMismatch();
+                }
+
+                this.node = this.set.First;
+                this.key = default;
+                this.value = default;
+            }
+
+            private static Exception ThrowVersionMismatch()
+            {
+                throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
+            }
+        }
+
+        #endregion
+
         /// <summary>
-        /// Gets the last node in the <see cref="OrderedSet{T}"/>. O(log n) operation.
+        /// Gets the last node in the <see cref="OrderedMap{TKey, TValue}"/>. O(log n) operation.
         /// </summary>
         public Node? Last
         {
@@ -342,37 +391,7 @@ namespace Arc.Collection
 
         public bool IsReadOnly => false;
 
-        void ICollection<T>.Add(T item) => this.Add(item);
-
-        public bool Contains(T item) => this.FindNode(item) != null;
-
-        public void CopyTo(T[] array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-            else if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-            else if (this.Count > array.Length - index)
-            {
-                throw new ArgumentOutOfRangeException(nameof(array));
-            }
-
-            var node = this.First;
-            for (var n = index; n < (index + this.Count); n++)
-            {
-                if (node == null)
-                {
-                    break;
-                }
-
-                array[n] = node.Value;
-                node = node.Next;
-            }
-        }
+        public bool Contains(TKey key) => this.FindNode(key) != null;
 
         void ICollection.CopyTo(Array array, int index)
         {
@@ -380,27 +399,40 @@ namespace Arc.Collection
             {
                 throw new ArgumentNullException(nameof(array));
             }
-            else if (array.Rank != 1 || array.GetLowerBound(0) != 0)
+
+            if (array.Rank != 1)
             {
                 throw new ArgumentException(nameof(array));
             }
-            else if (index < 0)
+
+            if (array.GetLowerBound(0) != 0)
+            {
+                throw new ArgumentException(nameof(array));
+            }
+
+            if (index < 0 || index > array.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
-            else if (array.Length - index < this.Count)
+
+            if (array.Length - index < this.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(array));
+                throw new ArgumentException();
             }
 
-            T[]? tarray = array as T[];
-            if (tarray != null)
+            var node = this.First;
+            KeyValuePair<TKey, TValue>[]? keyValuePairArray = array as KeyValuePair<TKey, TValue>[];
+            if (keyValuePairArray != null)
             {
-                this.CopyTo(tarray, index);
+                for (int i = 0; i < this.Count; i++)
+                {
+                    keyValuePairArray[i + index] = new KeyValuePair<TKey, TValue>(node!.Key, node!.Value);
+                    node = node.Next;
+                }
             }
             else
             {
-                object?[]? objects = array as object[];
+                object[]? objects = array as object[];
                 if (objects == null)
                 {
                     throw new ArgumentException(nameof(array));
@@ -408,15 +440,9 @@ namespace Arc.Collection
 
                 try
                 {
-                    var node = this.First;
-                    for (var n = index; n < (index + this.Count); n++)
+                    for (int i = 0; i < this.Count; i++)
                     {
-                        if (node == null)
-                        {
-                            break;
-                        }
-
-                        objects[n] = node.Value;
+                        objects[i + index] = new KeyValuePair<TKey, TValue>(node!.Key, node!.Value);
                         node = node.Next;
                     }
                 }
@@ -433,22 +459,6 @@ namespace Arc.Collection
 
         #endregion
 
-        #region Validate
-
-        /// <summary>
-        /// Validate Red-Black Tree.
-        /// </summary>
-        /// <returns>true if the tree is valid.</returns>
-        public bool Validate()
-        {
-            bool result = true;
-            result &= this.ValidateBST(this.root);
-            result &= this.ValidateBlackHeight(this.root) >= 0;
-            result &= this.ValidateColor(this.root) == NodeColor.Black;
-
-            return result;
-        }
-
         /// <summary>
         /// Removes all elements from the set.
         /// </summary>
@@ -460,34 +470,37 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// <param name="key">The key of the element to add.</param>
+        /// <param name="value">The value of the element to add.</param>
+        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value) => this.Probe(value, null);
+        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The element to add to the set.</param>
+        /// <param name="key">The key of the element to add.</param>
+        /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value, Node reuse) => this.Probe(value, reuse);
+        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
+        /// Adds an element to a collection. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// <param name="key">The key of the element to add.</param>
+        /// <param name="value">The value of the element to add.</param>
+        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// replaced: true if the node is replaced.</returns>
-        public (Node node, bool replaced) Replace(T value)
+        public (Node node, bool replaced) Replace(TKey key, TValue value)
         {
-            var result = this.Probe(value, null);
+            var result = this.Probe(key, value, null);
             if (result.newlyAdded)
             {// New
                 return (result.node, false);
@@ -500,31 +513,31 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Updates the node's value with the specified value. Removes the node and inserts in the correct position if necessary.
+        /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to replace.</param>
-        /// <param name="value">The value to set.</param>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="key">The key to set.</param>
         /// <returns>true if the node is replaced.</returns>
-        public bool ReplaceNode(Node node, T value)
+        public bool ReplaceNode(Node node, TKey key)
         {
-            if (this.Comparer.Compare(node.Value, value) == 0)
+            if (this.Comparer.Compare(node.Key, key) == 0)
             {// Identical
                 return false;
             }
 
             this.RemoveNode(node);
-            this.Probe(value, node);
+            this.Probe(key, node);
             return true;
         }
 
         /// <summary>
-        /// Removes a specified item from the <see cref="OrderedSet{T}"/>.
+        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The element to remove.</param>
+        /// <param name="key">The element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
-        public bool Remove(T value)
+        public bool Remove(TKey key)
         {
             Node? p; // Node to delete.
             int cmp = -1;
@@ -537,7 +550,7 @@ namespace Arc.Collection
             p = this.root;
             while (true)
             {
-                cmp = this.Comparer.Compare(value, p.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                 if (cmp < 0)
                 {
                     p = p.Left;
@@ -562,10 +575,10 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Removes a specified node from the <see cref="OrderedSet{T}"/>.
+        /// Removes a specified node from the <see cref="OrderedMap{TKey, TValue}"/>.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to remove.</param>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
         public void RemoveNode(Node node)
         {
             Node? f; // Node to fix.
@@ -747,16 +760,16 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for a <see cref="OrderedSet{T}.Node"/> with the specified value.
+        /// Searches for a <see cref="OrderedMap{TKey, TValue}.Node"/> with the specified value.
         /// </summary>
-        /// <param name="value">The value to search in the set.</param>
+        /// <param name="key">The value to search in a collection.</param>
         /// <returns>The node with the specified value.</returns>
-        public Node? FindNode(T value)
+        public Node? FindNode(TKey key)
         {
             var p = this.root;
             while (p != null)
             {
-                var cmp = this.Comparer.Compare(value, p.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                var cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                 if (cmp < 0)
                 {
                     p = p.Left;
@@ -780,9 +793,9 @@ namespace Arc.Collection
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSet{T}.Node"/>.<br/>
+        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        private (Node node, bool newlyAdded) Probe(T value, Node? reuse)
+        private (Node node, bool newlyAdded) Probe(TKey value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.
@@ -796,8 +809,8 @@ namespace Arc.Collection
                     return (p, false);
                 }
             }
-            else if (this.Comparer == Comparer<T>.Default && value is IComparable<T> ic)
-            {// IComparable<T>
+            else if (this.Comparer == Comparer<TKey>.Default && value is IComparable<TKey> ic)
+            {// IComparable<TKey>
                 while (x != null)
                 {
                     cmp = ic.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -817,7 +830,7 @@ namespace Arc.Collection
                 }
             }
             else
-            {// IComparer<T>
+            {// IComparer<TKey>
                 while (x != null)
                 {
                     cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -932,6 +945,22 @@ namespace Arc.Collection
             return (n, true);
         }
 
+        #region Validation
+
+        /// <summary>
+        /// Validate Red-Black Tree.
+        /// </summary>
+        /// <returns>true if the tree is valid.</returns>
+        public bool Validate()
+        {
+            bool result = true;
+            result &= this.ValidateBST(this.root);
+            result &= this.ValidateBlackHeight(this.root) >= 0;
+            result &= this.ValidateColor(this.root) == NodeColor.Black;
+
+            return result;
+        }
+
         private NodeColor ValidateColor(Node? node)
         {
             if (node == null)
@@ -1000,33 +1029,36 @@ namespace Arc.Collection
                 result &= node.Right.Parent == node;
             }
 
-            result &= this.IsSmaller(node.Left, node.Value) && this.IsLarger(node.Right, node.Value);
+            result &= this.IsSmaller(node.Left, node.Key) && this.IsLarger(node.Right, node.Key);
             result &= this.ValidateBST(node.Left) && this.ValidateBST(node.Right);
             return result;
         }
 
-        private bool IsSmaller(Node? node, T value)
-        {// Node value is smaller than T value.
+        private bool IsSmaller(Node? node, TKey key)
+        {// Node value is smaller than TKey value.
             if (node == null)
             {
                 return true;
             }
 
-            var cmp = this.Comparer.Compare(node.Value, value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-            return cmp == -1 && this.IsSmaller(node.Left, value) && this.IsSmaller(node.Right, value);
+            var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+            return cmp == -1 && this.IsSmaller(node.Left, key) && this.IsSmaller(node.Right, key);
         }
 
-        private bool IsLarger(Node? node, T value)
-        {// Node value is larger than T value.
+        private bool IsLarger(Node? node, TKey key)
+        {// Node value is larger than TKey value.
             if (node == null)
             {
                 return true;
             }
 
-            var cmp = this.Comparer.Compare(node.Value, value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-            return cmp == 1 && this.IsLarger(node.Left, value) && this.IsLarger(node.Right, value);
+            var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+            return cmp == 1 && this.IsLarger(node.Left, key) && this.IsLarger(node.Right, key);
         }
+
         #endregion
+
+        #region LowLevel
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TransplantNode(Node? node, Node destination)
@@ -1108,64 +1140,6 @@ namespace Arc.Collection
             x.Parent = y;
         }
 
-        private void RotateRightLeft(Node x)
-        {
-            var p = x.Parent;
-            var y = x.Right!;
-            var z = y.Left!;
-
-            x.Parent = z;
-            x.Right = z.Left;
-            if (x.Right != null)
-            {
-                x.Right.Parent = x;
-            }
-
-            y.Parent = z;
-            y.Left = z.Right;
-            if (y.Left != null)
-            {
-                y.Left.Parent = y;
-            }
-
-            z.Parent = p;
-            if (z.Parent == null)
-            {
-                this.root = z;
-            }
-
-            z.Left = x;
-            z.Right = y;
-        }
-
-        private void RotateLeftRight(Node x)
-        {
-            var p = x.Parent;
-            var y = x.Left!;
-            var z = y.Right!;
-
-            x.Parent = z;
-            x.Left = z.Right;
-            if (x.Left != null)
-            {
-                x.Left.Parent = x;
-            }
-
-            y.Parent = z;
-            y.Right = z.Left;
-            if (y.Right != null)
-            {
-                y.Right.Parent = y;
-            }
-
-            z.Parent = p;
-            if (z.Parent == null)
-            {
-                this.root = z;
-            }
-
-            z.Right = x;
-            z.Left = y;
-        }
+        #endregion
     }
 }

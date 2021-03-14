@@ -36,5 +36,33 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public (int cmp, OrderedMap<T>.Node? leaf) SearchNode(OrderedMap<T>.Node? target, T value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                cmp = Comparer<T>.Default.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+
+                p = x;
+                if (cmp < 0)
+                {
+                    x = x.Left;
+                }
+                else if (cmp > 0)
+                {
+                    x = x.Right;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 }
