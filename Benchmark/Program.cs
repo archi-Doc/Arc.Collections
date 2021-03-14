@@ -17,7 +17,7 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            DebugRun<IComparerTest>();
+            DebugRun<OrderedSetTest>();
 
             // var summary = BenchmarkRunner.Run<TestBenchmark>();
             var switcher = new BenchmarkSwitcher(new[]

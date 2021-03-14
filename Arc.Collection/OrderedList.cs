@@ -10,6 +10,10 @@ using Arc.Collection.HotMethod;
 
 namespace Arc.Collection
 {
+    /// <summary>
+    /// Represents a list of objects that can be accessed by index and maintained in sorted order.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the list.</typeparam>
     public class OrderedList<T> : UnorderedList<T>
     {
         /// <summary>
@@ -110,11 +114,6 @@ namespace Arc.Collection
             {
                 return this.HotMethod.BinarySearch(this.items, 0, this.size, value);
             }
-
-            /*else if (this.size >= 1000)
-            {
-                return Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
-            }*/
 
             var min = 0;
             var max = this.size - 1;

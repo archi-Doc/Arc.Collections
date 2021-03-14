@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Arc.Collection.HotMethod;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1602 // Enumeration items should be documented
@@ -181,12 +182,15 @@ namespace Arc.Collection
 
         public IComparer<T> Comparer { get; private set; }
 
+        public IHotMethod<T>? HotMethod { get; private set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
         /// </summary>
         public OrderedSet()
         {
             this.Comparer = Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
@@ -196,6 +200,7 @@ namespace Arc.Collection
         public OrderedSet(IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
         }
 
         /// <summary>
@@ -215,6 +220,7 @@ namespace Arc.Collection
         public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.Comparer = comparer ?? Comparer<T>.Default;
+            this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
 
             foreach (var x in collection)
             {
@@ -243,25 +249,17 @@ namespace Arc.Collection
         {
             private readonly OrderedSet<T> set;
             private readonly int version;
-            private readonly bool reverse;
-            private bool firstFlag;
-            private Node? current;
+            private Node? node;
+            private T current;
 
             internal Enumerator(OrderedSet<T> set)
-                : this(set, reverse: false)
-            {
-            }
-
-            internal Enumerator(OrderedSet<T> set, bool reverse)
             {
                 this.set = set;
                 this.version = set.version;
-                this.reverse = reverse;
-                this.firstFlag = false;
-                this.current = null;
+                this.node = this.set.First;
+                this.current = default(T)!;
             }
 
-            /// <inheritdoc/>
             public bool MoveNext()
             {
                 if (this.version != this.set.version)
@@ -269,31 +267,25 @@ namespace Arc.Collection
                     throw ThrowVersionMismatch();
                 }
 
-                if (!this.firstFlag)
+                if (this.node == null)
                 {
-                    this.firstFlag = true;
-                    this.current = this.set.First;
-                }
-                else if (this.current != null)
-                {
-                    this.current = this.current.Next;
+                    this.current = default(T)!;
+                    return false;
                 }
 
-                return this.current != null;
+                this.current = this.node.Value;
+                this.node = this.node.Next;
+                return true;
             }
 
-            /// <inheritdoc/>
             public void Dispose()
             {
             }
 
-            /// <inheritdoc/>
-            public T Current => this.current != null ? this.current.Value : default(T)!;
+            public T Current => this.current;
 
-            /// <inheritdoc/>
-            object? System.Collections.IEnumerator.Current => this.current != null ? this.current.Value : default(T)!;
+            object? System.Collections.IEnumerator.Current => this.current;
 
-            /// <inheritdoc/>
             void System.Collections.IEnumerator.Reset() => this.Reset();
 
             internal void Reset()
@@ -303,8 +295,7 @@ namespace Arc.Collection
                     throw ThrowVersionMismatch();
                 }
 
-                this.firstFlag = false;
-                this.current = null;
+                this.node = this.set.First;
             }
 
             private static Exception ThrowVersionMismatch()
@@ -808,21 +799,52 @@ namespace Arc.Collection
             Node? p = null; // Parent of x; node at which we are rebalancing.
             int cmp = 0;
 
-            while (x != null)
+            if (this.HotMethod != null)
             {
-                cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                p = x;
-                if (cmp < 0)
-                {
-                    x = x.Left;
+                (cmp, p) = this.HotMethod.SearchNode(x, value);
+                if (cmp == 0 && p != null)
+                {// Found
+                    return (p, false);
                 }
-                else if (cmp > 0)
+            }
+            else if (this.Comparer == Comparer<T>.Default && value is IComparable<T> ic)
+            {// IComparable<T>
+                while (x != null)
                 {
-                    x = x.Right;
+                    cmp = ic.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    p = x;
+                    if (cmp < 0)
+                    {
+                        x = x.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        x = x.Right;
+                    }
+                    else
+                    {// Found
+                        return (x, false);
+                    }
                 }
-                else
+            }
+            else
+            {// IComparer<T>
+                while (x != null)
                 {
-                    return (x, false);
+                    cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    p = x;
+                    if (cmp < 0)
+                    {
+                        x = x.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        x = x.Right;
+                    }
+                    else
+                    {// Found
+                        return (x, false);
+                    }
                 }
             }
 

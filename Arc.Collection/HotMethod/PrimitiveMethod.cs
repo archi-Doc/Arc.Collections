@@ -42,6 +42,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<byte>.Node? leaf) SearchNode(OrderedSet<byte>.Node? target, byte value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class Int8Method : IHotMethod<sbyte>
@@ -76,6 +104,34 @@ namespace Arc.Collection.HotMethod
             }
 
             return ~min;
+        }
+
+        public (int cmp, OrderedSet<sbyte>.Node? leaf) SearchNode(OrderedSet<sbyte>.Node? target, sbyte value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
         }
     }
 
@@ -112,6 +168,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<ushort>.Node? leaf) SearchNode(OrderedSet<ushort>.Node? target, ushort value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class Int16Method : IHotMethod<short>
@@ -146,6 +230,34 @@ namespace Arc.Collection.HotMethod
             }
 
             return ~min;
+        }
+
+        public (int cmp, OrderedSet<short>.Node? leaf) SearchNode(OrderedSet<short>.Node? target, short value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
         }
     }
 
@@ -182,6 +294,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<uint>.Node? leaf) SearchNode(OrderedSet<uint>.Node? target, uint value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class Int32Method : IHotMethod<int>
@@ -216,6 +356,34 @@ namespace Arc.Collection.HotMethod
             }
 
             return ~min;
+        }
+
+        public (int cmp, OrderedSet<int>.Node? leaf) SearchNode(OrderedSet<int>.Node? target, int value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
         }
     }
 
@@ -252,6 +420,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<ulong>.Node? leaf) SearchNode(OrderedSet<ulong>.Node? target, ulong value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class Int64Method : IHotMethod<long>
@@ -286,6 +482,34 @@ namespace Arc.Collection.HotMethod
             }
 
             return ~min;
+        }
+
+        public (int cmp, OrderedSet<long>.Node? leaf) SearchNode(OrderedSet<long>.Node? target, long value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
         }
     }
 
@@ -322,6 +546,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<float>.Node? leaf) SearchNode(OrderedSet<float>.Node? target, float value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class DoubleMethod : IHotMethod<double>
@@ -357,6 +609,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<double>.Node? leaf) SearchNode(OrderedSet<double>.Node? target, double value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 
     public sealed class DateTimeMethod : IHotMethod<DateTime>
@@ -391,6 +671,34 @@ namespace Arc.Collection.HotMethod
             }
 
             return ~min;
+        }
+
+        public (int cmp, OrderedSet<DateTime>.Node? leaf) SearchNode(OrderedSet<DateTime>.Node? target, DateTime value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
         }
     }
 }

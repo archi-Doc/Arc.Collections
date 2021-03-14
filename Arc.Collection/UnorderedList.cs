@@ -12,7 +12,7 @@ namespace Arc.Collection
     /// <summary>
     /// Represents a list of objects that can be accessed by index.
     /// </summary>
-    /// <typeparam name="T">The type of elements in the set.</typeparam>
+    /// <typeparam name="T">The type of elements in the list.</typeparam>
     public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     {
         protected T[] items;

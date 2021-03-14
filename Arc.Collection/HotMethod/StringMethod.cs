@@ -36,5 +36,34 @@ namespace Arc.Collection.HotMethod
 
             return ~min;
         }
+
+        public (int cmp, OrderedSet<string>.Node? leaf) SearchNode(OrderedSet<string>.Node? target, string value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                cmp = value.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                // var cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+
+                p = x;
+                if (cmp < 0)
+                {
+                    x = x.Left;
+                }
+                else if (cmp > 0)
+                {
+                    x = x.Right;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
     }
 }
