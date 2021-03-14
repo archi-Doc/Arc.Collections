@@ -263,7 +263,6 @@ namespace Arc.Collection
             return new Enumerator(this);
         }
 
-        /// <inheritdoc/>
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             return new Enumerator(this);
