@@ -34,14 +34,5 @@ namespace Arc.Collection.HotMethod
         /// <returns>cmp: -1 left, 0 found, 1 right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
         (int cmp, OrderedSet<T>.Node? leaf) SearchNode(OrderedSet<T>.Node? target, T value);
-
-        /// <summary>
-        /// Searches a tree for the specific value.
-        /// </summary>
-        /// <param name="target">The node to search.</param>
-        /// <param name="value">The value to search for.</param>
-        /// <returns>cmp: -1 left, 0 found, 1 right.
-        /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        (int cmp, OrderedMap<T>.Node? leaf) SearchNode(OrderedMap<T>.Node? target, T value);
     }
 }

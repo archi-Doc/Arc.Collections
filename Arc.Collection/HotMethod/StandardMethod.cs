@@ -36,8 +36,12 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+    }
 
-        public (int cmp, OrderedMap<T>.Node? leaf) SearchNode(OrderedMap<T>.Node? target, T value)
+    public sealed class StandardMethod2<TKey, TValue> : IHotMethod2<TKey, TValue>
+        where TKey : notnull
+    {
+        public (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key)
         {
             var x = target;
             var p = target;
@@ -45,7 +49,7 @@ namespace Arc.Collection.HotMethod
 
             while (x != null)
             {
-                cmp = Comparer<T>.Default.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                cmp = Comparer<TKey>.Default.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
 
                 p = x;
                 if (cmp < 0)

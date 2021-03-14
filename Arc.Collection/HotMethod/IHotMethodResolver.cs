@@ -17,6 +17,16 @@ namespace Arc.Collection.HotMethod
         /// <typeparam name="T">The type of value to be processed.</typeparam>
         /// <returns><see cref="IHotMethod{T}"/>, if this resolver supplies one for type <typeparamref name="T"/>; otherwise <c>null</c>.</returns>
         IHotMethod<T>? TryGet<T>();
+
+        /// <summary>
+        /// Gets an <see cref="IHotMethod2{TKey, TValue}"/> instance that can process some type.
+        /// </summary>
+        /// <typeparam name="TKey">The key to be processed.</typeparam>
+        /// <typeparam name="TValue">The value to be processed.</typeparam>
+        /// <returns><see cref="IHotMethod2{TKey, TValue}"/>.</returns>
+#pragma warning disable CS8714
+        IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
+#pragma warning restore CS8714
     }
 
     public static class HotMethodResolver
@@ -31,15 +41,19 @@ namespace Arc.Collection.HotMethod
                 method = PrimitiveResolver.Instance.TryGet<T>();
             }
 
-            /*else
-            {
-                method = StandardResolver.Instance.TryGet<T>();
-            }
+            return method;
+        }
 
-            if (method == null)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IComparer<TKey> comparer)
+            where TKey : notnull
+        {
+            IHotMethod2<TKey, TValue>? method = null;
+
+            if (comparer == Comparer<TKey>.Default)
             {
-                throw new FormatterNotRegisteredException(typeof(T).FullName + " is not registered in resolver.");
-            }*/
+                method = PrimitiveResolver.Instance.TryGet<TKey, TValue>();
+            }
 
             return method;
         }

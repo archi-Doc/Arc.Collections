@@ -30,8 +30,10 @@ namespace Arc.Collection
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
     public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, ICollection
-        where TKey: notnull
+        where TKey : notnull
     {
+        #region Node
+
         /// <summary>
         /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
         /// </summary>
@@ -183,6 +185,8 @@ namespace Arc.Collection
             internal void ColorRed() => this.Color = NodeColor.Red;
         }
 
+        #endregion
+
         private Node? root;
         private int version;
 
@@ -255,6 +259,28 @@ namespace Arc.Collection
                 while (node.Left != null)
                 {
                     node = node.Left;
+                }
+
+                return node;
+            }
+        }
+
+        /// <summary>
+        /// Gets the last node in the <see cref="OrderedMap{TKey, TValue}"/>. O(log n) operation.
+        /// </summary>
+        public Node? Last
+        {
+            get
+            {
+                if (this.root == null)
+                {
+                    return null;
+                }
+
+                var node = this.root;
+                while (node.Right != null)
+                {
+                    node = node.Right;
                 }
 
                 return node;
@@ -364,28 +390,6 @@ namespace Arc.Collection
         }
 
         #endregion
-
-        /// <summary>
-        /// Gets the last node in the <see cref="OrderedMap{TKey, TValue}"/>. O(log n) operation.
-        /// </summary>
-        public Node? Last
-        {
-            get
-            {
-                if (this.root == null)
-                {
-                    return null;
-                }
-
-                var node = this.root;
-                while (node.Right != null)
-                {
-                    node = node.Right;
-                }
-
-                return node;
-            }
-        }
 
         #region ICollection
 
