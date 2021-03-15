@@ -94,10 +94,10 @@ namespace Benchmark
             }
 
             return total;
-        }
+        }*/
 
         [Benchmark]
-        public int NewAndAddRef()
+        public int NewAndAdd_SortedSet()
         {
             var ss = new System.Collections.Generic.SortedSet<int>();
             ss.Add(1);
@@ -110,15 +110,11 @@ namespace Benchmark
             ss.Add(0);
             ss.Add(9);
             ss.Add(20);
-            foreach (var x in this.IntArray)
-            {
-                ss.Add(x);
-            }
             return ss.Count;
         }
 
         [Benchmark]
-        public int NewAndAdd()
+        public int NewAndAdd_OrderedSet()
         {
             var ss = new OrderedSet<int>();
             ss.Add(1);
@@ -131,14 +127,61 @@ namespace Benchmark
             ss.Add(0);
             ss.Add(9);
             ss.Add(20);
-            foreach (var x in this.IntArray)
-            {
-                ss.Add(x);
-            }
             return ss.Count;
         }
 
         [Benchmark]
+        public int NewAndAdd_OrderedMap()
+        {
+            var ss = new OrderedMap<int, int>();
+            ss.Add(1, 0);
+            ss.Add(10, 0);
+            ss.Add(4, 0);
+            ss.Add(34, 0);
+            ss.Add(-4, 0);
+            ss.Add(43, 0);
+            ss.Add(5, 0);
+            ss.Add(0, 0);
+            ss.Add(9, 0);
+            ss.Add(20, 0);
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd_OrderedMap2()
+        {
+            var ss = new OrderedMap<int, object?>();
+            ss.Add(1, null);
+            ss.Add(10, null);
+            ss.Add(4, null);
+            ss.Add(34, null);
+            ss.Add(-4, null);
+            ss.Add(43, null);
+            ss.Add(5, null);
+            ss.Add(0, null);
+            ss.Add(9, null);
+            ss.Add(20, null);
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd_OrderedSetWrapper()
+        {
+            var ss = new OrderedSetWrapper<int>();
+            ss.Add(1);
+            ss.Add(10);
+            ss.Add(4);
+            ss.Add(34);
+            ss.Add(-4);
+            ss.Add(43);
+            ss.Add(5);
+            ss.Add(0);
+            ss.Add(9);
+            ss.Add(20);
+            return ss.Count;
+        }
+
+        /*[Benchmark]
         public int AddRemoveRef()
         {
             this.IntSetRef.Remove(0);

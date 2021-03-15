@@ -29,6 +29,22 @@ namespace xUnitTest
             return result;
         }
 
+        public static OrderedMap<TKey, TValue>.Node AddAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key, TValue value)
+            where TKey : notnull
+        {
+            var result = om.Add(key, value);
+            om.Validate().IsTrue();
+            return result.node;
+        }
+
+        public static bool RemoveAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key)
+            where TKey : notnull
+        {
+            var result = om.Remove(key);
+            om.Validate().IsTrue();
+            return result;
+        }
+
         public static void Shuffle<T>(Random r, T[] array)
         {
             var n = array.Length;

@@ -74,12 +74,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class UInt8Method2<TValue> : IHotMethod2<byte, TValue>
     {
-        public static readonly UInt8Method2<TValue> Instance = new ();
-
-        private UInt8Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<byte, TValue>.Node? leaf) SearchNode(OrderedMap<byte, TValue>.Node? target, byte key)
         {
             var x = target;
@@ -174,12 +168,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
     {
-        public static readonly Int8Method2<TValue> Instance = new ();
-
-        private Int8Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<sbyte, TValue>.Node? leaf) SearchNode(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
         {
             var x = target;
@@ -274,12 +262,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class UInt16Method2<TValue> : IHotMethod2<ushort, TValue>
     {
-        public static readonly UInt16Method2<TValue> Instance = new ();
-
-        private UInt16Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<ushort, TValue>.Node? leaf) SearchNode(OrderedMap<ushort, TValue>.Node? target, ushort key)
         {
             var x = target;
@@ -374,12 +356,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
     {
-        public static readonly Int16Method2<TValue> Instance = new ();
-
-        private Int16Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<short, TValue>.Node? leaf) SearchNode(OrderedMap<short, TValue>.Node? target, short key)
         {
             var x = target;
@@ -474,12 +450,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class UInt32Method2<TValue> : IHotMethod2<uint, TValue>
     {
-        public static readonly UInt32Method2<TValue> Instance = new ();
-
-        private UInt32Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<uint, TValue>.Node? leaf) SearchNode(OrderedMap<uint, TValue>.Node? target, uint key)
         {
             var x = target;
@@ -574,12 +544,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
     {
-        public static readonly Int32Method2<TValue> Instance = new ();
-
-        private Int32Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<int, TValue>.Node? leaf) SearchNode(OrderedMap<int, TValue>.Node? target, int key)
         {
             var x = target;
@@ -674,12 +638,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class UInt64Method2<TValue> : IHotMethod2<ulong, TValue>
     {
-        public static readonly UInt64Method2<TValue> Instance = new ();
-
-        private UInt64Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<ulong, TValue>.Node? leaf) SearchNode(OrderedMap<ulong, TValue>.Node? target, ulong key)
         {
             var x = target;
@@ -774,12 +732,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
     {
-        public static readonly Int64Method2<TValue> Instance = new ();
-
-        private Int64Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<long, TValue>.Node? leaf) SearchNode(OrderedMap<long, TValue>.Node? target, long key)
         {
             var x = target;
@@ -874,12 +826,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class SingleMethod2<TValue> : IHotMethod2<float, TValue>
     {
-        public static readonly SingleMethod2<TValue> Instance = new ();
-
-        private SingleMethod2()
-        {
-        }
-
         public (int cmp, OrderedMap<float, TValue>.Node? leaf) SearchNode(OrderedMap<float, TValue>.Node? target, float key)
         {
             var x = target;
@@ -974,12 +920,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
     {
-        public static readonly DoubleMethod2<TValue> Instance = new ();
-
-        private DoubleMethod2()
-        {
-        }
-
         public (int cmp, OrderedMap<double, TValue>.Node? leaf) SearchNode(OrderedMap<double, TValue>.Node? target, double key)
         {
             var x = target;
@@ -1074,12 +1014,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class DateTimeMethod2<TValue> : IHotMethod2<DateTime, TValue>
     {
-        public static readonly DateTimeMethod2<TValue> Instance = new ();
-
-        private DateTimeMethod2()
-        {
-        }
-
         public (int cmp, OrderedMap<DateTime, TValue>.Node? leaf) SearchNode(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
         {
             var x = target;

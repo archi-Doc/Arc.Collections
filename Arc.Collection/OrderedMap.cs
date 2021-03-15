@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Arc.Collection.HotMethod;
 
@@ -30,7 +31,7 @@ namespace Arc.Collection
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
     public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
-        where TKey : notnull
+         where TKey : notnull
     {
         #region Node
 
@@ -391,8 +392,6 @@ namespace Arc.Collection
 
         #region ICollection
 
-        public bool IsReadOnly => false;
-
         bool ICollection.IsSynchronized => false;
 
         object ICollection.SyncRoot => this;
@@ -461,14 +460,6 @@ namespace Arc.Collection
 
         #region IDictionary
 
-        bool IDictionary.IsFixedSize => false;
-
-        bool IDictionary.IsReadOnly => false;
-
-        ICollection IDictionary.Keys => (ICollection)this.Keys;
-
-        ICollection IDictionary.Values => (ICollection)this.Values;
-
         object IDictionary.this[object key]
         {
             get
@@ -477,7 +468,7 @@ namespace Arc.Collection
                 {
                     if (this.TryGetValue(k, out var value))
                     {
-                        return value;
+                        return value!;
                     }
                 }
 
@@ -486,31 +477,17 @@ namespace Arc.Collection
 
             set
             {
-                if (key == null)
-                {
-                    ThrowHelper.ThrowArgumentNullException(ExceptionArgument.key);
-                }
-
-                ThrowHelper.IfNullAndNullsAreIllegalThenThrow<TValue>(value, ExceptionArgument.value);
-
-                try
-                {
-                    TKey tempKey = (TKey)key;
-                    try
-                    {
-                        this[tempKey] = (TValue)value;
-                    }
-                    catch (InvalidCastException)
-                    {
-                        ThrowHelper.ThrowWrongValueTypeArgumentException(value, typeof(TValue));
-                    }
-                }
-                catch (InvalidCastException)
-                {
-                    ThrowHelper.ThrowWrongKeyTypeArgumentException(key, typeof(TKey));
-                }
+                this[(TKey)key] = (TValue)value;
             }
         }
+
+        bool IDictionary.IsFixedSize => false;
+
+        bool IDictionary.IsReadOnly => false;
+
+        ICollection IDictionary.Keys => (ICollection)this.Keys;
+
+        ICollection IDictionary.Values => (ICollection)this.Values;
 
         void IDictionary.Add(object key, object value)
         {
@@ -546,13 +523,162 @@ namespace Arc.Collection
 
         #region IDictionary<TKey, TValue>
 
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => this.Keys;
+
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => this.Values;
+
+        public TValue this[TKey key]
+        {
+            get
+            {
+                if (key == null)
+                {
+                    throw new ArgumentNullException(nameof(key));
+                }
+
+                var node = this.FindNode(key);
+                if (node == null)
+                {
+                    throw new KeyNotFoundException();
+                }
+
+                return node.Value;
+            }
+
+            set
+            {
+                if (key == null)
+                {
+                    throw new ArgumentNullException(nameof(key));
+                }
+
+                var node = this.FindNode(key);
+                if (node == null)
+                {
+                    this.Add(key, value);
+                }
+                else
+                {
+                    node.Value = value;
+                }
+            }
+        }
+
+        ICollection<TKey> IDictionary<TKey, TValue>.Keys => this.Keys;
+
+        ICollection<TValue> IDictionary<TKey, TValue>.Values => this.Values;
+
+        void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => this.Add(key, value);
+
         public bool ContainsKey(TKey key) => this.FindNode(key) != null;
+
+        public bool ContainsValue(TValue value)
+        {
+            var found = false;
+
+            if (value == null)
+            {
+                var node = this.First;
+                while (node != null)
+                {
+                    if (node.Value == null)
+                    {
+                        found = true;
+                        break;
+                    }
+
+                    node = node.Next;
+                }
+            }
+            else
+            {
+                var comparer = EqualityComparer<TValue>.Default;
+                var node = this.First;
+                while (node != null)
+                {
+                    if (comparer.Equals(node.Value, value))
+                    {
+                        found = true;
+                        break;
+                    }
+
+                    node = node.Next;
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="key">The element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        public bool Remove(TKey key)
+        {
+            Node? p; // Node to delete.
+            int cmp = -1;
+
+            if (this.root == null)
+            {// No root
+                return false;
+            }
+
+            p = this.root;
+            while (true)
+            {
+                cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                if (cmp < 0)
+                {
+                    p = p.Left;
+                }
+                else if (cmp > 0)
+                {
+                    p = p.Right;
+                }
+                else
+                {
+                    break;
+                }
+
+                if (p == null)
+                {// Not found
+                    return false;
+                }
+            }
+
+            this.RemoveNode(p);
+            return true;
+        }
+
+#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            var node = this.FindNode(key);
+            if (node == null)
+            {
+                value = default;
+                return false;
+            }
+
+            value = node.Value;
+            return true;
+        }
 
         #endregion
 
         #region ICollection<KeyValuePair<TKey,TValue>>
 
-        public void Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
+        bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
+
+        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
 
         public void Clear()
         {
@@ -561,18 +687,18 @@ namespace Arc.Collection
             this.Count = 0;
         }
 
-        public bool Contains(KeyValuePair<TKey, TValue> item)
+        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
         {
             var node = this.FindNode(item.Key);
             return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
         }
 
-        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             ((ICollection)this).CopyTo(array, arrayIndex);
         }
 
-        public bool Remove(KeyValuePair<TKey, TValue> item)
+        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
         {
             var node = this.FindNode(item.Key);
             if (node == null || !EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
@@ -582,6 +708,296 @@ namespace Arc.Collection
 
             this.RemoveNode(node);
             return true;
+        }
+
+        #endregion
+
+        #region KeyValueCollection
+
+        private KeyCollection? keys;
+
+        public KeyCollection Keys => this.keys != null ? this.keys : (this.keys = new KeyCollection(this));
+
+        private ValueCollection? values;
+
+        public ValueCollection Values => this.values != null ? this.values : (this.values = new ValueCollection(this));
+
+        public sealed class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>
+        {
+            private readonly OrderedMap<TKey, TValue> map;
+
+            public KeyCollection(OrderedMap<TKey, TValue> map)
+            {
+                if (map == null)
+                {
+                    throw new ArgumentNullException(nameof(map));
+                }
+
+                this.map = map;
+            }
+
+            public Enumerator GetEnumerator()
+            {
+                return new Enumerator(this.map);
+            }
+
+            IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
+            {
+                return new Enumerator(this.map);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return new Enumerator(this.map);
+            }
+
+            public void CopyTo(TKey[] array, int index)
+            {
+                if (array == null)
+                {
+                    throw new ArgumentNullException(nameof(array));
+                }
+
+                if (index < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                if (array.Length - index < this.Count)
+                {
+                    throw new ArgumentException();
+                }
+
+                var node = this.map.First;
+                while (node != null)
+                {
+                    array[index++] = node.Key;
+                    node = node.Next;
+                }
+            }
+
+            void ICollection.CopyTo(Array array, int index)
+            {
+                if (array == null)
+                {
+                    throw new ArgumentNullException(nameof(array));
+                }
+
+                if (array.Rank != 1)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+
+                if (array.GetLowerBound(0) != 0)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+
+                if (index < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                if (array.Length - index < this.map.Count)
+                {
+                    throw new ArgumentException();
+                }
+
+                TKey[]? keys = array as TKey[];
+                if (keys != null)
+                {
+                    this.CopyTo(keys, index);
+                }
+                else
+                {
+                    try
+                    {
+                        object[] objects = (object[])array;
+                        var node = this.map.First;
+                        while (node != null)
+                        {
+                            objects[index++] = node.Key!;
+                            node = node.Next;
+                        }
+                    }
+                    catch (ArrayTypeMismatchException)
+                    {
+                        throw new ArgumentException(nameof(array));
+                    }
+                }
+            }
+
+            public int Count => this.map.Count;
+
+            bool ICollection<TKey>.IsReadOnly => true;
+
+            void ICollection<TKey>.Add(TKey item) => throw new NotSupportedException();
+
+            void ICollection<TKey>.Clear() => throw new NotSupportedException();
+
+            bool ICollection<TKey>.Contains(TKey item) => this.map.ContainsKey(item);
+
+            bool ICollection<TKey>.Remove(TKey item) => throw new NotSupportedException();
+
+            bool ICollection.IsSynchronized => false;
+
+            object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
+
+            public struct Enumerator : IEnumerator<TKey>, IEnumerator
+            {
+                private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
+
+                internal Enumerator(OrderedMap<TKey, TValue> map)
+                {
+                    this.mapEnum = map.GetEnumerator();
+                }
+
+                public void Dispose() => this.mapEnum.Dispose();
+
+                public bool MoveNext() => this.mapEnum.MoveNext();
+
+                public TKey Current => this.mapEnum.Current.Key;
+
+                object? IEnumerator.Current => this.Current;
+
+                void IEnumerator.Reset() => this.mapEnum.Reset();
+            }
+        }
+
+        public sealed class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>
+        {
+            private readonly OrderedMap<TKey, TValue> map;
+
+            public ValueCollection(OrderedMap<TKey, TValue> map)
+            {
+                if (map == null)
+                {
+                    throw new ArgumentNullException(nameof(map));
+                }
+
+                this.map = map;
+            }
+
+            public Enumerator GetEnumerator() => new Enumerator(this.map);
+
+            IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => new Enumerator(this.map);
+
+            IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
+
+            public void CopyTo(TValue[] array, int index)
+            {
+                if (array == null)
+                {
+                    throw new ArgumentNullException(nameof(array));
+                }
+
+                if (index < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                if (array.Length - index < this.Count)
+                {
+                    throw new ArgumentException();
+                }
+
+                var node = this.map.First;
+                while (node != null)
+                {
+                    array[index++] = node.Value;
+                    node = node.Next;
+                }
+            }
+
+            void ICollection.CopyTo(Array array, int index)
+            {
+                if (array == null)
+                {
+                    throw new ArgumentNullException(nameof(array));
+                }
+
+                if (array.Rank != 1)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+
+                if (array.GetLowerBound(0) != 0)
+                {
+                    throw new ArgumentException(nameof(array));
+                }
+
+                if (index < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                if (array.Length - index < this.map.Count)
+                {
+                    throw new ArgumentException();
+                }
+
+                TValue[]? values = array as TValue[];
+                if (values != null)
+                {
+                    this.CopyTo(values, index);
+                }
+                else
+                {
+                    try
+                    {
+                        object?[] objects = (object?[])array;
+                        var node = this.map.First;
+                        while (node != null)
+                        {
+                            objects[index++] = node.Value;
+                            node = node.Next;
+                        }
+                    }
+                    catch (ArrayTypeMismatchException)
+                    {
+                        throw new ArgumentException(nameof(array));
+                    }
+                }
+            }
+
+            public int Count => this.map.Count;
+
+            bool ICollection<TValue>.IsReadOnly => true;
+
+            void ICollection<TValue>.Add(TValue item) => throw new NotSupportedException();
+
+            void ICollection<TValue>.Clear() => throw new NotSupportedException();
+
+            bool ICollection<TValue>.Contains(TValue item)
+            {
+                return this.map.ContainsValue(item);
+            }
+
+            bool ICollection<TValue>.Remove(TValue item) => throw new NotSupportedException();
+
+            bool ICollection.IsSynchronized => false;
+
+            object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
+
+            public struct Enumerator : IEnumerator<TValue>, IEnumerator
+            {
+                private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
+
+                internal Enumerator(OrderedMap<TKey, TValue> map)
+                {
+                    this.mapEnum = map.GetEnumerator();
+                }
+
+                public void Dispose() => this.mapEnum.Dispose();
+
+                public bool MoveNext() => this.mapEnum.MoveNext();
+
+                public TValue Current => this.mapEnum.Current.Value;
+
+                object? IEnumerator.Current => this.Current;
+
+                void IEnumerator.Reset() => this.mapEnum.Reset();
+            }
         }
 
         #endregion
@@ -646,49 +1062,6 @@ namespace Arc.Collection
             var value = node.Value;
             this.RemoveNode(node);
             this.Probe(key, value, node);
-            return true;
-        }
-
-        /// <summary>
-        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// <br/>O(log n) operation.
-        /// </summary>
-        /// <param name="key">The element to remove.</param>
-        /// <returns>true if the element is found and successfully removed.</returns>
-        public bool Remove(TKey key)
-        {
-            Node? p; // Node to delete.
-            int cmp = -1;
-
-            if (this.root == null)
-            {// No root
-                return false;
-            }
-
-            p = this.root;
-            while (true)
-            {
-                cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
-                {
-                    p = p.Left;
-                }
-                else if (cmp > 0)
-                {
-                    p = p.Right;
-                }
-                else
-                {
-                    break;
-                }
-
-                if (p == null)
-                {// Not found
-                    return false;
-                }
-            }
-
-            this.RemoveNode(p);
             return true;
         }
 

@@ -46,7 +46,6 @@ namespace Arc.Collection.HotMethod
             while (x != null)
             {
                 cmp = value.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                // var cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
 
                 p = x;
                 if (cmp < 0)
@@ -65,8 +64,11 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+    }
 
-        public (int cmp, OrderedMap<string>.Node? leaf) SearchNode(OrderedMap<string>.Node? target, string value)
+    public sealed class StringMethod2<TValue> : IHotMethod2<string, TValue>
+    {
+        public (int cmp, OrderedMap<string, TValue>.Node? leaf) SearchNode(OrderedMap<string, TValue>.Node? target, string key)
         {
             var x = target;
             var p = target;
@@ -74,8 +76,7 @@ namespace Arc.Collection.HotMethod
 
             while (x != null)
             {
-                cmp = value.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                // var cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                cmp = key.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
 
                 p = x;
                 if (cmp < 0)

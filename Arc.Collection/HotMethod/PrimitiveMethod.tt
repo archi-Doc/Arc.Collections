@@ -97,12 +97,6 @@ namespace Arc.Collection.HotMethod
 
     public sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
     {
-        public static readonly <#= t.Name #>Method2<TValue> Instance = new ();
-
-        private <#= t.Name #>Method2()
-        {
-        }
-
         public (int cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
