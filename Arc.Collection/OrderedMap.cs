@@ -29,7 +29,7 @@ namespace Arc.Collection
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, ICollection
+    public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
         where TKey : notnull
     {
         #region Node
@@ -197,7 +197,7 @@ namespace Arc.Collection
 
         public IComparer<TKey> Comparer { get; private set; }
 
-        public IHotMethod<TKey>? HotMethod { get; private set; }
+        public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
@@ -205,7 +205,7 @@ namespace Arc.Collection
         public OrderedMap()
         {
             this.Comparer = Comparer<TKey>.Default;
-            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
+            this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace Arc.Collection
         public OrderedMap(IComparer<TKey> comparer)
         {
             this.Comparer = comparer ?? Comparer<TKey>.Default;
-            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
+            this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
         /// <summary>
@@ -235,7 +235,7 @@ namespace Arc.Collection
         public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
         {
             this.Comparer = comparer ?? Comparer<TKey>.Default;
-            this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
+            this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
 
             foreach (var x in dictionary)
             {
@@ -293,8 +293,6 @@ namespace Arc.Collection
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
-        IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
-
         IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
@@ -302,7 +300,7 @@ namespace Arc.Collection
             internal const int KeyValuePair = 1;
             internal const int DictEntry = 2;
 
-            private readonly OrderedMap<TKey, TValue> set;
+            private readonly OrderedMap<TKey, TValue> map;
             private readonly int version;
             private readonly int getEnumeratorRetType;
             private Node? node;
@@ -311,10 +309,10 @@ namespace Arc.Collection
 
             internal Enumerator(OrderedMap<TKey, TValue> set, int getEnumeratorRetType)
             {
-                this.set = set;
-                this.version = this.set.version;
+                this.map = set;
+                this.version = this.map.version;
                 this.getEnumeratorRetType = getEnumeratorRetType;
-                this.node = this.set.First;
+                this.node = this.map.First;
                 this.key = default;
                 this.value = default;
             }
@@ -328,7 +326,7 @@ namespace Arc.Collection
 
             public bool MoveNext()
             {
-                if (this.version != this.set.version)
+                if (this.version != this.map.version)
                 {
                     throw ThrowVersionMismatch();
                 }
@@ -373,12 +371,12 @@ namespace Arc.Collection
 
             internal void Reset()
             {
-                if (this.version != this.set.version)
+                if (this.version != this.map.version)
                 {
                     throw ThrowVersionMismatch();
                 }
 
-                this.node = this.set.First;
+                this.node = this.map.First;
                 this.key = default;
                 this.value = default;
             }
@@ -395,7 +393,9 @@ namespace Arc.Collection
 
         public bool IsReadOnly => false;
 
-        public bool Contains(TKey key) => this.FindNode(key) != null;
+        bool ICollection.IsSynchronized => false;
+
+        object ICollection.SyncRoot => this;
 
         void ICollection.CopyTo(Array array, int index)
         {
@@ -457,21 +457,134 @@ namespace Arc.Collection
             }
         }
 
-        public bool IsSynchronized => false;
+        #endregion
 
-        object ICollection.SyncRoot => this;
+        #region IDictionary
+
+        bool IDictionary.IsFixedSize => false;
+
+        bool IDictionary.IsReadOnly => false;
+
+        ICollection IDictionary.Keys => (ICollection)this.Keys;
+
+        ICollection IDictionary.Values => (ICollection)this.Values;
+
+        object IDictionary.this[object key]
+        {
+            get
+            {
+                if (key is TKey k)
+                {
+                    if (this.TryGetValue(k, out var value))
+                    {
+                        return value;
+                    }
+                }
+
+                return null!;
+            }
+
+            set
+            {
+                if (key == null)
+                {
+                    ThrowHelper.ThrowArgumentNullException(ExceptionArgument.key);
+                }
+
+                ThrowHelper.IfNullAndNullsAreIllegalThenThrow<TValue>(value, ExceptionArgument.value);
+
+                try
+                {
+                    TKey tempKey = (TKey)key;
+                    try
+                    {
+                        this[tempKey] = (TValue)value;
+                    }
+                    catch (InvalidCastException)
+                    {
+                        ThrowHelper.ThrowWrongValueTypeArgumentException(value, typeof(TValue));
+                    }
+                }
+                catch (InvalidCastException)
+                {
+                    ThrowHelper.ThrowWrongKeyTypeArgumentException(key, typeof(TKey));
+                }
+            }
+        }
+
+        void IDictionary.Add(object key, object value)
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            this.Add((TKey)key, (TValue)value);
+        }
+
+        bool IDictionary.Contains(object key)
+        {
+            if (key is TKey k)
+            {
+                return this.ContainsKey(k);
+            }
+
+            return false;
+        }
+
+        IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
+
+        void IDictionary.Remove(object key)
+        {
+            if (key is TKey k)
+            {
+                this.Remove(k);
+            }
+        }
 
         #endregion
 
-        /// <summary>
-        /// Removes all elements from the set.
-        /// </summary>
+        #region IDictionary<TKey, TValue>
+
+        public bool ContainsKey(TKey key) => this.FindNode(key) != null;
+
+        #endregion
+
+        #region ICollection<KeyValuePair<TKey,TValue>>
+
+        public void Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
+
         public void Clear()
         {
             this.root = null;
             this.version = 0;
             this.Count = 0;
         }
+
+        public bool Contains(KeyValuePair<TKey, TValue> item)
+        {
+            var node = this.FindNode(item.Key);
+            return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
+        }
+
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+        {
+            ((ICollection)this).CopyTo(array, arrayIndex);
+        }
+
+        public bool Remove(KeyValuePair<TKey, TValue> item)
+        {
+            var node = this.FindNode(item.Key);
+            if (node == null || !EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
+            {
+                return false;
+            }
+
+            this.RemoveNode(node);
+            return true;
+        }
+
+        #endregion
 
         /// <summary>
         /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
@@ -530,8 +643,9 @@ namespace Arc.Collection
                 return false;
             }
 
+            var value = node.Value;
             this.RemoveNode(node);
-            this.Probe(key, node);
+            this.Probe(key, value, node);
             return true;
         }
 
@@ -796,28 +910,28 @@ namespace Arc.Collection
         /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="value">The element to add to the set.</param>
+        /// <param name="key">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        private (Node node, bool newlyAdded) Probe(TKey value, Node? reuse)
+        private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.
             int cmp = 0;
 
-            if (this.HotMethod != null)
+            if (this.HotMethod2 != null)
             {
-                (cmp, p) = this.HotMethod.SearchNode(x, value);
+                (cmp, p) = this.HotMethod2.SearchNode(x, key);
                 if (cmp == 0 && p != null)
                 {// Found
                     return (p, false);
                 }
             }
-            else if (this.Comparer == Comparer<TKey>.Default && value is IComparable<TKey> ic)
+            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
             {// IComparable<TKey>
                 while (x != null)
                 {
-                    cmp = ic.CompareTo(x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
@@ -837,7 +951,7 @@ namespace Arc.Collection
             {// IComparer<TKey>
                 while (x != null)
                 {
-                    cmp = this.Comparer.Compare(value, x.Value); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
@@ -860,16 +974,15 @@ namespace Arc.Collection
             Node n;
             if (reuse != null && reuse.IsUnused)
             {
-                reuse.Reset(value, NodeColor.Red);
+                reuse.Reset(key, value, NodeColor.Red);
                 n = reuse;
             }
             else
             {
-                n = new Node(value, NodeColor.Red); // Newly inserted node.
+                n = new Node(key, value, NodeColor.Red); // Newly inserted node.
             }
 
             n.Parent = p;
-            n.Value = value;
             if (p != null)
             {
                 if (cmp < 0)

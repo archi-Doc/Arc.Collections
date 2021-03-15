@@ -93,8 +93,17 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+    }
 
-        public (int cmp, OrderedMap<<#= t.Simple #>>.Node? leaf) SearchNode(OrderedMap<<#= t.Simple #>>.Node? target, <#= t.Simple #> value)
+    public sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
+    {
+        public static readonly <#= t.Name #>Method2<TValue> Instance = new ();
+
+        private <#= t.Name #>Method2()
+        {
+        }
+
+        public (int cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -103,12 +112,12 @@ namespace Arc.Collection.HotMethod
             while (x != null)
             {
                 p = x;
-                if (value < x.Value)
+                if (key < x.Key)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (value > x.Value)
+                else if (key > x.Key)
                 {
                     x = x.Right;
                     cmp = 1;

@@ -24,9 +24,8 @@ namespace Arc.Collection.HotMethod
         /// <typeparam name="TKey">The key to be processed.</typeparam>
         /// <typeparam name="TValue">The value to be processed.</typeparam>
         /// <returns><see cref="IHotMethod2{TKey, TValue}"/>.</returns>
-#pragma warning disable CS8714
-        IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
-#pragma warning restore CS8714
+        IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
+            where TKey : notnull;
     }
 
     public static class HotMethodResolver

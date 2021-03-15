@@ -38,6 +38,23 @@ namespace Arc.Collection.HotMethod
             { typeof(DateTime), DateTimeMethod.Instance },
         };
 
+        private static readonly Dictionary<Type, Type> TypeToMethod2 = new()
+        {
+            // Primitive
+            { typeof(byte), typeof(UInt8Method2<>) },
+            { typeof(sbyte), typeof(Int8Method2<>) },
+            { typeof(ushort), typeof(UInt16Method2<>) },
+            { typeof(short), typeof(Int16Method2<>) },
+            { typeof(uint), typeof(UInt32Method2<>) },
+            { typeof(int), typeof(Int32Method2<>) },
+            { typeof(ulong), typeof(UInt64Method2<>) },
+            { typeof(long), typeof(Int64Method2<>) },
+            { typeof(float), typeof(SingleMethod2<>) },
+            { typeof(double), typeof(DoubleMethod2<>) },
+            // { typeof(string), typeof(StringMethod2<>) }, // Slow
+            { typeof(DateTime), typeof(DateTimeMethod2<>) },
+        };
+
         private PrimitiveResolver()
         {
         }
@@ -73,9 +90,9 @@ namespace Arc.Collection.HotMethod
 
             static MethodCache2()
             {
-                if (PrimitiveResolver.TypeToMethod.TryGetValue(typeof(TKey), out var obj))
+                if (PrimitiveResolver.TypeToMethod2.TryGetValue(typeof(TKey), out var type))
                 {
-                    MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)obj;
+                    MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(type.MakeGenericType(typeof(TValue)));
                 }
             }
         }
