@@ -13,6 +13,12 @@ namespace Sandbox
             ol.Add(2, 0);
             ol.Add(3, 0);
             ol.Add(1, 1);
+
+
+            var om = new OrderedMap<int, int?>();
+            ol.Add(2, 0);
+            ol.Add(3, 0);
+            ol.Add(1, 1);
         }
     }
 }

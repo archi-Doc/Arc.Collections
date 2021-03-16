@@ -17,6 +17,7 @@ namespace Arc.Collection
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
     public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+        where T : notnull
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.

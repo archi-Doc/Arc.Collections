@@ -17,6 +17,7 @@ namespace xUnitTest
     public static class TestHelper
     {
         public static OrderedSet<T>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
+            where T : notnull
         {
             var result = os.Add(value);
             os.Validate().IsTrue();
@@ -24,6 +25,7 @@ namespace xUnitTest
         }
 
         public static bool RemoveAndValidate<T>(this OrderedSet<T> os, T value)
+            where T : notnull
         {
             var result = os.Remove(value);
             os.Validate().IsTrue();
