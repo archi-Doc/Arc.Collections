@@ -26,6 +26,7 @@ var allTypes = new (string Simple, string Name)[]
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
+using Arc.Collection.Obsolete;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -66,7 +67,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<<#= t.Simple #>>.Node? leaf) SearchNode(OrderedSet<<#= t.Simple #>>.Node? target, <#= t.Simple #> value)
+        public (int cmp, OrderedSetObsolete<<#= t.Simple #>>.Node? leaf) SearchNode(OrderedSetObsolete<<#= t.Simple #>>.Node? target, <#= t.Simple #> value)
         {
             var x = target;
             var p = target;

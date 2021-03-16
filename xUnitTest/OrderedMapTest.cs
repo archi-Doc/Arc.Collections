@@ -16,7 +16,7 @@ namespace xUnitTest
             var sd = new SortedDictionary<int, int>();
             var om = new OrderedMap<int, int>();
 
-            var os = new OrderedSetWrapper<int>();
+            var os = new OrderedSet<int>();
             os.Add(3);
 
             AddAndValidate(0, 0);

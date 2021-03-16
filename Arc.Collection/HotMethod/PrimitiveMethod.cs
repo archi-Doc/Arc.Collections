@@ -4,6 +4,7 @@
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
+using Arc.Collection.Obsolete;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -43,7 +44,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<byte>.Node? leaf) SearchNode(OrderedSet<byte>.Node? target, byte value)
+        public (int cmp, OrderedSetObsolete<byte>.Node? leaf) SearchNode(OrderedSetObsolete<byte>.Node? target, byte value)
         {
             var x = target;
             var p = target;
@@ -137,7 +138,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<sbyte>.Node? leaf) SearchNode(OrderedSet<sbyte>.Node? target, sbyte value)
+        public (int cmp, OrderedSetObsolete<sbyte>.Node? leaf) SearchNode(OrderedSetObsolete<sbyte>.Node? target, sbyte value)
         {
             var x = target;
             var p = target;
@@ -231,7 +232,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<ushort>.Node? leaf) SearchNode(OrderedSet<ushort>.Node? target, ushort value)
+        public (int cmp, OrderedSetObsolete<ushort>.Node? leaf) SearchNode(OrderedSetObsolete<ushort>.Node? target, ushort value)
         {
             var x = target;
             var p = target;
@@ -325,7 +326,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<short>.Node? leaf) SearchNode(OrderedSet<short>.Node? target, short value)
+        public (int cmp, OrderedSetObsolete<short>.Node? leaf) SearchNode(OrderedSetObsolete<short>.Node? target, short value)
         {
             var x = target;
             var p = target;
@@ -419,7 +420,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<uint>.Node? leaf) SearchNode(OrderedSet<uint>.Node? target, uint value)
+        public (int cmp, OrderedSetObsolete<uint>.Node? leaf) SearchNode(OrderedSetObsolete<uint>.Node? target, uint value)
         {
             var x = target;
             var p = target;
@@ -513,7 +514,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<int>.Node? leaf) SearchNode(OrderedSet<int>.Node? target, int value)
+        public (int cmp, OrderedSetObsolete<int>.Node? leaf) SearchNode(OrderedSetObsolete<int>.Node? target, int value)
         {
             var x = target;
             var p = target;
@@ -607,7 +608,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<ulong>.Node? leaf) SearchNode(OrderedSet<ulong>.Node? target, ulong value)
+        public (int cmp, OrderedSetObsolete<ulong>.Node? leaf) SearchNode(OrderedSetObsolete<ulong>.Node? target, ulong value)
         {
             var x = target;
             var p = target;
@@ -701,7 +702,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<long>.Node? leaf) SearchNode(OrderedSet<long>.Node? target, long value)
+        public (int cmp, OrderedSetObsolete<long>.Node? leaf) SearchNode(OrderedSetObsolete<long>.Node? target, long value)
         {
             var x = target;
             var p = target;
@@ -795,7 +796,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<float>.Node? leaf) SearchNode(OrderedSet<float>.Node? target, float value)
+        public (int cmp, OrderedSetObsolete<float>.Node? leaf) SearchNode(OrderedSetObsolete<float>.Node? target, float value)
         {
             var x = target;
             var p = target;
@@ -889,7 +890,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<double>.Node? leaf) SearchNode(OrderedSet<double>.Node? target, double value)
+        public (int cmp, OrderedSetObsolete<double>.Node? leaf) SearchNode(OrderedSetObsolete<double>.Node? target, double value)
         {
             var x = target;
             var p = target;
@@ -983,7 +984,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<DateTime>.Node? leaf) SearchNode(OrderedSet<DateTime>.Node? target, DateTime value)
+        public (int cmp, OrderedSetObsolete<DateTime>.Node? leaf) SearchNode(OrderedSetObsolete<DateTime>.Node? target, DateTime value)
         {
             var x = target;
             var p = target;

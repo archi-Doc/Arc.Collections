@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using Arc.Collection;
 using System.Linq;
 using System.Diagnostics;
+using Arc.Collection.Obsolete;
 
 namespace Benchmark
 {
@@ -16,12 +17,12 @@ namespace Benchmark
 
         public System.Collections.Generic.SortedSet<int> IntSetRef = new();
 
-        public OrderedSet<int> IntSet = new();
+        public OrderedSetObsolete<int> IntSet = new();
 
-        public OrderedSet<int>.Node Node0 = default!;
-        public OrderedSet<int>.Node Node7 = default!;
-        public OrderedSet<int>.Node Node11 = default!;
-        public OrderedSet<int>.Node Node55 = default!;
+        public OrderedSetObsolete<int>.Node Node0 = default!;
+        public OrderedSetObsolete<int>.Node Node7 = default!;
+        public OrderedSetObsolete<int>.Node Node11 = default!;
+        public OrderedSetObsolete<int>.Node Node55 = default!;
 
         static System.Collections.Generic.IEnumerable<int> GetUniqRandomNumbers(int rangeBegin, int rangeEnd, int count)
         {
@@ -120,7 +121,7 @@ namespace Benchmark
         [Benchmark]
         public int NewAndAdd_OrderedSet()
         {
-            var ss = new OrderedSet<int>();
+            var ss = new OrderedSetObsolete<int>();
             ss.Add(1);
             ss.Add(10);
             ss.Add(4);
@@ -183,7 +184,7 @@ namespace Benchmark
         [Benchmark]
         public int NewAndAdd_OrderedSetWrapper()
         {
-            var ss = new OrderedSetWrapper<int>();
+            var ss = new OrderedSet<int>();
             ss.Add(1);
             ss.Add(10);
             ss.Add(4);

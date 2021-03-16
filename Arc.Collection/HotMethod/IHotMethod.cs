@@ -1,5 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using Arc.Collection.Obsolete;
+
 namespace Arc.Collection.HotMethod
 {
     /// <summary>
@@ -33,6 +35,6 @@ namespace Arc.Collection.HotMethod
         /// <param name="value">The value to search for.</param>
         /// <returns>cmp: -1 left, 0 found, 1 right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        (int cmp, OrderedSet<T>.Node? leaf) SearchNode(OrderedSet<T>.Node? target, T value);
+        (int cmp, OrderedSetObsolete<T>.Node? leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value);
     }
 }

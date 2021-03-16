@@ -1,5 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using Arc.Collection.Obsolete;
+
 namespace Arc.Collection.HotMethod
 {
     public sealed class StringMethod : IHotMethod<string>
@@ -37,7 +39,7 @@ namespace Arc.Collection.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSet<string>.Node? leaf) SearchNode(OrderedSet<string>.Node? target, string value)
+        public (int cmp, OrderedSetObsolete<string>.Node? leaf) SearchNode(OrderedSetObsolete<string>.Node? target, string value)
         {
             var x = target;
             var p = target;

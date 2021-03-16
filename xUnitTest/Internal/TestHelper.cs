@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Arc.Collection;
+using Arc.Collection.Obsolete;
 using Xunit;
 
 #pragma warning disable SA1401 // Fields should be private
@@ -23,6 +24,20 @@ namespace xUnitTest
         }
 
         public static bool RemoveAndValidate<T>(this OrderedSet<T> os, T value)
+        {
+            var result = os.Remove(value);
+            os.Validate().IsTrue();
+            return result;
+
+        }
+        public static OrderedSetObsolete<T>.Node AddAndValidate<T>(this OrderedSetObsolete<T> os, T value)
+        {
+            var result = os.Add(value);
+            os.Validate().IsTrue();
+            return result.node;
+        }
+
+        public static bool RemoveAndValidate<T>(this OrderedSetObsolete<T> os, T value)
         {
             var result = os.Remove(value);
             os.Validate().IsTrue();

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Arc.Collection.Obsolete;
 
 namespace Arc.Collection.HotMethod
 {
@@ -9,7 +10,7 @@ namespace Arc.Collection.HotMethod
     {
         public int BinarySearch(T[] array, int index, int length, T value) => Array.BinarySearch<T>(array, index, length, value);
 
-        public (int cmp, OrderedSet<T>.Node? leaf) SearchNode(OrderedSet<T>.Node? target, T value)
+        public (int cmp, OrderedSetObsolete<T>.Node? leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value)
         {
             var x = target;
             var p = target;

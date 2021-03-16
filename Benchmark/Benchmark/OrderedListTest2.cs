@@ -1,9 +1,10 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
-using Arc.Collection;
 using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
+using Arc.Collection;
+using Arc.Collection.Obsolete;
 
 namespace Benchmark
 {
@@ -119,7 +120,7 @@ namespace Benchmark
         [Benchmark]
         public int Add_OrderedSet()
         {
-            var list = new OrderedSet<OrderedListClass2>(OrderedListClass2.InternalComparer.Instance);
+            var list = new OrderedSetObsolete<OrderedListClass2>(OrderedListClass2.InternalComparer.Instance);
             foreach (var x in this.IntArray)
             {
                 list.Add(new OrderedListClass2(x));
