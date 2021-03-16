@@ -35,10 +35,12 @@ namespace Arc.Collection
     {
         #region Node
 
+        internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
+
         /// <summary>
         /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
         /// </summary>
-        public sealed class Node
+        public class Node
         {
             internal Node(TKey key, TValue value, NodeColor color)
             {
@@ -943,6 +945,9 @@ namespace Arc.Collection
             return true;
         }
 
+        /// <summary>
+        /// Removes all elements from a collection.
+        /// </summary>
         public void Clear()
         {
             this.root = null;
@@ -951,7 +956,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Removes a specified item from a collection.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to remove.</param>
@@ -1032,7 +1037,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Removes a specified node from the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Removes a specified node from the collection"/>.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
@@ -1353,7 +1358,7 @@ namespace Arc.Collection
             }
             else
             {
-                n = new Node(key, value, NodeColor.Red); // Newly inserted node.
+                n = this.CreateNode(key, value, NodeColor.Red); // new Node(key, value, NodeColor.Red); // Newly inserted node.
             }
 
             n.Parent = p;

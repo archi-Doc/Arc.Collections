@@ -92,7 +92,7 @@ namespace xUnitTest
         {
             var r = new Random(12);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 2; n++)
             {
                 RandomTest(r, -100, 100, 100, false);
                 RandomTest(r, -100, 100, 100, true);
@@ -106,7 +106,7 @@ namespace xUnitTest
         {
             var r = new Random(13);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 4; n++)
             {
                 var ss = new SortedSet<int>();
                 var os = new OrderedSetObsolete<int>();
@@ -197,7 +197,7 @@ namespace xUnitTest
         {
             var r = new Random(14);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 2; n++)
             {
                 NodeTest(r, -100, 100, 100, false);
                 NodeTest(r, -100, 100, 100, true);

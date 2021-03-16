@@ -24,6 +24,7 @@ namespace Arc.Collection
         public OrderedSet()
         {
             this.map = new();
+            this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
@@ -33,6 +34,7 @@ namespace Arc.Collection
         public OrderedSet(IComparer<T> comparer)
         {
             this.map = new(comparer);
+            this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
@@ -52,6 +54,8 @@ namespace Arc.Collection
         public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.map = new(comparer);
+            this.map.CreateNode = static (key, value, color) => new Node(key, color);
+
             foreach (var x in collection)
             {
                 this.Add(x);
@@ -62,10 +66,71 @@ namespace Arc.Collection
         private OrderedMap<T, int> map;
 #pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
 
+        public class Node : OrderedMap<T, int>.Node
+        {
+            internal Node(T key, NodeColor color)
+                : base(key, 0, color)
+            {
+            }
+        }
+
+        #region Main
+
         /// <summary>
         /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
         /// </summary>
         public int Count => this.map.Count;
+
+        /// <summary>
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The value of the element to add.</param>
+        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// newlyAdded: true if the node is created.</returns>
+        public (Node node, bool newlyAdded) Add(T value)
+        {
+            var result = this.map.Add(value, 0);
+            return ((Node)result.node, result.newlyAdded);
+        }
+
+        /// <summary>
+        /// Determines whether a collection contains a specific value.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The value to locate in the collection.</param>
+        /// <returns>true if the collection contains an element with the specified value; otherwise, false.</returns>
+        public bool Contains(T value) => this.map.ContainsKey(value);
+
+        /// <summary>
+        /// Removes a specified value from the collection."/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="value">The element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        public bool Remove(T value) => this.map.Remove(value);
+
+        /// <summary>
+        /// Removes a specified node from the collection"/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to remove.</param>
+        public void RemoveNode(Node node) => this.map.RemoveNode(node);
+
+        /// <summary>
+        /// Removes all elements from a collection.
+        /// </summary>
+        public void Clear() => this.map.Clear();
+
+        /// <summary>
+        /// Validate Red-Black Tree.
+        /// </summary>
+        /// <returns>true if the tree is valid.</returns>
+        public bool Validate() => this.map.Validate();
+
+        #endregion
+
+        #region Interface
 
         bool ICollection<T>.IsReadOnly => false;
 
@@ -73,11 +138,7 @@ namespace Arc.Collection
 
         object ICollection.SyncRoot => this;
 
-        public void Add(T item) => this.map.Add(item, 0);
-
-        public void Clear() => this.map.Clear();
-
-        public bool Contains(T item) => this.map.ContainsKey(item);
+        void ICollection<T>.Add(T item) => this.map.Add(item, 0);
 
         void ICollection<T>.CopyTo(T[] array, int arrayIndex) => this.map.Keys.CopyTo(array, arrayIndex);
 
@@ -87,6 +148,6 @@ namespace Arc.Collection
 
         IEnumerator IEnumerable.GetEnumerator() => this.map.Keys.GetEnumerator();
 
-        public bool Remove(T item) => this.map.Remove(item);
+        #endregion
     }
 }
