@@ -48,6 +48,36 @@ namespace Arc.Collection
             }
 
             /// <summary>
+            /// Gets the key contained in the node.
+            /// </summary>
+            public TKey Key { get; internal set; }
+
+            /// <summary>
+            /// Gets the value contained in the node.
+            /// </summary>
+            public TValue Value { get; internal set; }
+
+            /// <summary>
+            /// Gets or sets the parent node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// </summary>
+            internal Node? Parent { get; set; }
+
+            /// <summary>
+            /// Gets or sets the left node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// </summary>
+            internal Node? Left { get; set; }
+
+            /// <summary>
+            /// Gets or sets the right node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// </summary>
+            internal Node? Right { get; set; }
+
+            /// <summary>
+            /// Gets or sets the color of the node.
+            /// </summary>
+            internal NodeColor Color { get; set; }
+
+            /// <summary>
             /// Gets the previous node in the <see cref="OrderedMap{TKey, TValue}"/>.
             /// <br/>O(log n) operation.
             /// </summary>
@@ -121,36 +151,6 @@ namespace Arc.Collection
 
             internal static bool IsNullOrBlack(Node? node) => node == null || node.IsBlack;
 
-            /// <summary>
-            /// Gets the key contained in the node.
-            /// </summary>
-            public TKey Key { get; internal set; }
-
-            /// <summary>
-            /// Gets the value contained in the node.
-            /// </summary>
-            public TValue Value { get; internal set; }
-
-            /// <summary>
-            /// Gets or sets the parent node in the <see cref="OrderedMap{TKey, TValue}"/>.
-            /// </summary>
-            internal Node? Parent { get; set; }
-
-            /// <summary>
-            /// Gets or sets the left node in the <see cref="OrderedMap{TKey, TValue}"/>.
-            /// </summary>
-            internal Node? Left { get; set; }
-
-            /// <summary>
-            /// Gets or sets the right node in the <see cref="OrderedMap{TKey, TValue}"/>.
-            /// </summary>
-            internal Node? Right { get; set; }
-
-            /// <summary>
-            /// Gets or sets the color of the node.
-            /// </summary>
-            internal NodeColor Color { get; set; }
-
             internal bool IsBlack => this.Color == NodeColor.Black;
 
             internal bool IsRed => this.Color == NodeColor.Red;
@@ -160,6 +160,10 @@ namespace Arc.Collection
             internal bool IsLinkedList => this.Color == NodeColor.LinkedList;
 
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
+
+            internal void ColorBlack() => this.Color = NodeColor.Black;
+
+            internal void ColorRed() => this.Color = NodeColor.Red;
 
             internal void Clear()
             {
@@ -180,16 +184,14 @@ namespace Arc.Collection
                 this.Right = null;
                 this.Color = color;
             }
-
-            internal void ColorBlack() => this.Color = NodeColor.Black;
-
-            internal void ColorRed() => this.Color = NodeColor.Red;
         }
 
         #endregion
 
         private Node? root;
         private int version;
+        private KeyCollection? keys;
+        private ValueCollection? values;
 
         /// <summary>
         /// Gets the number of nodes actually contained in the <see cref="OrderedMap{TKey, TValue}"/>.
@@ -527,150 +529,11 @@ namespace Arc.Collection
 
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => this.Values;
 
-        public TValue this[TKey key]
-        {
-            get
-            {
-                if (key == null)
-                {
-                    throw new ArgumentNullException(nameof(key));
-                }
-
-                var node = this.FindNode(key);
-                if (node == null)
-                {
-                    throw new KeyNotFoundException();
-                }
-
-                return node.Value;
-            }
-
-            set
-            {
-                if (key == null)
-                {
-                    throw new ArgumentNullException(nameof(key));
-                }
-
-                var node = this.FindNode(key);
-                if (node == null)
-                {
-                    this.Add(key, value);
-                }
-                else
-                {
-                    node.Value = value;
-                }
-            }
-        }
-
         ICollection<TKey> IDictionary<TKey, TValue>.Keys => this.Keys;
 
         ICollection<TValue> IDictionary<TKey, TValue>.Values => this.Values;
 
         void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => this.Add(key, value);
-
-        public bool ContainsKey(TKey key) => this.FindNode(key) != null;
-
-        public bool ContainsValue(TValue value)
-        {
-            var found = false;
-
-            if (value == null)
-            {
-                var node = this.First;
-                while (node != null)
-                {
-                    if (node.Value == null)
-                    {
-                        found = true;
-                        break;
-                    }
-
-                    node = node.Next;
-                }
-            }
-            else
-            {
-                var comparer = EqualityComparer<TValue>.Default;
-                var node = this.First;
-                while (node != null)
-                {
-                    if (comparer.Equals(node.Value, value))
-                    {
-                        found = true;
-                        break;
-                    }
-
-                    node = node.Next;
-                }
-            }
-
-            return found;
-        }
-
-        /// <summary>
-        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// <br/>O(log n) operation.
-        /// </summary>
-        /// <param name="key">The element to remove.</param>
-        /// <returns>true if the element is found and successfully removed.</returns>
-        public bool Remove(TKey key)
-        {
-            Node? p; // Node to delete.
-            int cmp = -1;
-
-            if (this.root == null)
-            {// No root
-                return false;
-            }
-
-            p = this.root;
-            while (true)
-            {
-                cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
-                {
-                    p = p.Left;
-                }
-                else if (cmp > 0)
-                {
-                    p = p.Right;
-                }
-                else
-                {
-                    break;
-                }
-
-                if (p == null)
-                {// Not found
-                    return false;
-                }
-            }
-
-            this.RemoveNode(p);
-            return true;
-        }
-
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        {
-            if (key == null)
-            {
-                throw new ArgumentNullException(nameof(key));
-            }
-
-            var node = this.FindNode(key);
-            if (node == null)
-            {
-                value = default;
-                return false;
-            }
-
-            value = node.Value;
-            return true;
-        }
 
         #endregion
 
@@ -679,13 +542,6 @@ namespace Arc.Collection
         bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
-
-        public void Clear()
-        {
-            this.root = null;
-            this.version = 0;
-            this.Count = 0;
-        }
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
         {
@@ -714,11 +570,7 @@ namespace Arc.Collection
 
         #region KeyValueCollection
 
-        private KeyCollection? keys;
-
         public KeyCollection Keys => this.keys != null ? this.keys : (this.keys = new KeyCollection(this));
-
-        private ValueCollection? values;
 
         public ValueCollection Values => this.values != null ? this.values : (this.values = new ValueCollection(this));
 
@@ -736,20 +588,11 @@ namespace Arc.Collection
                 this.map = map;
             }
 
-            public Enumerator GetEnumerator()
-            {
-                return new Enumerator(this.map);
-            }
+            public Enumerator GetEnumerator() => new Enumerator(this.map);
 
-            IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
-            {
-                return new Enumerator(this.map);
-            }
+            IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator() => new Enumerator(this.map);
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return new Enumerator(this.map);
-            }
+            IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
 
             public void CopyTo(TKey[] array, int index)
             {
@@ -1001,6 +844,129 @@ namespace Arc.Collection
         }
 
         #endregion
+
+        #region Main
+
+        public TValue this[TKey key]
+        {
+            get
+            {
+                if (key == null)
+                {
+                    throw new ArgumentNullException(nameof(key));
+                }
+
+                var node = this.FindNode(key);
+                if (node == null)
+                {
+                    throw new KeyNotFoundException();
+                }
+
+                return node.Value;
+            }
+
+            set
+            {
+                if (key == null)
+                {
+                    throw new ArgumentNullException(nameof(key));
+                }
+
+                var node = this.FindNode(key);
+                if (node == null)
+                {
+                    this.Add(key, value);
+                }
+                else
+                {
+                    node.Value = value;
+                }
+            }
+        }
+
+        public bool ContainsKey(TKey key) => this.FindNode(key) != null;
+
+        public bool ContainsValue(TValue value)
+        {
+            var found = false;
+
+            if (value == null)
+            {
+                var node = this.First;
+                while (node != null)
+                {
+                    if (node.Value == null)
+                    {
+                        found = true;
+                        break;
+                    }
+
+                    node = node.Next;
+                }
+            }
+            else
+            {
+                var comparer = EqualityComparer<TValue>.Default;
+                var node = this.First;
+                while (node != null)
+                {
+                    if (comparer.Equals(node.Value, value))
+                    {
+                        found = true;
+                        break;
+                    }
+
+                    node = node.Next;
+                }
+            }
+
+            return found;
+        }
+
+#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            var node = this.FindNode(key);
+            if (node == null)
+            {
+                value = default;
+                return false;
+            }
+
+            value = node.Value;
+            return true;
+        }
+
+        public void Clear()
+        {
+            this.root = null;
+            this.version = 0;
+            this.Count = 0;
+        }
+
+        /// <summary>
+        /// Removes a specified item from the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="key">The element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        public bool Remove(TKey key)
+        {
+            var p = this.FindNode(key);
+            if (p == null)
+            {
+                return false;
+            }
+
+            this.RemoveNode(p);
+            return true;
+        }
 
         /// <summary>
         /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
@@ -1257,21 +1223,56 @@ namespace Arc.Collection
         /// <returns>The node with the specified value.</returns>
         public Node? FindNode(TKey key)
         {
-            var p = this.root;
-            while (p != null)
+            Node? x = this.root;
+            Node? p = null;
+            int cmp = 0;
+
+            if (this.HotMethod2 != null)
             {
-                var cmp = this.Comparer.Compare(key, p.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
-                {
-                    p = p.Left;
-                }
-                else if (cmp > 0)
-                {
-                    p = p.Right;
-                }
-                else
+                (cmp, p) = this.HotMethod2.SearchNode(x, key);
+                if (cmp == 0 && p != null)
                 {// Found
                     return p;
+                }
+            }
+            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
+            {// IComparable<TKey>
+                while (x != null)
+                {
+                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    p = x;
+                    if (cmp < 0)
+                    {
+                        x = x.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        x = x.Right;
+                    }
+                    else
+                    {// Found
+                        return x;
+                    }
+                }
+            }
+            else
+            {// IComparer<TKey>
+                while (x != null)
+                {
+                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    p = x;
+                    if (cmp < 0)
+                    {
+                        x = x.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        x = x.Right;
+                    }
+                    else
+                    {// Found
+                        return x;
+                    }
                 }
             }
 
@@ -1434,6 +1435,8 @@ namespace Arc.Collection
             this.root!.ColorBlack();
             return (n, true);
         }
+
+        #endregion
 
         #region Validation
 

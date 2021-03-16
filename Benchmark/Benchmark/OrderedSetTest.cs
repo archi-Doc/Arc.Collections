@@ -9,7 +9,7 @@ namespace Benchmark
     [Config(typeof(BenchmarkConfig))]
     public class OrderedSetTest
     {
-        [Params(10_000)]
+        [Params(10, 100, 10_000)]
         public int Length;
 
         public int[] IntArray = default!;
@@ -110,6 +110,10 @@ namespace Benchmark
             ss.Add(0);
             ss.Add(9);
             ss.Add(20);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(x);
+            }
             return ss.Count;
         }
 
@@ -127,6 +131,10 @@ namespace Benchmark
             ss.Add(0);
             ss.Add(9);
             ss.Add(20);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(x);
+            }
             return ss.Count;
         }
 
@@ -144,6 +152,10 @@ namespace Benchmark
             ss.Add(0, 0);
             ss.Add(9, 0);
             ss.Add(20, 0);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(x, 0);
+            }
             return ss.Count;
         }
 
@@ -161,6 +173,10 @@ namespace Benchmark
             ss.Add(0, null);
             ss.Add(9, null);
             ss.Add(20, null);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(x, null);
+            }
             return ss.Count;
         }
 
@@ -178,6 +194,10 @@ namespace Benchmark
             ss.Add(0);
             ss.Add(9);
             ss.Add(20);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(x);
+            }
             return ss.Count;
         }
 
@@ -229,7 +249,7 @@ namespace Benchmark
             return this.IntSet.Count;
         }*/
 
-        [Benchmark]
+        /*[Benchmark]
         public int AddRemoveReuse()
         {
             this.IntSet.RemoveNode(this.Node0);
@@ -254,6 +274,6 @@ namespace Benchmark
             this.IntSet.ReplaceNode(this.Node55, 55);
 
             return this.IntSet.Count;
-        }
+        }*/
     }
 }
