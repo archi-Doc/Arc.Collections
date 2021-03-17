@@ -16,7 +16,7 @@ namespace xUnitTest
 {
     public static class TestHelper
     {
-        public static OrderedSet<T>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
+        public static OrderedMap<T, int>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
             where T : notnull
         {
             var result = os.Add(value);

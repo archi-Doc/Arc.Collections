@@ -211,7 +211,7 @@ namespace xUnitTest
             var ss = new SortedSet<int>();
             var os = new OrderedSet<int>();
             IEnumerable<int> e;
-            OrderedSet<int>.Node[] nodes;
+            OrderedMap<int, int>.Node[] nodes;
 
             if (duplicate)
             {
@@ -223,7 +223,7 @@ namespace xUnitTest
             }
 
             var array = e.ToArray();
-            nodes = new OrderedSet<int>.Node[array.Length];
+            nodes = new OrderedMap<int, int>.Node[array.Length];
             var n = 0;
             foreach (var x in array)
             {

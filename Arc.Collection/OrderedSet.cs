@@ -25,7 +25,7 @@ namespace Arc.Collection
         public OrderedSet()
         {
             this.map = new();
-            this.map.CreateNode = static (key, value, color) => new Node(key, color);
+            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace Arc.Collection
         public OrderedSet(IComparer<T> comparer)
         {
             this.map = new(comparer);
-            this.map.CreateNode = static (key, value, color) => new Node(key, color);
+            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Arc.Collection
         public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.map = new(comparer);
-            this.map.CreateNode = static (key, value, color) => new Node(key, color);
+            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
 
             foreach (var x in collection)
             {
@@ -67,13 +67,14 @@ namespace Arc.Collection
         private OrderedMap<T, int> map;
 #pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
 
+        /* Inherited Node class is a bit slow bacause of the casting operaiton.
         public class Node : OrderedMap<T, int>.Node
         {
             internal Node(T key, NodeColor color)
                 : base(key, 0, color)
             {
             }
-        }
+        }*/
 
         #region Main
 
@@ -89,10 +90,10 @@ namespace Arc.Collection
         /// <param name="value">The value of the element to add.</param>
         /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value)
+        public (OrderedMap<T, int>.Node node, bool newlyAdded) Add(T value)
         {
             var result = this.map.Add(value, 0);
-            return ((Node)result.node, result.newlyAdded);
+            return result;
         }
 
         /// <summary>
@@ -112,11 +113,11 @@ namespace Arc.Collection
         public bool Remove(T value) => this.map.Remove(value);
 
         /// <summary>
-        /// Removes a specified node from the collection"/>.
+        /// Removes a specified node from the collection.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedSet{T}.Node"/> to remove.</param>
-        public void RemoveNode(Node node) => this.map.RemoveNode(node);
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
+        public void RemoveNode(OrderedMap<T, int>.Node node) => this.map.RemoveNode(node);
 
         /// <summary>
         /// Removes all elements from a collection.

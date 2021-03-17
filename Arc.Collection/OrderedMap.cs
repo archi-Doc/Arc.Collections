@@ -35,7 +35,7 @@ namespace Arc.Collection
     {
         #region Node
 
-        internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
+        // internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
 
         /// <summary>
         /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
@@ -1358,7 +1358,7 @@ namespace Arc.Collection
             }
             else
             {
-                n = this.CreateNode(key, value, NodeColor.Red); // new Node(key, value, NodeColor.Red); // Newly inserted node.
+                n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
             }
 
             n.Parent = p;
