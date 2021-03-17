@@ -24,8 +24,7 @@ namespace Arc.Collection.HotMethod
         /// <typeparam name="TKey">The key to be processed.</typeparam>
         /// <typeparam name="TValue">The value to be processed.</typeparam>
         /// <returns><see cref="IHotMethod2{TKey, TValue}"/>.</returns>
-        IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
-            where TKey : notnull;
+        IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
     }
 
     public static class HotMethodResolver
@@ -45,7 +44,6 @@ namespace Arc.Collection.HotMethod
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IComparer<TKey> comparer)
-            where TKey : notnull
         {
             IHotMethod2<TKey, TValue>? method = null;
 

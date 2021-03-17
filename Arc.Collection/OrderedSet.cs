@@ -17,7 +17,6 @@ namespace Arc.Collection
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
     public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
-        where T : notnull
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
@@ -63,9 +62,7 @@ namespace Arc.Collection
             }
         }
 
-#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
         private OrderedMap<T, int> map;
-#pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
 
         /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
         public class Node : OrderedMap<T, int>.Node

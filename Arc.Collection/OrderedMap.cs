@@ -31,7 +31,6 @@ namespace Arc.Collection
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
     public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
-         where TKey : notnull
     {
         #region Node
 
@@ -468,7 +467,14 @@ namespace Arc.Collection
         {
             get
             {
-                if (key is TKey k)
+                if (key == null)
+                {
+                    if (this.TryGetValue(default, out var value))
+                    {
+                        return value!;
+                    }
+                }
+                else if (key is TKey k)
                 {
                     if (this.TryGetValue(k, out var value))
                     {
@@ -493,19 +499,15 @@ namespace Arc.Collection
 
         ICollection IDictionary.Values => (ICollection)this.Values;
 
-        void IDictionary.Add(object key, object value)
-        {
-            if (key == null)
-            {
-                throw new ArgumentNullException(nameof(key));
-            }
-
-            this.Add((TKey)key, (TValue)value);
-        }
+        void IDictionary.Add(object key, object value) => this.Add((TKey)key, (TValue)value);
 
         bool IDictionary.Contains(object key)
         {
-            if (key is TKey k)
+            if (key == null)
+            {
+                return this.ContainsKey(default);
+            }
+            else if (key is TKey k)
             {
                 return this.ContainsKey(k);
             }
@@ -886,7 +888,7 @@ namespace Arc.Collection
             }
         }
 
-        public bool ContainsKey(TKey key) => this.FindNode(key) != null;
+        public bool ContainsKey(TKey? key) => this.FindNode(key) != null;
 
         public bool ContainsValue(TValue value)
         {
@@ -926,7 +928,7 @@ namespace Arc.Collection
         }
 
 #pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+        public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
 #pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
             if (key == null)
@@ -1228,18 +1230,17 @@ namespace Arc.Collection
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        private (int cmp, Node? leaf) SearchNode(Node? target, TKey key)
+        private (int cmp, Node? leaf) SearchNode(Node? target, TKey? key)
         {
             Node? x = target;
             Node? p = null;
             int cmp = 0;
 
             if (this.HotMethod2 != null)
-            {// HotMethod is available for value type.
+            {// HotMethod is available for value type (key is not null).
                 return this.HotMethod2.SearchNode(x, key!);
             }
-
-            /*else if (key == null)
+            else if (key == null)
             {// key is null
                 while (x != null)
                 {
@@ -1256,13 +1257,12 @@ namespace Arc.Collection
                 }
 
                 return (cmp, p);
-            }*/
+            }
             else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
             {// IComparable<TKey>
                 while (x != null)
                 {
-                    // cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
@@ -1282,8 +1282,7 @@ namespace Arc.Collection
             {// IComparer<TKey>
                 while (x != null)
                 {
-                    // cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
@@ -1309,7 +1308,7 @@ namespace Arc.Collection
         /// <param name="key">The value to search in a collection.</param>
         /// <returns>The node with the specified value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Node? FindNode(TKey key)
+        public Node? FindNode(TKey? key)
         {
             var result = this.SearchNode(this.root, key);
             return result.cmp == 0 ? result.leaf : null;

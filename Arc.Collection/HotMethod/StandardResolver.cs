@@ -36,13 +36,11 @@ namespace Arc.Collection.HotMethod
         }
 
         public IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
-            where TKey : notnull
         {
             return MethodCache2<TKey, TValue>.Method;
         }
 
         private static class MethodCache2<TKey, TValue>
-            where TKey : notnull
         {
             public static readonly IHotMethod2<TKey, TValue>? Method;
 

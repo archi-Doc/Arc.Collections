@@ -40,7 +40,6 @@ namespace Arc.Collection.HotMethod
     }
 
     public sealed class StandardMethod2<TKey, TValue> : IHotMethod2<TKey, TValue>
-        where TKey : notnull
     {
         public (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key)
         {

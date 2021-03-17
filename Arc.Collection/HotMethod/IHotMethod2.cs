@@ -16,7 +16,6 @@ namespace Arc.Collection.HotMethod
     /// <typeparam name="TKey">The key to be processed.</typeparam>
     /// <typeparam name="TValue">The value to be processed.</typeparam>
     public interface IHotMethod2<TKey, TValue> : IHotMethod2
-        where TKey : notnull
     {
         /// <summary>
         /// Searches a tree for the specific value.

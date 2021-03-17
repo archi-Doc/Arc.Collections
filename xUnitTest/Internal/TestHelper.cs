@@ -17,7 +17,6 @@ namespace xUnitTest
     public static class TestHelper
     {
         public static OrderedMap<T, int>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
-            where T : notnull
         {
             var result = os.Add(value);
             os.Validate().IsTrue();
@@ -25,7 +24,6 @@ namespace xUnitTest
         }
 
         public static bool RemoveAndValidate<T>(this OrderedSet<T> os, T value)
-            where T : notnull
         {
             var result = os.Remove(value);
             os.Validate().IsTrue();
@@ -47,7 +45,6 @@ namespace xUnitTest
         }
 
         public static OrderedMap<TKey, TValue>.Node AddAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key, TValue value)
-            where TKey : notnull
         {
             var result = om.Add(key, value);
             om.Validate().IsTrue();
@@ -55,7 +52,6 @@ namespace xUnitTest
         }
 
         public static bool RemoveAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key)
-            where TKey : notnull
         {
             var result = om.Remove(key);
             om.Validate().IsTrue();
