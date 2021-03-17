@@ -122,7 +122,7 @@ namespace Benchmark
         [Benchmark]
         public int NewAndAdd_OrderedSet()
         {
-            var ss = new OrderedSetObsolete<int>();
+            var ss = new OrderedSet<int>();
             ss.Add(1);
             ss.Add(10);
             ss.Add(4);
@@ -162,30 +162,9 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int NewAndAdd_OrderedMap2()
+        public int NewAndAdd_OrderedSetObsolete()
         {
-            var ss = new OrderedMap<int, object?>();
-            ss.Add(1, null);
-            ss.Add(10, null);
-            ss.Add(4, null);
-            ss.Add(34, null);
-            ss.Add(-4, null);
-            ss.Add(43, null);
-            ss.Add(5, null);
-            ss.Add(0, null);
-            ss.Add(9, null);
-            ss.Add(20, null);
-            foreach (var x in this.IntArray)
-            {
-                ss.Add(x, null);
-            }
-            return ss.Count;
-        }
-
-        [Benchmark]
-        public int NewAndAdd_OrderedSetWrapper()
-        {
-            var ss = new OrderedSet<int>();
+            var ss = new OrderedSetObsolete<int>();
             ss.Add(1);
             ss.Add(10);
             ss.Add(4);
