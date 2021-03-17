@@ -7,7 +7,40 @@ using Arc.Collection.Obsolete;
 
 namespace Benchmark
 {
-    [Config(typeof(BenchmarkConfig))]
+    public class OrderedSetClass : IComparable<OrderedSetClass>
+    {
+        public OrderedSetClass(int id)
+        {
+            this.Id = id;
+        }
+
+        public int Id { get; set; }
+
+        public int CompareTo(OrderedSetClass? other)
+        {
+            if (other == null)
+            {
+                return 1;
+            }
+
+            if (this.Id < other.Id)
+            {
+                return -1;
+            }
+            else if (this.Id > other.Id)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        public override string ToString() => this.Id.ToString();
+    }
+
+        [Config(typeof(BenchmarkConfig))]
     public class OrderedSetTest
     {
         [Params(10, 100, 10_000)]
@@ -178,6 +211,90 @@ namespace Benchmark
             foreach (var x in this.IntArray)
             {
                 ss.Add(x);
+            }
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd2_SortedSet()
+        {
+            var ss = new System.Collections.Generic.SortedSet<OrderedSetClass>();
+            ss.Add(new OrderedSetClass(1));
+            ss.Add(new OrderedSetClass(10));
+            ss.Add(new OrderedSetClass(4));
+            ss.Add(new OrderedSetClass(34));
+            ss.Add(new OrderedSetClass(-4));
+            ss.Add(new OrderedSetClass(43));
+            ss.Add(new OrderedSetClass(5));
+            ss.Add(new OrderedSetClass(0));
+            ss.Add(new OrderedSetClass(9));
+            ss.Add(new OrderedSetClass(20));
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(new OrderedSetClass(x));
+            }
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd2_OrderedSet()
+        {
+            var ss = new OrderedSet<OrderedSetClass>();
+            ss.Add(new OrderedSetClass(1));
+            ss.Add(new OrderedSetClass(10));
+            ss.Add(new OrderedSetClass(4));
+            ss.Add(new OrderedSetClass(34));
+            ss.Add(new OrderedSetClass(-4));
+            ss.Add(new OrderedSetClass(43));
+            ss.Add(new OrderedSetClass(5));
+            ss.Add(new OrderedSetClass(0));
+            ss.Add(new OrderedSetClass(9));
+            ss.Add(new OrderedSetClass(20));
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(new OrderedSetClass(x));
+            }
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd2_OrderedMap()
+        {
+            var ss = new OrderedMap<OrderedSetClass, int>();
+            ss.Add(new OrderedSetClass(1), 0);
+            ss.Add(new OrderedSetClass(10), 0);
+            ss.Add(new OrderedSetClass(4), 0);
+            ss.Add(new OrderedSetClass(34), 0);
+            ss.Add(new OrderedSetClass(-4), 0);
+            ss.Add(new OrderedSetClass(43), 0);
+            ss.Add(new OrderedSetClass(5), 0);
+            ss.Add(new OrderedSetClass(0), 0);
+            ss.Add(new OrderedSetClass(9), 0);
+            ss.Add(new OrderedSetClass(20), 0);
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(new OrderedSetClass(x), 0);
+            }
+            return ss.Count;
+        }
+
+        [Benchmark]
+        public int NewAndAdd2_OrderedSetObsolete()
+        {
+            var ss = new OrderedSetObsolete<OrderedSetClass>();
+            ss.Add(new OrderedSetClass(1));
+            ss.Add(new OrderedSetClass(10));
+            ss.Add(new OrderedSetClass(4));
+            ss.Add(new OrderedSetClass(34));
+            ss.Add(new OrderedSetClass(-4));
+            ss.Add(new OrderedSetClass(43));
+            ss.Add(new OrderedSetClass(5));
+            ss.Add(new OrderedSetClass(0));
+            ss.Add(new OrderedSetClass(9));
+            ss.Add(new OrderedSetClass(20));
+            foreach (var x in this.IntArray)
+            {
+                ss.Add(new OrderedSetClass(x));
             }
             return ss.Count;
         }

@@ -1222,28 +1222,46 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for a <see cref="OrderedMap{TKey, TValue}.Node"/> with the specified value.
+        /// Searches a tree for the specific value.
         /// </summary>
-        /// <param name="key">The value to search in a collection.</param>
-        /// <returns>The node with the specified value.</returns>
-        public Node? FindNode(TKey key)
+        /// <param name="target">The node to search.</param>
+        /// <param name="key">The value to search for.</param>
+        /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
+        /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
+        private (int cmp, Node? leaf) SearchNode(Node? target, TKey key)
         {
-            Node? x = this.root;
+            Node? x = target;
             Node? p = null;
             int cmp = 0;
 
             if (this.HotMethod2 != null)
-            {
-                (cmp, p) = this.HotMethod2.SearchNode(x, key);
-                if (cmp == 0 && p != null)
-                {// Found
-                    return p;
-                }
+            {// HotMethod is available for value type.
+                return this.HotMethod2.SearchNode(x, key!);
             }
+
+            /*else if (key == null)
+            {// key is null
+                while (x != null)
+                {
+                    if (x.Key == null)
+                    {// null == null
+                        return (0, x);
+                    }
+                    else
+                    {// null < not null
+                        p = x;
+                        cmp = -1;
+                        x = x.Left;
+                    }
+                }
+
+                return (cmp, p);
+            }*/
             else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
             {// IComparable<TKey>
                 while (x != null)
                 {
+                    // cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
@@ -1256,7 +1274,7 @@ namespace Arc.Collection
                     }
                     else
                     {// Found
-                        return x;
+                        return (0, x);
                     }
                 }
             }
@@ -1264,6 +1282,7 @@ namespace Arc.Collection
             {// IComparer<TKey>
                 while (x != null)
                 {
+                    // cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
@@ -1276,13 +1295,24 @@ namespace Arc.Collection
                     }
                     else
                     {// Found
-                        return x;
+                        return (0, x);
                     }
                 }
             }
 
-            // Not found
-            return null;
+            return (cmp, p);
+        }
+
+        /// <summary>
+        /// Searches for a <see cref="OrderedMap{TKey, TValue}.Node"/> with the specified value.
+        /// </summary>
+        /// <param name="key">The value to search in a collection.</param>
+        /// <returns>The node with the specified value.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Node? FindNode(TKey key)
+        {
+            var result = this.SearchNode(this.root, key);
+            return result.cmp == 0 ? result.leaf : null;
         }
 
         /// <summary>
@@ -1298,53 +1328,10 @@ namespace Arc.Collection
             Node? p = null; // Parent of x; node at which we are rebalancing.
             int cmp = 0;
 
-            if (this.HotMethod2 != null)
-            {
-                (cmp, p) = this.HotMethod2.SearchNode(x, key);
-                if (cmp == 0 && p != null)
-                {// Found
-                    return (p, false);
-                }
-            }
-            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (x != null)
-                {
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
-                    {
-                        x = x.Left;
-                    }
-                    else if (cmp > 0)
-                    {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (x, false);
-                    }
-                }
-            }
-            else
-            {// IComparer<TKey>
-                while (x != null)
-                {
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
-                    {
-                        x = x.Left;
-                    }
-                    else if (cmp > 0)
-                    {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (x, false);
-                    }
-                }
+            (cmp, p) = this.SearchNode(this.root, key);
+            if (cmp == 0 && p != null)
+            {// Found
+                return (p, false);
             }
 
             this.version++;

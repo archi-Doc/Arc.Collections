@@ -67,7 +67,7 @@ namespace Arc.Collection
         private OrderedMap<T, int> map;
 #pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
 
-        /* Inherited Node class is a bit slow bacause of the casting operaiton.
+        /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
         public class Node : OrderedMap<T, int>.Node
         {
             internal Node(T key, NodeColor color)
