@@ -43,7 +43,7 @@ namespace Benchmark
         [Config(typeof(BenchmarkConfig))]
     public class OrderedSetTest
     {
-        [Params(10, 100, 10_000)]
+        [Params(100, 10_000)]
         // [Params(10_000)]
         public int Length;
 
@@ -51,12 +51,12 @@ namespace Benchmark
 
         public System.Collections.Generic.SortedSet<int> IntSetRef = new();
 
-        public OrderedSetObsolete<int> IntSet = new();
+        public OrderedMap<int, int> IntSet = new();
 
-        public OrderedSetObsolete<int>.Node Node0 = default!;
-        public OrderedSetObsolete<int>.Node Node7 = default!;
-        public OrderedSetObsolete<int>.Node Node11 = default!;
-        public OrderedSetObsolete<int>.Node Node55 = default!;
+        public OrderedMap<int, int>.Node Node0 = default!;
+        public OrderedMap<int, int>.Node Node7 = default!;
+        public OrderedMap<int, int>.Node Node11 = default!;
+        public OrderedMap<int, int>.Node Node55 = default!;
 
         static System.Collections.Generic.IEnumerable<int> GetUniqRandomNumbers(int rangeBegin, int rangeEnd, int count)
         {
@@ -92,14 +92,14 @@ namespace Benchmark
 
             foreach (var x in this.IntArray)
             {
-                this.IntSet.Add(x);
+                this.IntSet.Add(x, x);
                 // Debug.Assert(this.IntSet.Validate());
             }
 
-            (this.Node0, _) = this.IntSet.Add(0);
-            (this.Node7, _) = this.IntSet.Add(7);
-            (this.Node11, _) = this.IntSet.Add(11);
-            (this.Node55, _) = this.IntSet.Add(55);
+            (this.Node0, _) = this.IntSet.Add(0, 0);
+            (this.Node7, _) = this.IntSet.Add(7, 7);
+            (this.Node11, _) = this.IntSet.Add(11, 11);
+            (this.Node55, _) = this.IntSet.Add(55, 55);
         }
 
         [GlobalCleanup]
@@ -107,11 +107,11 @@ namespace Benchmark
         {
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int EnumerateRef()
         {
             var total = 0;
-            foreach (var x in this.IntSetRef.Take(10))
+            foreach (var x in this.IntSetRef)
             {
                 total += x;
             }
@@ -123,13 +123,13 @@ namespace Benchmark
         public int Enumerate()
         {
             var total = 0;
-            foreach (var x in this.IntSet.Take(10))
+            foreach (var x in this.IntSet.Keys)
             {
                 total += x;
             }
 
             return total;
-        }*/
+        }
 
        [Benchmark]
         public int NewAndAdd_SortedSet()
@@ -299,7 +299,7 @@ namespace Benchmark
             return ss.Count;
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddRemoveRef()
         {
             this.IntSetRef.Remove(0);
@@ -323,10 +323,10 @@ namespace Benchmark
             this.IntSet.Remove(11);
             this.IntSet.Remove(55);
 
-            this.IntSet.Add(0);
-            this.IntSet.Add(7);
-            this.IntSet.Add(11);
-            this.IntSet.Add(55);
+            this.IntSet.Add(0, 0);
+            this.IntSet.Add(7, 7);
+            this.IntSet.Add(11, 11);
+            this.IntSet.Add(55, 55);
 
             return this.IntSet.Count;
         }
@@ -339,15 +339,15 @@ namespace Benchmark
             this.IntSet.RemoveNode(this.Node11);
             this.IntSet.RemoveNode(this.Node55);
 
-            (this.Node0, _) = this.IntSet.Add(0);
-            (this.Node7, _) = this.IntSet.Add(7);
-            (this.Node11, _) = this.IntSet.Add(11);
-            (this.Node55, _) = this.IntSet.Add(55);
+            (this.Node0, _) = this.IntSet.Add(0, 0);
+            (this.Node7, _) = this.IntSet.Add(7, 7);
+            (this.Node11, _) = this.IntSet.Add(11, 11);
+            (this.Node55, _) = this.IntSet.Add(55, 55);
 
             return this.IntSet.Count;
-        }*/
+        }
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddRemoveReuse()
         {
             this.IntSet.RemoveNode(this.Node0);
@@ -355,10 +355,10 @@ namespace Benchmark
             this.IntSet.RemoveNode(this.Node11);
             this.IntSet.RemoveNode(this.Node55);
 
-            (this.Node0, _) = this.IntSet.Add(0, this.Node0);
-            (this.Node7, _) = this.IntSet.Add(7, this.Node7);
-            (this.Node11, _) = this.IntSet.Add(11, this.Node11);
-            (this.Node55, _) = this.IntSet.Add(55, this.Node55);
+            (this.Node0, _) = this.IntSet.Add(0, 0, this.Node0);
+            (this.Node7, _) = this.IntSet.Add(7, 7, this.Node7);
+            (this.Node11, _) = this.IntSet.Add(11, 11, this.Node11);
+            (this.Node55, _) = this.IntSet.Add(55, 55, this.Node55);
 
             return this.IntSet.Count;
         }
@@ -372,6 +372,6 @@ namespace Benchmark
             this.IntSet.ReplaceNode(this.Node55, 55);
 
             return this.IntSet.Count;
-        }*/
+        }
     }
 }
