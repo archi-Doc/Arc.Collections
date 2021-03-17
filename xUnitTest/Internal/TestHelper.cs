@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Arc.Collection;
+using Arc.Collection.Obsolete;
 using Xunit;
 
 #pragma warning disable SA1401 // Fields should be private
@@ -15,7 +16,7 @@ namespace xUnitTest
 {
     public static class TestHelper
     {
-        public static OrderedSet<T>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
+        public static OrderedMap<T, int>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
         {
             var result = os.Add(value);
             os.Validate().IsTrue();
@@ -26,6 +27,34 @@ namespace xUnitTest
         {
             var result = os.Remove(value);
             os.Validate().IsTrue();
+            return result;
+
+        }
+        public static OrderedSetObsolete<T>.Node AddAndValidate<T>(this OrderedSetObsolete<T> os, T value)
+        {
+            var result = os.Add(value);
+            os.Validate().IsTrue();
+            return result.node;
+        }
+
+        public static bool RemoveAndValidate<T>(this OrderedSetObsolete<T> os, T value)
+        {
+            var result = os.Remove(value);
+            os.Validate().IsTrue();
+            return result;
+        }
+
+        public static OrderedMap<TKey, TValue>.Node AddAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key, TValue value)
+        {
+            var result = om.Add(key, value);
+            om.Validate().IsTrue();
+            return result.node;
+        }
+
+        public static bool RemoveAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key)
+        {
+            var result = om.Remove(key);
+            om.Validate().IsTrue();
             return result;
         }
 
@@ -63,6 +92,43 @@ namespace xUnitTest
             {
                 yield return r.Next(start, end);
             }
+        }
+
+        public static bool SequenceEqual<TSource>(IEnumerable<TSource> first, IEnumerable<TSource> second, IEqualityComparer<TSource>? comparer = null)
+        {
+            if (comparer == null)
+            {
+                comparer = EqualityComparer<TSource>.Default;
+            }
+
+            if (first == null)
+            {
+                throw new ArgumentNullException(nameof(first));
+            }
+
+            if (second == null)
+            {
+                throw new ArgumentNullException(nameof(second));
+            }
+
+            using (var e1 = first.GetEnumerator())
+            using (var e2 = second.GetEnumerator())
+            {
+                while (e1.MoveNext())
+                {
+                    if (!(e2.MoveNext() && comparer.Equals(e1.Current, e2.Current)))
+                    {
+                        return false;
+                    }
+                }
+
+                if (e2.MoveNext())
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

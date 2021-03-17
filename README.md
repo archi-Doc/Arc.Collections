@@ -5,9 +5,11 @@ Work in progress...
 
 
 
-Arc.Collection is a C# Collection Library which implements
+Arc.Collection is a fast C# Collection Library which implements
 
-- ```OrderedSet<T>``` : Collection of objects that is maintained in sorted order (Red-Black Tree). It also has ```Node<T>``` access.
+- ```UnorderedList<T> ```(equivalent ```List<T>```) : List of objects that can be accessed by index.
+- ```OrderedList<T> ``` : List of objects that can be accessed by index and maintained in sorted order.
+- ```OrderedSet<T>``` (equivalent ```SortedSet<T>```) : Collection of objects that is maintained in sorted order (Red-Black Tree). It also has ```Node<T>``` access.
 
 
 

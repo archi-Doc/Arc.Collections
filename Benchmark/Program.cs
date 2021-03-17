@@ -17,12 +17,17 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            DebugRun<TestBenchmark>();
+            DebugRun<OrderedSetTest>();
 
             // var summary = BenchmarkRunner.Run<TestBenchmark>();
             var switcher = new BenchmarkSwitcher(new[]
             {
-                typeof(TestBenchmark),
+                typeof(OrderedListTest2),
+                typeof(OrderedListTest),
+                typeof(IComparerTest),
+                typeof(BinarySearchTest),
+                typeof(BinarySearchStringTest),
+                typeof(OrderedSetTest),
             });
             switcher.Run(args);
         }

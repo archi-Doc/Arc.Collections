@@ -1,20 +1,21 @@
 using System;
 using Xunit;
-using Arc.Collection;
 using System.Collections.Generic;
 using System.Linq;
+using Arc.Collection;
+using Arc.Collection.Obsolete;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace xUnitTest
 {
-    public class BasicTest
+    public class OrderedSetObsoleteTest
     {
         [Fact]
         public void Test1()
         {
             var ss = new SortedSet<int>();
-            var os = new OrderedSet<int>();
+            var os = new OrderedSetObsolete<int>();
 
             AddAndValidate(0);
             RemoveAndValidate(0);
@@ -91,7 +92,7 @@ namespace xUnitTest
         {
             var r = new Random(12);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 2; n++)
             {
                 RandomTest(r, -100, 100, 100, false);
                 RandomTest(r, -100, 100, 100, true);
@@ -105,10 +106,10 @@ namespace xUnitTest
         {
             var r = new Random(13);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 4; n++)
             {
                 var ss = new SortedSet<int>();
-                var os = new OrderedSet<int>();
+                var os = new OrderedSetObsolete<int>();
 
                 var array = TestHelper.GetRandomNumbers(r, 0, 100, 1000).ToArray();
                 for (var m = 0; m < array.Length; m++)
@@ -143,7 +144,7 @@ namespace xUnitTest
         private void RandomTest(Random r, int start, int end, int count, bool duplicate)
         {
             var ss = new SortedSet<int>();
-            var os = new OrderedSet<int>();
+            var os = new OrderedSetObsolete<int>();
             IEnumerable<int> e;
 
             if (duplicate)
@@ -196,7 +197,7 @@ namespace xUnitTest
         {
             var r = new Random(14);
 
-            for (var n = 0; n < 10; n++)
+            for (var n = 0; n < 2; n++)
             {
                 NodeTest(r, -100, 100, 100, false);
                 NodeTest(r, -100, 100, 100, true);
@@ -208,9 +209,9 @@ namespace xUnitTest
         private void NodeTest(Random r, int start, int end, int count, bool duplicate)
         {
             var ss = new SortedSet<int>();
-            var os = new OrderedSet<int>();
+            var os = new OrderedSetObsolete<int>();
             IEnumerable<int> e;
-            OrderedSet<int>.Node[] nodes;
+            OrderedSetObsolete<int>.Node[] nodes;
 
             if (duplicate)
             {
@@ -222,7 +223,7 @@ namespace xUnitTest
             }
 
             var array = e.ToArray();
-            nodes = new OrderedSet<int>.Node[array.Length];
+            nodes = new OrderedSetObsolete<int>.Node[array.Length];
             var n = 0;
             foreach (var x in array)
             {
