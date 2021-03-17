@@ -1,5 +1,5 @@
 ﻿## Arc.Collection
-![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
+![Nuget](https://img.shields.io/nuget/v/Arc.Collection) ![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
 
 Work in progress...
 
@@ -7,9 +7,9 @@ Work in progress...
 
 Arc.Collection is a fast C# Collection Library which implements
 
-- ```UnorderedList<T> ```(equivalent ```List<T>```) : List of objects that can be accessed by index.
+- ```UnorderedList<T> ```(equivalent to ```List<T>```) : List of objects that can be accessed by index.
 - ```OrderedList<T> ``` : List of objects that can be accessed by index and maintained in sorted order.
-- ```OrderedSet<T>``` (equivalent ```SortedSet<T>```) : Collection of objects that is maintained in sorted order (Red-Black Tree). It also has ```Node<T>``` access.
+- ```OrderedSet<T>``` (equivalent to ```SortedSet<T>```) : Collection of objects that is maintained in sorted order (Red-Black Tree). It also has ```Node<T>``` access.
 
 
 
