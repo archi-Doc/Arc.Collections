@@ -1252,7 +1252,8 @@ namespace Arc.Collection
             {// IComparable<TKey>
                 while (x != null)
                 {
-                    cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    // cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
@@ -1272,7 +1273,8 @@ namespace Arc.Collection
             {// IComparer<TKey>
                 while (x != null)
                 {
-                    cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                    // cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
                     p = x;
                     if (cmp < 0)
                     {
