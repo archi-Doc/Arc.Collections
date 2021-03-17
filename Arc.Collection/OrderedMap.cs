@@ -855,11 +855,6 @@ namespace Arc.Collection
         {
             get
             {
-                if (key == null)
-                {
-                    throw new ArgumentNullException(nameof(key));
-                }
-
                 var node = this.FindNode(key);
                 if (node == null)
                 {
@@ -871,11 +866,6 @@ namespace Arc.Collection
 
             set
             {
-                if (key == null)
-                {
-                    throw new ArgumentNullException(nameof(key));
-                }
-
                 var node = this.FindNode(key);
                 if (node == null)
                 {
