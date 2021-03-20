@@ -553,10 +553,7 @@ namespace Arc.Collection
             return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
         }
 
-        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
-        {
-            ((ICollection)this).CopyTo(array, arrayIndex);
-        }
+        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
         {
@@ -946,6 +943,13 @@ namespace Arc.Collection
             this.version = 0;
             this.Count = 0;
         }
+
+        /// <summary>
+        /// Copies the elements of the collection to the specified array of KeyValuePair structures, starting at the specified index.
+        /// </summary>
+        /// <param name="array">The one-dimensional array of KeyValuePair structures that is the destination of the elements.</param>
+        /// <param name="index">The zero-based index in array at which copying begins.</param>
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
         /// <summary>
         /// Removes a specified item from a collection.
