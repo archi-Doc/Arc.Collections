@@ -22,6 +22,7 @@ namespace Benchmark
             // var summary = BenchmarkRunner.Run<TestBenchmark>();
             var switcher = new BenchmarkSwitcher(new[]
             {
+                typeof(OrderedPublicTest),
                 typeof(OrderedListTest2),
                 typeof(OrderedListTest),
                 typeof(IComparerTest),
