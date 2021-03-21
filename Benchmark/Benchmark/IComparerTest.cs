@@ -155,11 +155,5 @@ namespace Benchmark
         {
             return this.OrderedListComparer.IndexOf(this.ValueClass);
         }
-
-        [Benchmark]
-        public int Search_ArrayBinarySearch()
-        {
-            return this.OrderedListComparer.ArrayBinarySearch(this.ValueClass);
-        }
     }
 }

@@ -166,7 +166,7 @@ namespace Arc.Collection
             return ~min;
         }
 
-        public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
+        // public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
 
         /// <summary>
         /// Determines whether an element is in the list.

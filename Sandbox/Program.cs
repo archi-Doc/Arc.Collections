@@ -69,6 +69,8 @@ namespace Sandbox
             om3.Add(null, 0);
             v2 = om3[new TestClass(1)];
             v2 = om3[null];
+
+            var list = new OrderedList<int>();
         }
     }
 }

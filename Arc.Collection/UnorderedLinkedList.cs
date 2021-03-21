@@ -258,20 +258,11 @@ namespace Arc.Collection
 
         #region Enumerator
 
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(this);
-        }
+        public Enumerator GetEnumerator() => new Enumerator(this);
 
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        {
-            return new Enumerator(this);
-        }
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => new Enumerator(this);
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-        {
-            return new Enumerator(this);
-        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => new Enumerator(this);
 
         /// <summary>
         /// Enumerates the elements of a <see cref="UnorderedLinkedList{T}"/>.

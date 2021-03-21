@@ -214,10 +214,7 @@ namespace Arc.Collection
             }
         }
 
-        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> keyValuePair)
-        {
-            this.Add(keyValuePair.Key, keyValuePair.Value);
-        }
+        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> keyValuePair) => this.Add(keyValuePair.Key, keyValuePair.Value);
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> keyValuePair)
         {
@@ -496,25 +493,13 @@ namespace Arc.Collection
             return this.values[index];
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
-        {
-            return new Enumerator(this, Enumerator.KeyValuePair);
-        }
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
-        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
-        {
-            return new Enumerator(this, Enumerator.KeyValuePair);
-        }
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
-        IDictionaryEnumerator IDictionary.GetEnumerator()
-        {
-            return new Enumerator(this, Enumerator.DictEntry);
-        }
+        IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return new Enumerator(this, Enumerator.KeyValuePair);
-        }
+        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
         private TKey GetKey(int index)
         {
@@ -999,20 +984,11 @@ namespace Arc.Collection
 
             object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
-            public void Add(TKey key)
-            {
-                throw new NotSupportedException();
-            }
+            public void Add(TKey key) => throw new NotSupportedException();
 
-            public void Clear()
-            {
-                throw new NotSupportedException();
-            }
+            public void Clear() => throw new NotSupportedException();
 
-            public bool Contains(TKey key)
-            {
-                return this.list.ContainsKey(key);
-            }
+            public bool Contains(TKey key) => this.list.ContainsKey(key);
 
             public void CopyTo(TKey[] array, int arrayIndex)
             {
@@ -1036,10 +1012,7 @@ namespace Arc.Collection
                 }
             }
 
-            public void Insert(int index, TKey value)
-            {
-                throw new NotSupportedException();
-            }
+            public void Insert(int index, TKey value) => new NotSupportedException();
 
             public TKey this[int index]
             {
@@ -1054,15 +1027,9 @@ namespace Arc.Collection
                 }
             }
 
-            public IEnumerator<TKey> GetEnumerator()
-            {
-                return new SortedListKeyEnumerator(this.list);
-            }
+            public IEnumerator<TKey> GetEnumerator() => new SortedListKeyEnumerator(this.list);
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return new SortedListKeyEnumerator(this.list);
-            }
+            IEnumerator IEnumerable.GetEnumerator() => new SortedListKeyEnumerator(this.list);
 
             public int IndexOf(TKey key)
             {
@@ -1075,15 +1042,9 @@ namespace Arc.Collection
                 return i >= 0 ? i : -1;
             }
 
-            public bool Remove(TKey key)
-            {
-                throw new NotSupportedException();
-            }
+            public bool Remove(TKey key) => throw new NotSupportedException();
 
-            public void RemoveAt(int index)
-            {
-                throw new NotSupportedException();
-            }
+            public void RemoveAt(int index) => throw new NotSupportedException();
         }
 
         public sealed class ValueList : IList<TValue>, ICollection
@@ -1103,25 +1064,13 @@ namespace Arc.Collection
 
             object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
-            public void Add(TValue key)
-            {
-                throw new NotSupportedException();
-            }
+            public void Add(TValue key) => throw new NotSupportedException();
 
-            public void Clear()
-            {
-                throw new NotSupportedException();
-            }
+            public void Clear() => throw new NotSupportedException();
 
-            public bool Contains(TValue value)
-            {
-                return this.list.ContainsValue(value);
-            }
+            public bool Contains(TValue value) => this.list.ContainsValue(value);
 
-            public void CopyTo(TValue[] array, int arrayIndex)
-            {
-                Array.Copy(this.list.values, 0, array, arrayIndex, this.list.Count);
-            }
+            public void CopyTo(TValue[] array, int arrayIndex) => Array.Copy(this.list.values, 0, array, arrayIndex, this.list.Count);
 
             void ICollection.CopyTo(Array array, int index)
             {
@@ -1140,10 +1089,7 @@ namespace Arc.Collection
                 }
             }
 
-            public void Insert(int index, TValue value)
-            {
-                throw new NotSupportedException();
-            }
+            public void Insert(int index, TValue value) => new NotSupportedException();
 
             public TValue this[int index]
             {
@@ -1158,30 +1104,15 @@ namespace Arc.Collection
                 }
             }
 
-            public IEnumerator<TValue> GetEnumerator()
-            {
-                return new SortedListValueEnumerator(this.list);
-            }
+            public IEnumerator<TValue> GetEnumerator() => new SortedListValueEnumerator(this.list);
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return new SortedListValueEnumerator(this.list);
-            }
+            IEnumerator IEnumerable.GetEnumerator() => new SortedListValueEnumerator(this.list);
 
-            public int IndexOf(TValue value)
-            {
-                return Array.IndexOf(this.list.values, value, 0, this.list.Count);
-            }
+            public int IndexOf(TValue value) => Array.IndexOf(this.list.values, value, 0, this.list.Count);
 
-            public bool Remove(TValue value)
-            {
-                throw new NotSupportedException();
-            }
+            public bool Remove(TValue value) => throw new NotSupportedException();
 
-            public void RemoveAt(int index)
-            {
-                throw new NotSupportedException();
-            }
+            public void RemoveAt(int index) => throw new NotSupportedException();
         }
 
         #endregion

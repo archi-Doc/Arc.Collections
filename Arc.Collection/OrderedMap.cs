@@ -519,7 +519,11 @@ namespace Arc.Collection
 
         void IDictionary.Remove(object key)
         {
-            if (key is TKey k)
+            if (key == null)
+            {
+                this.Remove(default);
+            }
+            else if (key is TKey k)
             {
                 this.Remove(k);
             }
@@ -957,7 +961,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="key">The element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
-        public bool Remove(TKey key)
+        public bool Remove(TKey? key)
         {
             var p = this.FindNode(key);
             if (p == null)
