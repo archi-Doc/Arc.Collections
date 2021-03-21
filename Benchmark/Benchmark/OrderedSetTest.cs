@@ -107,30 +107,6 @@ namespace Benchmark
         {
         }
 
-        [Benchmark]
-        public int EnumerateRef()
-        {
-            var total = 0;
-            foreach (var x in this.IntSetRef)
-            {
-                total += x;
-            }
-
-            return total;
-        }
-
-        [Benchmark]
-        public int Enumerate()
-        {
-            var total = 0;
-            foreach (var x in this.IntSet.Keys)
-            {
-                total += x;
-            }
-
-            return total;
-        }
-
        [Benchmark]
         public int NewAndAdd_SortedSet()
         {
@@ -300,7 +276,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AddRemoveRef()
+        public int AddRemove_SortedSet()
         {
             this.IntSetRef.Remove(0);
             this.IntSetRef.Remove(7);
@@ -316,7 +292,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AddRemove()
+        public int AddRemove_OrderedSet()
         {
             this.IntSet.Remove(0);
             this.IntSet.Remove(7);
@@ -332,7 +308,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AddRemoveNode()
+        public int AddRemoveNode_OrderedSet()
         {
             this.IntSet.RemoveNode(this.Node0);
             this.IntSet.RemoveNode(this.Node7);
@@ -348,7 +324,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AddRemoveReuse()
+        public int AddRemoveReuse_OrderedSet()
         {
             this.IntSet.RemoveNode(this.Node0);
             this.IntSet.RemoveNode(this.Node7);
@@ -364,7 +340,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AddRemoveReplace()
+        public int AddRemoveReplace_OrderedSet()
         {
             this.IntSet.ReplaceNode(this.Node0, 0);
             this.IntSet.ReplaceNode(this.Node7, 7);
@@ -372,6 +348,30 @@ namespace Benchmark
             this.IntSet.ReplaceNode(this.Node55, 55);
 
             return this.IntSet.Count;
+        }
+
+        [Benchmark]
+        public int Enumerate_SortedSet()
+        {
+            var total = 0;
+            foreach (var x in this.IntSetRef)
+            {
+                total += x;
+            }
+
+            return total;
+        }
+
+        [Benchmark]
+        public int Enumerate_OrderedSet()
+        {
+            var total = 0;
+            foreach (var x in this.IntSet.Keys)
+            {
+                total += x;
+            }
+
+            return total;
         }
     }
 }

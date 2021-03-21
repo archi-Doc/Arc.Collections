@@ -519,7 +519,11 @@ namespace Arc.Collection
 
         void IDictionary.Remove(object key)
         {
-            if (key is TKey k)
+            if (key == null)
+            {
+                this.Remove(default);
+            }
+            else if (key is TKey k)
             {
                 this.Remove(k);
             }
@@ -553,10 +557,7 @@ namespace Arc.Collection
             return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
         }
 
-        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
-        {
-            ((ICollection)this).CopyTo(array, arrayIndex);
-        }
+        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
         {
@@ -948,12 +949,19 @@ namespace Arc.Collection
         }
 
         /// <summary>
+        /// Copies the elements of the collection to the specified array of KeyValuePair structures, starting at the specified index.
+        /// </summary>
+        /// <param name="array">The one-dimensional array of KeyValuePair structures that is the destination of the elements.</param>
+        /// <param name="index">The zero-based index in array at which copying begins.</param>
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
+
+        /// <summary>
         /// Removes a specified item from a collection.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
-        public bool Remove(TKey key)
+        public bool Remove(TKey? key)
         {
             var p = this.FindNode(key);
             if (p == null)

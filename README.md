@@ -1,15 +1,16 @@
 ﻿## Arc.Collection
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collection) ![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
 
-Work in progress...
-
 
 
 Arc.Collection is a fast C# Collection Library which implements
 
-- ```UnorderedList<T> ```(equivalent to ```List<T>```) : List of objects that can be accessed by index.
-- ```OrderedList<T> ``` : List of objects that can be accessed by index and maintained in sorted order.
-- ```OrderedSet<T>``` (equivalent to ```SortedSet<T>```) : Collection of objects that is maintained in sorted order (Red-Black Tree). It also has ```Node<T>``` access.
+- ```UnorderedList<T>  ``` (equivalent to ```List<T>```) : A list of objects that can be accessed by index.
+- ```UnorderedLinkedList<T>``` (```LinkedList<T>```) : A doubly linked list which has ```Node<T>``` operation.
+- ```OrderedList<T> ``` : A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required.
+- ```OrderedKeyValueList<TKey, TValue>``` (```SortedList<TKey,TValue>```) : A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
+- ```OrderedMap<TKey, TValue>``` (```SortedDictionary<TKey, TValue>```) : A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
+- ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TKey int is not used).
 
 
 
@@ -29,13 +30,18 @@ using Arc.Collection;
 var array = new int[] { 2, 1, 3, };
 var os = new OrderedSet<int>(array);
 
-Console.WriteLine(string.Format("{0,-12}", "Array: ") + string.Join(", ", array)); // 2, 1, 3
-Console.WriteLine(string.Format("{0,-12}", "OrderedSet: ") + string.Join(", ", os)); // 1, 2, 3
+ConsoleWriteIEnumerable("Array:", array); // 2, 1, 3
+ConsoleWriteIEnumerable("OrderedSet:", os); // 1, 2, 3
 
 Console.WriteLine("Add 4, 0");
 os.Add(4);
 os.Add(0);
-Console.WriteLine(string.Format("{0,-12}", "OrderedSet: ") + string.Join(", ", os)); // 0, 1, 2, 3, 4
+ConsoleWriteIEnumerable("OrderedSet:", os); // 0, 1, 2, 3, 4
+
+static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
+{
+    Console.WriteLine(string.Format("{0,-12}", header) + string.Join(", ", e));
+}
 ```
 
 
