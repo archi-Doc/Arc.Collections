@@ -70,7 +70,8 @@ namespace Sandbox
             v2 = om3[new TestClass(1)];
             v2 = om3[null];
 
-            var list = new OrderedList<int>();
+            var list = new UnorderedLinkedList<int>();
+            list.AddFirst(1);
         }
     }
 }

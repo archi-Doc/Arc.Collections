@@ -73,7 +73,7 @@ namespace Arc.Collection
         /// <summary>
         /// Gets the last node.
         /// </summary>
-        public Node? Last => this.head?.Previous;
+        public Node? Last => this.head?.previous;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UnorderedLinkedList{T}"/> class.
