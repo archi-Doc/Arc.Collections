@@ -3,7 +3,7 @@
 
 
 
-Arc.Collection is a fast C# Collection Library which implements
+Arc.Collection is a fast C# Collection Library which includes
 
 - ```UnorderedList<T>  ``` (equivalent to ```List<T>```) : A list of objects that can be accessed by index.
 - ```UnorderedLinkedList<T>``` (```LinkedList<T>```) : A doubly linked list which has ```Node<T>``` operation.
