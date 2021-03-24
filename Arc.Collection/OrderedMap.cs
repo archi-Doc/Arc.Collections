@@ -1253,8 +1253,6 @@ namespace Arc.Collection
                         x = x.Left;
                     }
                 }
-
-                return (cmp, p);
             }
             else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
             {// IComparable<TKey>
