@@ -27,8 +27,9 @@ namespace Arc.Collection
 
         /// <summary>
         /// Represents a node in a <see cref="OrderedMultiMap{TKey, TValue}"/>.
-        /// Tree node: Color = Black or Red, Left/Right = Tree structure.
-        /// Linked list node: Color = LinkedList, Left/Right = LinkedList structure.
+        /// SingleNode: Tree node. Color = Black or Red, ListPrevious/ListNext = null.
+        /// HeadNode: Tree node and the first node of a linked list. Color = Black or Red, ListPrevious/ListNext != null.
+        /// LinkedListNode: Linked list node. Color = LinkedList, ListPrevious/ListNext != null.
         /// </summary>
         public class Node
         {
@@ -65,9 +66,14 @@ namespace Arc.Collection
             internal Node? Right { get; set; }
 
             /// <summary>
-            /// Gets or sets the linked list node in the <see cref="OrderedMultiMap{TKey, TValue}"/> (doubly-Linked circular list).
+            /// Gets or sets the previous linked list node (doubly-Linked circular list).
             /// </summary>
-            internal Node? Head { get; set; }
+            internal Node? ListPrevious { get; set; }
+
+            /// <summary>
+            /// Gets or sets the next linked list node (doubly-Linked circular list).
+            /// </summary>
+            internal Node? ListNext { get; set; }
 
             /// <summary>
             /// Gets or sets the color of the node.
@@ -82,28 +88,35 @@ namespace Arc.Collection
             {
                 get
                 {
-                    Node? node;
-                    if (this.Left == null)
-                    {
-                        node = this;
-                        Node? p = this.Parent;
-                        while (p != null && node == p.Left)
-                        {
-                            node = p;
-                            p = p.Parent;
-                        }
-
-                        return p;
+                    if (this.IsLinkedListNode)
+                    {// LinkedListNode
+                        return this.ListPrevious;
                     }
                     else
-                    {
-                        node = this.Left;
-                        while (node.Right != null)
+                    {// SingleNode or HeadNode
+                        Node? node;
+                        if (this.Left == null)
                         {
-                            node = node.Right;
-                        }
+                            node = this;
+                            Node? p = this.Parent;
+                            while (p != null && node == p.Left)
+                            {
+                                node = p;
+                                p = p.Parent;
+                            }
 
-                        return node;
+                            return p == null ? null : (p.IsSingleNode ? p : p.ListPrevious); // Last node (ListPrevious) if p is a HeadNode.
+                        }
+                        else
+                        {
+                            node = this.Left;
+                            while (node.Right != null)
+                            {
+                                node = node.Right;
+                            }
+
+                            return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
+                        }
                     }
                 }
             }
@@ -116,11 +129,32 @@ namespace Arc.Collection
             {
                 get
                 {
+                    Node treeNode;
+                    if (this.IsSingleNode)
+                    {// SingleNode
+                        treeNode = this;
+                    }
+                    else if (this.IsLinkedListNode)
+                    {// LinkedListNode
+                        if (this.ListNext!.IsLinkedListNode)
+                        {// Next LinkedListNode
+                            return this.ListNext;
+                        }
+                        else
+                        {// HeadNode -> Next tree node
+                            treeNode = this.ListNext;
+                        }
+                    }
+                    else
+                    {// HeadNode
+                        return this.ListNext;
+                    }
+
                     Node? node;
-                    if (this.Right == null)
+                    if (treeNode.Right == null)
                     {
-                        node = this;
-                        Node? p = this.Parent;
+                        node = treeNode;
+                        Node? p = treeNode.Parent;
                         while (p != null && node == p.Right)
                         {
                             node = p;
@@ -131,7 +165,7 @@ namespace Arc.Collection
                     }
                     else
                     {
-                        node = this.Right;
+                        node = treeNode.Right;
                         while (node.Left != null)
                         {
                             node = node.Left;
@@ -154,7 +188,9 @@ namespace Arc.Collection
 
             internal bool IsUnused => this.Color == NodeColor.Unused;
 
-            internal bool IsLinkedList => this.Color == NodeColor.LinkedList;
+            internal bool IsLinkedListNode => this.Color == NodeColor.LinkedList;
+
+            internal bool IsSingleNode => this.ListPrevious == null;
 
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
@@ -169,6 +205,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
+                this.ListPrevious = null;
+                this.ListNext = null;
                 this.Color = NodeColor.Unused;
             }
 
@@ -179,6 +217,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
+                this.ListPrevious = null;
+                this.ListNext = null;
                 this.Color = color;
             }
         }
@@ -283,7 +323,7 @@ namespace Arc.Collection
                     node = node.Right;
                 }
 
-                return node;
+                return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
             }
         }
 
@@ -952,10 +992,10 @@ namespace Arc.Collection
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
         /// <summary>
-        /// Removes a specified item from a collection.
+        /// Removes the first element with the specified key from a collection.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="key">The element to remove.</param>
+        /// <param name="key">The key of the element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
         public bool Remove(TKey? key)
         {
