@@ -565,6 +565,13 @@ namespace Arc.Collection
             }
 
             var ret = this.BinarySearch(key);
+            ret--;
+            while (ret >= 0 && this.Comparer.Compare(this.keys[ret], key) == 0)
+            {
+                ret--;
+            }
+
+            ret++;
             return ret >= 0 ? ret : -1;
         }
 
@@ -585,6 +592,14 @@ namespace Arc.Collection
             {
                 return (-1, -1);
             }
+
+            ret--;
+            while (ret >= 0 && this.Comparer.Compare(this.keys[ret], key) == 0)
+            {
+                ret--;
+            }
+
+            ret++;
 
             int n;
             for (n = ret + 1; n < this.size; n++)
@@ -682,6 +697,21 @@ namespace Arc.Collection
             }
 
             return i >= 0;
+        }
+
+        public bool Remove(TKey key, TValue value)
+        {
+            var range = this.RangeOfKey(key);
+            for (var n = range.start; n < range.end; n++)
+            {
+                if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], value))
+                {
+                    this.RemoveAt(n);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         void IDictionary.Remove(object key)
@@ -1031,16 +1061,7 @@ namespace Arc.Collection
 
             IEnumerator IEnumerable.GetEnumerator() => new SortedListKeyEnumerator(this.list);
 
-            public int IndexOf(TKey key)
-            {
-                if (((object)key) == null)
-                {
-                    throw new ArgumentNullException(nameof(key));
-                }
-
-                var i = this.list.BinarySearch(key);
-                return i >= 0 ? i : -1;
-            }
+            public int IndexOf(TKey key) => this.list.IndexOfKey(key);
 
             public bool Remove(TKey key) => throw new NotSupportedException();
 

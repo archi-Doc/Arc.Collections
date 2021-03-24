@@ -130,63 +130,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<byte, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<byte, TValue>.Node? target, byte key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<byte, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<byte, TValue>.Node? target, byte key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int8Method : IHotMethod<sbyte>
@@ -304,63 +247,6 @@ namespace Arc.Collection.HotMethod
                 else
                 {// Found
                     return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<sbyte, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<sbyte, TValue>.Node? target, sbyte key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<sbyte, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<sbyte, TValue>.Node? target, sbyte key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
                 }
             }
 
@@ -488,63 +374,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<ushort, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<ushort, TValue>.Node? target, ushort key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<ushort, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<ushort, TValue>.Node? target, ushort key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int16Method : IHotMethod<short>
@@ -662,63 +491,6 @@ namespace Arc.Collection.HotMethod
                 else
                 {// Found
                     return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<short, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<short, TValue>.Node? target, short key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<short, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<short, TValue>.Node? target, short key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
                 }
             }
 
@@ -846,63 +618,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<uint, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<uint, TValue>.Node? target, uint key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<uint, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<uint, TValue>.Node? target, uint key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int32Method : IHotMethod<int>
@@ -1020,63 +735,6 @@ namespace Arc.Collection.HotMethod
                 else
                 {// Found
                     return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<int, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<int, TValue>.Node? target, int key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<int, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<int, TValue>.Node? target, int key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
                 }
             }
 
@@ -1204,63 +862,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<ulong, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<ulong, TValue>.Node? target, ulong key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<ulong, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<ulong, TValue>.Node? target, ulong key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int64Method : IHotMethod<long>
@@ -1378,63 +979,6 @@ namespace Arc.Collection.HotMethod
                 else
                 {// Found
                     return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<long, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<long, TValue>.Node? target, long key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<long, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<long, TValue>.Node? target, long key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
                 }
             }
 
@@ -1562,63 +1106,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<float, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<float, TValue>.Node? target, float key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<float, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<float, TValue>.Node? target, float key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class DoubleMethod : IHotMethod<double>
@@ -1741,63 +1228,6 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<double, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<double, TValue>.Node? target, double key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<double, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<double, TValue>.Node? target, double key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class DateTimeMethod : IHotMethod<DateTime>
@@ -1915,63 +1345,6 @@ namespace Arc.Collection.HotMethod
                 else
                 {// Found
                     return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<DateTime, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<DateTime, TValue>.Node? target, DateTime key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<DateTime, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<DateTime, TValue>.Node? target, DateTime key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (key < x.Key)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (key > x.Key)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {
-                    x = x.Right;
-                    cmp = 0;
                 }
             }
 

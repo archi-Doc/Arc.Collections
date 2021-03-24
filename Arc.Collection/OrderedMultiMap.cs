@@ -625,42 +625,7 @@ namespace Arc.Collection
 
         void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
-        {
-            var node = this.FindFirstNode(item.Key);
-            if (node == null)
-            {
-                return false;
-            }
-            else if (node.IsSingleNode)
-            {// SingleNode
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
-                {
-                    this.RemoveNode(node);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            // HeadNode
-            while (true)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
-                {
-                    this.RemoveNode(node);
-                    return true;
-                }
-
-                node = node.ListNext!;
-                if (!node.IsLinkedListNode)
-                {// HeadNode
-                    return false;
-                }
-            }
-        }
+        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => this.Remove(item.Key, item.Value);
 
         #endregion
 
@@ -1054,6 +1019,50 @@ namespace Arc.Collection
 
             this.RemoveNode(p);
             return true;
+        }
+
+        /// <summary>
+        /// Removes the first element with the specified key/value from a collection.
+        /// <br/>O(log n) operation.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <param name="value">The value of the element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        public bool Remove(TKey key, TValue value)
+        {
+            var node = this.FindFirstNode(key);
+            if (node == null)
+            {
+                return false;
+            }
+            else if (node.IsSingleNode)
+            {// SingleNode
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    this.RemoveNode(node);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            // HeadNode
+            while (true)
+            {
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    this.RemoveNode(node);
+                    return true;
+                }
+
+                node = node.ListNext!;
+                if (!node.IsLinkedListNode)
+                {// HeadNode
+                    return false;
+                }
+            }
         }
 
         /// <summary>

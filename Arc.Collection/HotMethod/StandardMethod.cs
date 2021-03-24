@@ -96,57 +96,5 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-
-        public (int cmp, OrderedMultiMap2<TKey, TValue>.Node? leaf) SearchFirstNode(OrderedMultiMap2<TKey, TValue>.Node? target, TKey key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                cmp = Comparer<TKey>.Default.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-
-                p = x;
-                if (cmp < 0)
-                {
-                    x = x.Left;
-                }
-                else if (cmp > 0)
-                {
-                    x = x.Right;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
-
-        public (int cmp, OrderedMultiMap2<TKey, TValue>.Node? leaf) SearchLastNode(OrderedMultiMap2<TKey, TValue>.Node? target, TKey key)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                cmp = Comparer<TKey>.Default.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-
-                p = x;
-                if (cmp < 0)
-                {
-                    x = x.Left;
-                }
-                else
-                {
-                    x = x.Right;
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 }

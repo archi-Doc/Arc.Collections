@@ -79,13 +79,6 @@ namespace Sandbox
             mm.Add(1, 2);
             mm.Add(2, 3);
             mm.Add(-1, 4);
-
-            var mm2 = new OrderedMultiMap2<int, int>();
-            mm2.Add(1, 0);
-            mm2.Add(0, 1);
-            mm2.Add(1, 2);
-            mm2.Add(2, 3);
-            mm2.Add(-1, 4);
         }
     }
 }
