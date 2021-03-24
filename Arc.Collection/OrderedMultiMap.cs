@@ -284,6 +284,7 @@ namespace Arc.Collection
 
         /// <summary>
         /// Gets the first node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
         /// </summary>
         public Node? First
         {
@@ -305,7 +306,8 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Gets the last node in the <see cref="OrderedMultiMap{TKey, TValue}"/>. O(log n) operation.
+        /// Gets the last node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
         /// </summary>
         public Node? Last
         {
@@ -586,40 +588,7 @@ namespace Arc.Collection
 
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
-        {
-            var node = this.FindFirstNode(item.Key);
-            if (node == null)
-            {
-                return false;
-            }
-            else if (node.IsSingleNode)
-            {// SingleNode
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            // HeadNode
-            while (true)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
-                {
-                    return true;
-                }
-
-                node = node.ListNext!;
-                if (!node.IsLinkedListNode)
-                {// HeadNode
-                    return false;
-                }
-            }
-        }
+        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => this.FindNode(item.Key, item.Value) != null;
 
         void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
@@ -1007,6 +976,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="key">The key of the element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Remove(TKey? key)
         {
             var p = this.FindFirstNode(key);
@@ -1021,46 +991,22 @@ namespace Arc.Collection
 
         /// <summary>
         /// Removes the first element with the specified key/value from a collection.
-        /// <br/>O(log n) operation.
+        /// <br/>O(log n) operation (worst case O(n)).
         /// </summary>
         /// <param name="key">The key of the element to remove.</param>
         /// <param name="value">The value of the element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Remove(TKey key, TValue value)
         {
-            var node = this.FindFirstNode(key);
-            if (node == null)
+            var p = this.FindNode(key, value);
+            if (p == null)
             {
                 return false;
             }
-            else if (node.IsSingleNode)
-            {// SingleNode
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
-                {
-                    this.RemoveNode(node);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
 
-            // HeadNode
-            while (true)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
-                {
-                    this.RemoveNode(node);
-                    return true;
-                }
-
-                node = node.ListNext!;
-                if (!node.IsLinkedListNode)
-                {// HeadNode
-                    return false;
-                }
-            }
+            this.RemoveNode(p);
+            return true;
         }
 
         /// <summary>
@@ -1070,7 +1016,7 @@ namespace Arc.Collection
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
         /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// newlyAdded:true if the new key is inserted.</returns>
         public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
@@ -1081,7 +1027,7 @@ namespace Arc.Collection
         /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
         /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// newlyAdded: true if the new key is inserted.</returns>
         public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
@@ -1105,7 +1051,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Removes a specified node from the collection"/>.
+        /// Removes a specified node from the collection.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="node">The <see cref="OrderedMultiMap{TKey, TValue}.Node"/> to remove.</param>
@@ -1131,7 +1077,7 @@ namespace Arc.Collection
                 var headNode = node.ListNext;
                 if (headNode == headNode.ListNext)
                 {// HeadNode to SingleNode
-                    Debug.Assert(!headNode.IsLinkedListNode, "The last node must be HeadNode.");
+                    Debug.Assert(!headNode.IsLinkedListNode, "The last node must be a HeadNode.");
                     headNode.ListPrevious = null;
                     headNode.ListNext = null;
                 }
@@ -1162,7 +1108,7 @@ namespace Arc.Collection
 
                 if (listNode.ListNext == listNode)
                 {// HeadNode to SingleNode
-                    Debug.Assert(!listNode.IsLinkedListNode, "The last node must be HeadNode.");
+                    Debug.Assert(!listNode.IsLinkedListNode, "The last node must be a HeadNode.");
                     listNode.ListPrevious = null;
                     listNode.ListNext = null;
                 }
@@ -1420,10 +1366,10 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for a <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified value.
+        /// Searches for the first <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key.
         /// </summary>
-        /// <param name="key">The value to search in a collection.</param>
-        /// <returns>The node with the specified value.</returns>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The first node with the specified key.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Node? FindFirstNode(TKey? key)
         {
@@ -1432,12 +1378,55 @@ namespace Arc.Collection
         }
 
         /// <summary>
+        /// Searches for a <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key/value.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <param name="value">The value to search in a collection.</param>
+        /// <returns>The node with the specified key/value.</returns>
+        public Node? FindNode(TKey? key, TValue value)
+        {
+            var result = this.SearchFirstNode(this.root, key);
+            if (result.cmp != 0 || result.leaf == null)
+            {// Not found
+                return null;
+            }
+
+            var node = result.leaf;
+            if (node.IsSingleNode)
+            {// SingleNode
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    return node;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            // HeadNode
+            while (true)
+            {
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    return node;
+                }
+
+                node = node.ListNext!;
+                if (!node.IsLinkedListNode)
+                {// HeadNode
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// newlyAdded: true if the new key is inserted.</returns>
         private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
