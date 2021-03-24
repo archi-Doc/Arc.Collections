@@ -11,20 +11,18 @@ using Arc.Collection.HotMethod;
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
-#pragma warning disable SA1602 // Enumeration items should be documented
 
 namespace Arc.Collection
 {
     /// <summary>
-    /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedMultiMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+    /// Represents a collection of objects that is maintained in sorted order (Red-Black Tree structure).<br/>
+    /// <see cref="OrderedMultiMap{TKey, TValue}"/> can store duplicate keys.
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
     public class OrderedMultiMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
     {
         #region Node
-
-        // internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
 
         /// <summary>
         /// Represents a node in a <see cref="OrderedMultiMap{TKey, TValue}"/>.
