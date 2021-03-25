@@ -12,6 +12,7 @@ Arc.Collection is a fast C# Collection Library which includes
 - ```OrderedMap<TKey, TValue>``` (```SortedDictionary<TKey, TValue>```) : A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
 - ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TKey int is not used).
 - ```OrderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class.
+- ```OrderedMultiSet<T>``` :  A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class.
 
 
 

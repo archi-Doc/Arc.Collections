@@ -14,45 +14,46 @@ namespace Arc.Collection
 {
     /// <summary>
     /// Represents a collection of objects that is maintained in sorted order.
-    /// <br/><see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
+    /// <br/><see cref="OrderedMultiSet{T}"/> uses Red-Black Tree + Linked List structure to store objects.
+    /// <br/><see cref="OrderedMultiSet{T}"/> can store duplicate keys.
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
-    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+    public class OrderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
-        public OrderedSet()
+        public OrderedMultiSet()
         {
             this.map = new();
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IComparer<T> comparer)
+        public OrderedMultiSet(IComparer<T> comparer)
         {
             this.map = new(comparer);
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
-        public OrderedSet(IEnumerable<T> collection)
+        public OrderedMultiSet(IEnumerable<T> collection)
             : this(collection, Comparer<T>.Default)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
+        public OrderedMultiSet(IEnumerable<T> collection, IComparer<T> comparer)
         {
             this.map = new(comparer);
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
@@ -63,7 +64,7 @@ namespace Arc.Collection
             }
         }
 
-        private OrderedMap<T, int> map;
+        private OrderedMultiMap<T, int> map;
 
         /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
         public class Node : OrderedMap<T, int>.Node
@@ -77,7 +78,7 @@ namespace Arc.Collection
         #region Main
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="OrderedMultiSet{T}"/>.
         /// </summary>
         public int Count => this.map.Count;
 
@@ -88,7 +89,7 @@ namespace Arc.Collection
         /// <param name="value">The value of the element to add.</param>
         /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        public (OrderedMap<T, int>.Node node, bool newlyAdded) Add(T value)
+        public (OrderedMultiMap<T, int>.Node node, bool newlyAdded) Add(T value)
         {
             var result = this.map.Add(value, 0);
             return result;
@@ -115,18 +116,12 @@ namespace Arc.Collection
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
-        public void RemoveNode(OrderedMap<T, int>.Node node) => this.map.RemoveNode(node);
+        public void RemoveNode(OrderedMultiMap<T, int>.Node node) => this.map.RemoveNode(node);
 
         /// <summary>
         /// Removes all elements from a collection.
         /// </summary>
         public void Clear() => this.map.Clear();
-
-        /// <summary>
-        /// Validate Red-Black Tree.
-        /// </summary>
-        /// <returns>true if the tree is valid.</returns>
-        public bool Validate() => this.map.Validate();
 
         #endregion
 

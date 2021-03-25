@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Arc.Collection;
 
 namespace Sandbox
@@ -79,6 +80,14 @@ namespace Sandbox
             mm.Add(1, 2);
             mm.Add(2, 3);
             mm.Add(-1, 4);
+
+            var ms = new OrderedMultiSet<int>();
+            ms.Add(0);
+            ms.Add(1);
+            ms.Add(0);
+            ms.Add(-1);
+            ms.Add(0);
+            ms.Add(-2);
         }
     }
 }
