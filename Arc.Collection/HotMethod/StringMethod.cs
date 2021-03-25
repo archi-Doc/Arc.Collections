@@ -4,7 +4,7 @@ using Arc.Collection.Obsolete;
 
 namespace Arc.Collection.HotMethod
 {
-    public sealed class StringMethod : IHotMethod<string>
+    /*public sealed class StringMethod : IHotMethod<string>
     {
         public static readonly StringMethod Instance = new();
 
@@ -97,5 +97,5 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
-    }
+    }*/
 }

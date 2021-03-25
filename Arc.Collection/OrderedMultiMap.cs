@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Arc.Collection.HotMethod;
@@ -10,34 +11,24 @@ using Arc.Collection.HotMethod;
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
-#pragma warning disable SA1602 // Enumeration items should be documented
 
 namespace Arc.Collection
 {
     /// <summary>
-    /// Color of a node in a Red-Black tree.
-    /// </summary>
-    internal enum NodeColor : byte
-    {
-        Black,
-        Red,
-        Unused,
-        LinkedList,
-    }
-
-    /// <summary>
-    /// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+    /// Represents a collection of objects that is maintained in sorted order (Red-Black Tree structure).<br/>
+    /// <see cref="OrderedMultiMap{TKey, TValue}"/> can store duplicate keys.
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+    public class OrderedMultiMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
     {
         #region Node
 
-        // internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
-
         /// <summary>
-        /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Represents a node in a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// SingleNode: Tree node. Color = Black or Red, ListPrevious/ListNext = null.
+        /// HeadNode: Tree node and the first node of a linked list. Color = Black or Red, ListPrevious/ListNext != null.
+        /// LinkedListNode: Linked list node. Color = LinkedList, ListPrevious/ListNext != null.
         /// </summary>
         public class Node
         {
@@ -59,19 +50,29 @@ namespace Arc.Collection
             public TValue Value { get; internal set; }
 
             /// <summary>
-            /// Gets or sets the parent node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// Gets or sets the parent node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Parent { get; set; }
 
             /// <summary>
-            /// Gets or sets the left node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// Gets or sets the left node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Left { get; set; }
 
             /// <summary>
-            /// Gets or sets the right node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// Gets or sets the right node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
             /// </summary>
             internal Node? Right { get; set; }
+
+            /// <summary>
+            /// Gets or sets the previous linked list node (doubly-Linked circular list).
+            /// </summary>
+            internal Node? ListPrevious { get; set; }
+
+            /// <summary>
+            /// Gets or sets the next linked list node (doubly-Linked circular list).
+            /// </summary>
+            internal Node? ListNext { get; set; }
 
             /// <summary>
             /// Gets or sets the color of the node.
@@ -79,52 +80,80 @@ namespace Arc.Collection
             internal NodeColor Color { get; set; }
 
             /// <summary>
-            /// Gets the previous node in the <see cref="OrderedMap{TKey, TValue}"/>.
+            /// Gets the previous node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
             /// <br/>O(log n) operation.
             /// </summary>
             public Node? Previous
             {
                 get
                 {
-                    Node? node;
-                    if (this.Left == null)
-                    {
-                        node = this;
-                        Node? p = this.Parent;
-                        while (p != null && node == p.Left)
-                        {
-                            node = p;
-                            p = p.Parent;
-                        }
-
-                        return p;
+                    if (this.IsLinkedListNode)
+                    {// LinkedListNode
+                        return this.ListPrevious;
                     }
                     else
-                    {
-                        node = this.Left;
-                        while (node.Right != null)
+                    {// SingleNode or HeadNode
+                        Node? node;
+                        if (this.Left == null)
                         {
-                            node = node.Right;
-                        }
+                            node = this;
+                            Node? p = this.Parent;
+                            while (p != null && node == p.Left)
+                            {
+                                node = p;
+                                p = p.Parent;
+                            }
 
-                        return node;
+                            return p == null ? null : (p.IsSingleNode ? p : p.ListPrevious); // Last node (ListPrevious) if p is a HeadNode.
+                        }
+                        else
+                        {
+                            node = this.Left;
+                            while (node.Right != null)
+                            {
+                                node = node.Right;
+                            }
+
+                            return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
+                        }
                     }
                 }
             }
 
             /// <summary>
-            /// Gets the next node in the <see cref="OrderedMap{TKey, TValue}"/>
+            /// Gets the next node in the <see cref="OrderedMultiMap{TKey, TValue}"/>
             /// <br/>O(log n) operation.
             /// </summary>
             public Node? Next
             {
                 get
                 {
+                    Node treeNode;
+                    if (this.IsSingleNode)
+                    {// SingleNode
+                        treeNode = this;
+                    }
+                    else if (this.IsLinkedListNode)
+                    {// LinkedListNode
+                        if (this.ListNext!.IsLinkedListNode)
+                        {// Next LinkedListNode
+                            return this.ListNext;
+                        }
+                        else
+                        {// HeadNode -> Next tree node
+                            treeNode = this.ListNext;
+                        }
+                    }
+                    else
+                    {// HeadNode
+                        return this.ListNext;
+                    }
+
                     Node? node;
-                    if (this.Right == null)
+                    if (treeNode.Right == null)
                     {
-                        node = this;
-                        Node? p = this.Parent;
+                        node = treeNode;
+                        Node? p = treeNode.Parent;
                         while (p != null && node == p.Right)
                         {
                             node = p;
@@ -135,7 +164,7 @@ namespace Arc.Collection
                     }
                     else
                     {
-                        node = this.Right;
+                        node = treeNode.Right;
                         while (node.Left != null)
                         {
                             node = node.Left;
@@ -158,7 +187,9 @@ namespace Arc.Collection
 
             internal bool IsUnused => this.Color == NodeColor.Unused;
 
-            internal bool IsLinkedList => this.Color == NodeColor.LinkedList;
+            internal bool IsLinkedListNode => this.Color == NodeColor.LinkedList;
+
+            internal bool IsSingleNode => this.ListPrevious == null;
 
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
@@ -173,6 +204,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
+                this.ListPrevious = null;
+                this.ListNext = null;
                 this.Color = NodeColor.Unused;
             }
 
@@ -183,6 +216,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
+                this.ListPrevious = null;
+                this.ListNext = null;
                 this.Color = color;
             }
         }
@@ -195,7 +230,7 @@ namespace Arc.Collection
         private ValueCollection? values;
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
         /// </summary>
         public int Count { get; private set; }
 
@@ -204,39 +239,39 @@ namespace Arc.Collection
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
         /// </summary>
-        public OrderedMap()
+        public OrderedMultiMap()
         {
             this.Comparer = Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IComparer<TKey> comparer)
+        public OrderedMultiMap(IComparer<TKey> comparer)
         {
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary)
+        public OrderedMultiMap(IDictionary<TKey, TValue> dictionary)
             : this(dictionary, Comparer<TKey>.Default)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+        /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
+        public OrderedMultiMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
         {
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
@@ -248,7 +283,8 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Gets the first node in the <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Gets the first node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
         /// </summary>
         public Node? First
         {
@@ -270,7 +306,8 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Gets the last node in the <see cref="OrderedMap{TKey, TValue}"/>. O(log n) operation.
+        /// Gets the last node in the <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// <br/>O(log n) operation.
         /// </summary>
         public Node? Last
         {
@@ -287,7 +324,7 @@ namespace Arc.Collection
                     node = node.Right;
                 }
 
-                return node;
+                return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
             }
         }
 
@@ -304,14 +341,14 @@ namespace Arc.Collection
             internal const int KeyValuePair = 1;
             internal const int DictEntry = 2;
 
-            private readonly OrderedMap<TKey, TValue> map;
+            private readonly OrderedMultiMap<TKey, TValue> map;
             private readonly int version;
             private readonly int getEnumeratorRetType;
             private Node? node;
             private TKey? key;
             private TValue? value;
 
-            internal Enumerator(OrderedMap<TKey, TValue> set, int getEnumeratorRetType)
+            internal Enumerator(OrderedMultiMap<TKey, TValue> set, int getEnumeratorRetType)
             {
                 this.map = set;
                 this.version = this.map.version;
@@ -551,25 +588,11 @@ namespace Arc.Collection
 
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
-        {
-            var node = this.FindNode(item.Key);
-            return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
-        }
+        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => this.FindNode(item.Key, item.Value) != null;
 
         void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
-        {
-            var node = this.FindNode(item.Key);
-            if (node == null || !EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
-            {
-                return false;
-            }
-
-            this.RemoveNode(node);
-            return true;
-        }
+        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => this.Remove(item.Key, item.Value);
 
         #endregion
 
@@ -581,9 +604,9 @@ namespace Arc.Collection
 
         public sealed class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>
         {
-            private readonly OrderedMap<TKey, TValue> map;
+            private readonly OrderedMultiMap<TKey, TValue> map;
 
-            public KeyCollection(OrderedMap<TKey, TValue> map)
+            public KeyCollection(OrderedMultiMap<TKey, TValue> map)
             {
                 if (map == null)
                 {
@@ -695,7 +718,7 @@ namespace Arc.Collection
             {
                 private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
 
-                internal Enumerator(OrderedMap<TKey, TValue> map)
+                internal Enumerator(OrderedMultiMap<TKey, TValue> map)
                 {
                     this.mapEnum = map.GetEnumerator();
                 }
@@ -714,9 +737,9 @@ namespace Arc.Collection
 
         public sealed class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>
         {
-            private readonly OrderedMap<TKey, TValue> map;
+            private readonly OrderedMultiMap<TKey, TValue> map;
 
-            public ValueCollection(OrderedMap<TKey, TValue> map)
+            public ValueCollection(OrderedMultiMap<TKey, TValue> map)
             {
                 if (map == null)
                 {
@@ -831,7 +854,7 @@ namespace Arc.Collection
             {
                 private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
 
-                internal Enumerator(OrderedMap<TKey, TValue> map)
+                internal Enumerator(OrderedMultiMap<TKey, TValue> map)
                 {
                     this.mapEnum = map.GetEnumerator();
                 }
@@ -856,7 +879,7 @@ namespace Arc.Collection
         {
             get
             {
-                var node = this.FindNode(key);
+                var node = this.FindFirstNode(key);
                 if (node == null)
                 {
                     throw new KeyNotFoundException();
@@ -867,19 +890,11 @@ namespace Arc.Collection
 
             set
             {
-                var node = this.FindNode(key);
-                if (node == null)
-                {
-                    this.Add(key, value);
-                }
-                else
-                {
-                    node.Value = value;
-                }
+                this.Add(key, value);
             }
         }
 
-        public bool ContainsKey(TKey? key) => this.FindNode(key) != null;
+        public bool ContainsKey(TKey? key) => this.FindFirstNode(key) != null;
 
         public bool ContainsValue(TValue value)
         {
@@ -927,7 +942,7 @@ namespace Arc.Collection
                 throw new ArgumentNullException(nameof(key));
             }
 
-            var node = this.FindNode(key);
+            var node = this.FindFirstNode(key);
             if (node == null)
             {
                 value = default;
@@ -956,14 +971,35 @@ namespace Arc.Collection
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
 
         /// <summary>
-        /// Removes a specified item from a collection.
+        /// Removes the first element with the specified key from a collection.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="key">The element to remove.</param>
+        /// <param name="key">The key of the element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Remove(TKey? key)
         {
-            var p = this.FindNode(key);
+            var p = this.FindFirstNode(key);
+            if (p == null)
+            {
+                return false;
+            }
+
+            this.RemoveNode(p);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes the first element with the specified key/value from a collection.
+        /// <br/>O(log n) operation (worst case O(n)).
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <param name="value">The value of the element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(TKey key, TValue value)
+        {
+            var p = this.FindNode(key, value);
             if (p == null)
             {
                 return false;
@@ -979,8 +1015,8 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// newlyAdded:true if the new key is inserted.</returns>
         public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
@@ -990,37 +1026,15 @@ namespace Arc.Collection
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// newlyAdded: true if the new key is inserted.</returns>
         public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
-
-        /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
-        /// <br/>O(log n) operation.
-        /// </summary>
-        /// <param name="key">The key of the element to add.</param>
-        /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// replaced: true if the node is replaced.</returns>
-        public (Node node, bool replaced) Replace(TKey key, TValue value)
-        {
-            var result = this.Probe(key, value, null);
-            if (result.newlyAdded)
-            {// New
-                return (result.node, false);
-            }
-
-            // Replace
-            this.version++;
-            result.node.Value = value;
-            return (result.node, true);
-        }
 
         /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="node">The <see cref="OrderedMultiMap{TKey, TValue}.Node"/> to replace.</param>
         /// <param name="key">The key to set.</param>
         /// <returns>true if the node is replaced.</returns>
         public bool ReplaceNode(Node node, TKey key)
@@ -1037,10 +1051,10 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Removes a specified node from the collection"/>.
+        /// Removes a specified node from the collection.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
+        /// <param name="node">The <see cref="OrderedMultiMap{TKey, TValue}.Node"/> to remove.</param>
         public void RemoveNode(Node node)
         {
             Node? f; // Node to fix.
@@ -1052,6 +1066,58 @@ namespace Arc.Collection
                 return;
             }
 
+            this.version++;
+            this.Count--;
+
+            if (node.Color == NodeColor.LinkedList)
+            {// LinkedListNode
+                node.ListPrevious!.ListNext = node.ListNext;
+                node.ListNext!.ListPrevious = node.ListPrevious;
+
+                var headNode = node.ListNext;
+                if (headNode == headNode.ListNext)
+                {// HeadNode to SingleNode
+                    Debug.Assert(!headNode.IsLinkedListNode, "The last node must be a HeadNode.");
+                    headNode.ListPrevious = null;
+                    headNode.ListNext = null;
+                }
+
+                node.Clear();
+                return;
+            }
+            else if (!node.IsSingleNode)
+            {// HeadNode
+                node.ListPrevious!.ListNext = node.ListNext;
+                node.ListNext!.ListPrevious = node.ListPrevious;
+
+                // LinkedListNode to HeadNode
+                var listNode = node.ListNext;
+                listNode.Color = node.Color;
+                this.TransplantNode(listNode, node);
+                listNode.Left = node.Left;
+                if (listNode.Left != null)
+                {
+                    listNode.Left.Parent = listNode;
+                }
+
+                listNode.Right = node.Right;
+                if (listNode.Right != null)
+                {
+                    listNode.Right.Parent = listNode;
+                }
+
+                if (listNode.ListNext == listNode)
+                {// HeadNode to SingleNode
+                    Debug.Assert(!listNode.IsLinkedListNode, "The last node must be a HeadNode.");
+                    listNode.ListPrevious = null;
+                    listNode.ListNext = null;
+                }
+
+                node.Clear();
+                return;
+            }
+
+            // SingleNode
             f = node.Parent;
             if (node.Parent == null)
             {
@@ -1065,9 +1131,6 @@ namespace Arc.Collection
             {
                 dir = 1;
             }
-
-            this.version++;
-            this.Count--;
 
             if (node.Left == null)
             {
@@ -1222,13 +1285,13 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches a tree for the specific value.
+        /// Searches a tree for the first node with the specific value.
         /// </summary>
         /// <param name="target">The node to search.</param>
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        private (int cmp, Node? leaf) SearchNode(Node? target, TKey? key)
+        private (int cmp, Node? leaf) SearchFirstNode(Node? target, TKey? key)
         {
             Node? x = target;
             Node? p = null;
@@ -1253,6 +1316,8 @@ namespace Arc.Collection
                         x = x.Left;
                     }
                 }
+
+                return (cmp, p);
             }
             else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
             {// IComparable<TKey>
@@ -1301,15 +1366,58 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for a <see cref="OrderedMap{TKey, TValue}.Node"/> with the specified value.
+        /// Searches for the first <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key.
         /// </summary>
-        /// <param name="key">The value to search in a collection.</param>
-        /// <returns>The node with the specified value.</returns>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The first node with the specified key.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Node? FindNode(TKey? key)
+        public Node? FindFirstNode(TKey? key)
         {
-            var result = this.SearchNode(this.root, key);
+            var result = this.SearchFirstNode(this.root, key);
             return result.cmp == 0 ? result.leaf : null;
+        }
+
+        /// <summary>
+        /// Searches for a <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key/value.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <param name="value">The value to search in a collection.</param>
+        /// <returns>The node with the specified key/value.</returns>
+        public Node? FindNode(TKey? key, TValue value)
+        {
+            var result = this.SearchFirstNode(this.root, key);
+            if (result.cmp != 0 || result.leaf == null)
+            {// Not found
+                return null;
+            }
+
+            var node = result.leaf;
+            if (node.IsSingleNode)
+            {// SingleNode
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    return node;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            // HeadNode
+            while (true)
+            {
+                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
+                {
+                    return node;
+                }
+
+                node = node.ListNext!;
+                if (!node.IsLinkedListNode)
+                {// HeadNode
+                    return null;
+                }
+            }
         }
 
         /// <summary>
@@ -1317,19 +1425,15 @@ namespace Arc.Collection
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
+        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// newlyAdded: true if the new key is inserted.</returns>
         private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.
             int cmp = 0;
 
-            (cmp, p) = this.SearchNode(this.root, key);
-            if (cmp == 0 && p != null)
-            {// Found
-                return (p, false);
-            }
+            (cmp, p) = this.SearchFirstNode(this.root, key);
 
             this.version++;
             this.Count++;
@@ -1343,6 +1447,27 @@ namespace Arc.Collection
             else
             {
                 n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
+            }
+
+            if (cmp == 0 && p != null)
+            {// Found. p is SingleNode or HeadNode.
+                n.Color = NodeColor.LinkedList;
+                if (p.IsSingleNode)
+                {// SingleNode
+                    p.ListPrevious = n;
+                    p.ListNext = n;
+                    n.ListPrevious = p;
+                    n.ListNext = p;
+                }
+                else
+                {// HeadNode
+                    n.ListPrevious = p.ListPrevious;
+                    n.ListNext = p;
+                    p.ListPrevious!.ListNext = n;
+                    p.ListPrevious = n;
+                }
+
+                return (n, false);
             }
 
             n.Parent = p;
@@ -1423,119 +1548,6 @@ namespace Arc.Collection
 
             this.root!.ColorBlack();
             return (n, true);
-        }
-
-        #endregion
-
-        #region Validation
-
-        /// <summary>
-        /// Validate Red-Black Tree.
-        /// </summary>
-        /// <returns>true if the tree is valid.</returns>
-        public bool Validate()
-        {
-            bool result = true;
-            result &= this.ValidateBST(this.root);
-            result &= this.ValidateBlackHeight(this.root) >= 0;
-            result &= this.ValidateColor(this.root) == NodeColor.Black;
-
-            return result;
-        }
-
-        private NodeColor ValidateColor(Node? node)
-        {
-            if (node == null)
-            {
-                return NodeColor.Black;
-            }
-
-            var color = node.Color;
-            var leftColor = this.ValidateColor(node.Left);
-            var rightColor = this.ValidateColor(node.Right);
-            if (leftColor == NodeColor.Unused || rightColor == NodeColor.Unused)
-            { // Error
-                return NodeColor.Unused;
-            }
-
-            if (color == NodeColor.Black)
-            {
-                return color;
-            }
-            else if (color == NodeColor.Red && leftColor == NodeColor.Black && rightColor == NodeColor.Black)
-            {
-                return color;
-            }
-
-            return NodeColor.Unused; // Error
-        }
-
-        private int ValidateBlackHeight(Node? node)
-        {
-            if (node == null)
-            {
-                return 0;
-            }
-
-            int leftHeight = this.ValidateBlackHeight(node.Left);
-            int rightHeight = this.ValidateBlackHeight(node.Right);
-            if (leftHeight < 0 || rightHeight < 0 || leftHeight != rightHeight)
-            {// Invalid
-                return -1;
-            }
-
-            return leftHeight + (node.IsBlack ? 1 : 0);
-        }
-
-        private bool ValidateBST(Node? node)
-        {// Binary Search Tree
-            if (node == null)
-            {
-                return true;
-            }
-
-            bool result = true;
-
-            if (node.Parent == null)
-            {
-                result &= this.root == node;
-            }
-
-            if (node.Left != null)
-            {
-                result &= node.Left.Parent == node;
-            }
-
-            if (node.Right != null)
-            {
-                result &= node.Right.Parent == node;
-            }
-
-            result &= this.IsSmaller(node.Left, node.Key) && this.IsLarger(node.Right, node.Key);
-            result &= this.ValidateBST(node.Left) && this.ValidateBST(node.Right);
-            return result;
-        }
-
-        private bool IsSmaller(Node? node, TKey key)
-        {// Node value is smaller than TKey value.
-            if (node == null)
-            {
-                return true;
-            }
-
-            var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-            return cmp == -1 && this.IsSmaller(node.Left, key) && this.IsSmaller(node.Right, key);
-        }
-
-        private bool IsLarger(Node? node, TKey key)
-        {// Node value is larger than TKey value.
-            if (node == null)
-            {
-                return true;
-            }
-
-            var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-            return cmp == 1 && this.IsLarger(node.Left, key) && this.IsLarger(node.Right, key);
         }
 
         #endregion

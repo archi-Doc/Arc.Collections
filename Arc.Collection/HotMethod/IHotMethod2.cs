@@ -25,5 +25,14 @@ namespace Arc.Collection.HotMethod
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
         (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key);
+
+        /// <summary>
+        /// Searches a tree for the node with the specific value.
+        /// </summary>
+        /// <param name="target">The node to search.</param>
+        /// <param name="key">The value to search for.</param>
+        /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
+        /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
+        (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
     }
 }
