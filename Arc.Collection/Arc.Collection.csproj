@@ -11,7 +11,7 @@
     <PackageId>Arc.Collection</PackageId>
     <Authors>archi-Doc</Authors>
     <Product>Arc.Collection</Product>
-    <Description>C# Collection library</Description>
+    <Description>A fast C# Collection Library including List, LinkedList, OrderedMap/Set (Red-black tree), OrderedMultiMap/Set.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/archi-Doc/Arc.Collection</PackageProjectUrl>
     <RepositoryUrl>https://github.com/archi-Doc/Arc.Collection</RepositoryUrl>
