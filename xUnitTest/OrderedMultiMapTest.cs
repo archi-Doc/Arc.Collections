@@ -35,6 +35,7 @@ namespace xUnitTest
                 list.Add(x, y);
                 mm.Add(x, y);
                 mm.SequenceEqual(list).IsTrue();
+                mm.SequenceEqual(TestHelper.ToReverseArray(mm)).IsTrue();
             }
 
             void RemoveAndValidate(int x, int y)
@@ -42,6 +43,7 @@ namespace xUnitTest
                 list.Remove(x, y);
                 mm.Remove(x, y);
                 mm.SequenceEqual(list).IsTrue();
+                mm.SequenceEqual(TestHelper.ToReverseArray(mm)).IsTrue();
             }
         }
 
@@ -99,6 +101,7 @@ namespace xUnitTest
             }
 
             mm.SequenceEqual(om).IsTrue();
+            mm.SequenceEqual(TestHelper.ToReverseArray(mm)).IsTrue();
             if (branch != 1)
             {
                 mm.Count.Is(0);

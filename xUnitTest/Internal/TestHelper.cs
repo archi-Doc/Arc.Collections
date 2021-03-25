@@ -94,41 +94,19 @@ namespace xUnitTest
             }
         }
 
-        public static bool SequenceEqual<TSource>(IEnumerable<TSource> first, IEnumerable<TSource> second, IEqualityComparer<TSource>? comparer = null)
+        public static KeyValuePair<TKey, TValue>[] ToReverseArray<TKey, TValue>(OrderedMultiMap<TKey, TValue> map)
         {
-            if (comparer == null)
+            var list = new KeyValuePair<TKey, TValue>[map.Count];
+            var n = map.Count - 1;
+            var node = map.Last;
+            while( node != null)
             {
-                comparer = EqualityComparer<TSource>.Default;
+                list[n--] = new KeyValuePair<TKey, TValue>(node.Key, node.Value);
+                node = node.Previous;
             }
 
-            if (first == null)
-            {
-                throw new ArgumentNullException(nameof(first));
-            }
-
-            if (second == null)
-            {
-                throw new ArgumentNullException(nameof(second));
-            }
-
-            using (var e1 = first.GetEnumerator())
-            using (var e2 = second.GetEnumerator())
-            {
-                while (e1.MoveNext())
-                {
-                    if (!(e2.MoveNext() && comparer.Equals(e1.Current, e2.Current)))
-                    {
-                        return false;
-                    }
-                }
-
-                if (e2.MoveNext())
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            n.Is(-1);
+            return list;
         }
     }
 }

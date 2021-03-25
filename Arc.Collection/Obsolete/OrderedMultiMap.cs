@@ -13,8 +13,7 @@ using Arc.Collection.HotMethod;
 #pragma warning disable SA1202 // Elements should be ordered by access
 
 namespace Arc.Collection
-{
-    /*
+{/*
     /// <summary>
     /// Represents a collection of objects that is maintained in sorted order (Red-Black Tree structure).<br/>
     /// <see cref="OrderedMultiMap{TKey, TValue}"/> can store duplicate keys.
@@ -27,8 +26,7 @@ namespace Arc.Collection
 
         /// <summary>
         /// Represents a node in a <see cref="OrderedMultiMap{TKey, TValue}"/>.
-        /// SingleNode: Tree node. Color = Black or Red, ListPrevious/ListNext = null.
-        /// HeadNode: Tree node and the first node of a linked list. Color = Black or Red, ListPrevious/ListNext != null.
+        /// HeadNode: Tree node and the first node of a linked list. Color = Black or Red, ListPrevious/ListNext != null. (self for SingleHeadNode)
         /// LinkedListNode: Linked list node. Color = LinkedList, ListPrevious/ListNext != null.
         /// </summary>
         public class Node
@@ -68,12 +66,12 @@ namespace Arc.Collection
             /// <summary>
             /// Gets or sets the previous linked list node (doubly-Linked circular list).
             /// </summary>
-            internal Node? ListPrevious { get; set; }
+            internal Node ListPrevious { get; set; } = default!;
 
             /// <summary>
             /// Gets or sets the next linked list node (doubly-Linked circular list).
             /// </summary>
-            internal Node? ListNext { get; set; }
+            internal Node ListNext { get; set; } = default!;
 
             /// <summary>
             /// Gets or sets the color of the node.
@@ -93,7 +91,7 @@ namespace Arc.Collection
                         return this.ListPrevious;
                     }
                     else
-                    {// SingleNode or HeadNode
+                    {// HeadNode
                         Node? node;
                         if (this.Left == null)
                         {
@@ -105,7 +103,8 @@ namespace Arc.Collection
                                 p = p.Parent;
                             }
 
-                            return p == null ? null : (p.IsSingleNode ? p : p.ListPrevious); // Last node (ListPrevious) if p is a HeadNode.
+                            // p is a HeadNode
+                            return p == null ? null : p.ListPrevious; // The last node (ListPrevious)
                         }
                         else
                         {
@@ -115,7 +114,8 @@ namespace Arc.Collection
                                 node = node.Right;
                             }
 
-                            return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
+                            // node is a HeadNode
+                            return node.ListPrevious; // The last node (ListPrevious)
                         }
                     }
                 }
@@ -130,13 +130,13 @@ namespace Arc.Collection
                 get
                 {
                     Node treeNode;
-                    if (this.IsSingleNode)
-                    {// SingleNode
+                    if (this.IsSingleHeadNode)
+                    {// SingleHeadNode
                         treeNode = this;
                     }
                     else if (this.IsLinkedListNode)
                     {// LinkedListNode
-                        if (this.ListNext!.IsLinkedListNode)
+                        if (this.ListNext.IsLinkedListNode)
                         {// Next LinkedListNode
                             return this.ListNext;
                         }
@@ -190,7 +190,7 @@ namespace Arc.Collection
 
             internal bool IsLinkedListNode => this.Color == NodeColor.LinkedList;
 
-            internal bool IsSingleNode => this.ListPrevious == null;
+            internal bool IsSingleHeadNode => this.ListNext == this;
 
             public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
 
@@ -205,8 +205,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
-                this.ListPrevious = null;
-                this.ListNext = null;
+                this.ListPrevious = default!;
+                this.ListNext = default!;
                 this.Color = NodeColor.Unused;
             }
 
@@ -217,8 +217,8 @@ namespace Arc.Collection
                 this.Parent = null;
                 this.Left = null;
                 this.Right = null;
-                this.ListPrevious = null;
-                this.ListNext = null;
+                this.ListPrevious = default!;
+                this.ListNext = default!;
                 this.Color = color;
             }
         }
@@ -325,7 +325,7 @@ namespace Arc.Collection
                     node = node.Right;
                 }
 
-                return node.IsSingleNode ? node : node.ListPrevious; // Last node (ListPrevious) if node is a HeadNode.
+                return node.ListPrevious; // The last node (ListPrevious)
             }
         }
 
@@ -1072,24 +1072,15 @@ namespace Arc.Collection
 
             if (node.Color == NodeColor.LinkedList)
             {// LinkedListNode
-                node.ListPrevious!.ListNext = node.ListNext;
-                node.ListNext!.ListPrevious = node.ListPrevious;
-
-                var headNode = node.ListNext;
-                if (headNode == headNode.ListNext)
-                {// HeadNode to SingleNode
-                    Debug.Assert(!headNode.IsLinkedListNode, "The last node must be a HeadNode.");
-                    headNode.ListPrevious = null;
-                    headNode.ListNext = null;
-                }
-
+                node.ListPrevious.ListNext = node.ListNext;
+                node.ListNext.ListPrevious = node.ListPrevious;
                 node.Clear();
                 return;
             }
-            else if (!node.IsSingleNode)
+            else if (!node.IsSingleHeadNode)
             {// HeadNode
-                node.ListPrevious!.ListNext = node.ListNext;
-                node.ListNext!.ListPrevious = node.ListPrevious;
+                node.ListPrevious.ListNext = node.ListNext;
+                node.ListNext.ListPrevious = node.ListPrevious;
 
                 // LinkedListNode to HeadNode
                 var listNode = node.ListNext;
@@ -1107,18 +1098,11 @@ namespace Arc.Collection
                     listNode.Right.Parent = listNode;
                 }
 
-                if (listNode.ListNext == listNode)
-                {// HeadNode to SingleNode
-                    Debug.Assert(!listNode.IsLinkedListNode, "The last node must be a HeadNode.");
-                    listNode.ListPrevious = null;
-                    listNode.ListNext = null;
-                }
-
                 node.Clear();
                 return;
             }
 
-            // SingleNode
+            // SingleHeadNode
             f = node.Parent;
             if (node.Parent == null)
             {
@@ -1392,20 +1376,8 @@ namespace Arc.Collection
                 return null;
             }
 
-            var node = result.leaf;
-            if (node.IsSingleNode)
-            {// SingleNode
-                if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
-                {
-                    return node;
-                }
-                else
-                {
-                    return null;
-                }
-            }
-
             // HeadNode
+            var node = result.leaf;
             while (true)
             {
                 if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
@@ -1413,7 +1385,7 @@ namespace Arc.Collection
                     return node;
                 }
 
-                node = node.ListNext!;
+                node = node.ListNext;
                 if (!node.IsLinkedListNode)
                 {// HeadNode
                     return null;
@@ -1451,27 +1423,19 @@ namespace Arc.Collection
             }
 
             if (cmp == 0 && p != null)
-            {// Found. p is SingleNode or HeadNode.
+            {// Found. p is a HeadNode.
                 n.Color = NodeColor.LinkedList;
-                if (p.IsSingleNode)
-                {// SingleNode
-                    p.ListPrevious = n;
-                    p.ListNext = n;
-                    n.ListPrevious = p;
-                    n.ListNext = p;
-                }
-                else
-                {// HeadNode
-                    n.ListPrevious = p.ListPrevious;
-                    n.ListNext = p;
-                    p.ListPrevious!.ListNext = n;
-                    p.ListPrevious = n;
-                }
+                n.ListPrevious = p.ListPrevious;
+                n.ListNext = p;
+                p.ListPrevious.ListNext = n;
+                p.ListPrevious = n;
 
                 return (n, false);
             }
 
             n.Parent = p;
+            n.ListPrevious = n;
+            n.ListNext = n;
             if (p != null)
             {
                 if (cmp < 0)
@@ -1636,6 +1600,5 @@ namespace Arc.Collection
         }
 
         #endregion
-    }
-    */
+    }*/
 }

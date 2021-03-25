@@ -28,7 +28,7 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int NewAndAdd_OrderedMap()
+        public int Bench_OrderedMap()
         {
             var m = new OrderedMap<int, int>();
             foreach (var x in this.IntArray)
@@ -41,11 +41,19 @@ namespace Benchmark
                 m.Remove(this.IntArrayShuffled[n]);
             }
 
-            return m.Count;
+            var accum = 0;
+            var node = m.First;
+            while (node != null)
+            {
+                accum += node.Value;
+                node = node.Next;
+            }
+
+            return accum;
         }
 
         [Benchmark]
-        public int NewAndAdd_OrderedMultiMap()
+        public int Bench_OrderedMultiMap()
         {
             var m = new OrderedMultiMap<int, int>();
             foreach (var x in this.IntArray)
@@ -58,11 +66,19 @@ namespace Benchmark
                 m.Remove(this.IntArrayShuffled[n], this.IntArrayShuffled[n]);
             }
 
-            return m.Count;
+            var accum = 0;
+            var node = m.First;
+            while (node != null)
+            {
+                accum += node.Value;
+                node = node.Next;
+            }
+
+            return accum;
         }
 
         [Benchmark]
-        public int NewAndAdd_OrderedKeyValueList()
+        public int Bench_OrderedKeyValueList()
         {
             var m = new OrderedKeyValueList<int, int>();
             foreach (var x in this.IntArray)
@@ -75,7 +91,13 @@ namespace Benchmark
                 m.Remove(this.IntArrayShuffled[n], this.IntArrayShuffled[n]);
             }
 
-            return m.Count;
+            var accum = 0;
+            foreach (var y in m.Values)
+            {
+                accum += y;
+            }
+
+            return accum;
         }
     }
 }
