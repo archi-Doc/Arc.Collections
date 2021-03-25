@@ -17,7 +17,7 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            DebugRun<OrderedSetTest>();
+            DebugRun<OrderedMultiMapTest>();
 
             // var summary = BenchmarkRunner.Run<TestBenchmark>();
             var switcher = new BenchmarkSwitcher(new[]
@@ -29,6 +29,7 @@ namespace Benchmark
                 typeof(BinarySearchTest),
                 typeof(BinarySearchStringTest),
                 typeof(OrderedSetTest),
+                typeof(OrderedMultiMapTest),
             });
             switcher.Run(args);
         }
