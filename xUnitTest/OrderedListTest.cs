@@ -20,7 +20,7 @@ namespace xUnitTest
 
         public int Serial { get; }
 
-        private static int serial;
+        public static int serial;
 
         public int CompareTo(OrderedListClass? other)
         {
@@ -99,6 +99,7 @@ namespace xUnitTest
             ol = new OrderedList<int>(array, OrderedListClass.InternalComparer.Instance);
             ol.SequenceEqual(array.Reverse()).IsTrue();
 
+            OrderedListClass.serial = 0;
             var ol2 = new OrderedList<OrderedListClass>();
             ol2.Add(new OrderedListClass(1)); // 0
             ol2.Add(new OrderedListClass(3)); // 1

@@ -83,6 +83,16 @@ namespace Arc.Collection
         public int Count => this.map.Count;
 
         /// <summary>
+        /// Gets the first node in the <see cref="OrderedMultiSet{T}"/>.
+        /// </summary>
+        public OrderedMultiMap<T, int>.Node? First => this.map.First;
+
+        /// <summary>
+        /// Gets the last node in the <see cref="OrderedMultiSet{T}"/>.
+        /// </summary>
+        public OrderedMultiMap<T, int>.Node? Last => this.map.Last;
+
+        /// <summary>
         /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
