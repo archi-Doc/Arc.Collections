@@ -67,17 +67,6 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 | AddRemoveReplace_OrderedSet | 100       |            11.76 ns |         0.211 ns |         0.289 ns |            11.54 ns |           - |            - |
 | Enumerate_SortedSet         | 100       |         1,664.30 ns |        17.294 ns |        25.349 ns |         1,682.97 ns |      0.0401 |        168 B |
 | Enumerate_OrderedSet        | 100       |         1,218.03 ns |         4.344 ns |         6.230 ns |         1,219.51 ns |      0.0114 |         48 B |
-| **NewAndAdd_SortedSet**     | **10000** | **1,497,938.64 ns** | **4,287.530 ns** | **6,284.605 ns** | **1,494,800.59 ns** | **82.0313** | **400328 B** |
-| NewAndAdd_OrderedSet        | 10000     |     1,231,310.67 ns |     2,496.231 ns |     3,658.942 ns |     1,230,951.37 ns |    101.5625 |     560480 B |
-| NewAndAdd2_SortedSet        | 10000     |     2,229,837.77 ns |     5,179.728 ns |     7,592.379 ns |     2,225,916.99 ns |    125.0000 |     720624 B |
-| NewAndAdd2_OrderedSet       | 10000     |     1,870,890.74 ns |     7,969.192 ns |    10,908.320 ns |     1,877,329.00 ns |    144.5313 |     800720 B |
-| AddRemove_SortedSet         | 10000     |           851.56 ns |        21.362 ns |        31.973 ns |           853.15 ns |      0.0381 |        160 B |
-| AddRemove_OrderedSet        | 10000     |           225.37 ns |         0.335 ns |         0.470 ns |           225.28 ns |      0.0534 |        224 B |
-| AddRemoveNode_OrderedSet    | 10000     |           158.05 ns |         0.329 ns |         0.483 ns |           158.03 ns |      0.0534 |        224 B |
-| AddRemoveReuse_OrderedSet   | 10000     |           147.02 ns |         0.250 ns |         0.366 ns |           146.93 ns |           - |            - |
-| AddRemoveReplace_OrderedSet | 10000     |            11.53 ns |         0.011 ns |         0.017 ns |            11.53 ns |           - |            - |
-| Enumerate_SortedSet         | 10000     |       185,841.88 ns |       173.477 ns |       231.587 ns |       185,827.69 ns |           - |        280 B |
-| Enumerate_OrderedSet        | 10000     |       192,531.52 ns |       708.353 ns |     1,015.899 ns |       192,752.53 ns |           - |         48 B |
 
 
 
@@ -94,6 +83,8 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 | OrderedMultiMap<K, V>  | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
 | OrderedMultiSet<T>     | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
 
-Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
+- Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
+- Multi collection allows duplicate keys.
+- ```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
+  For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless index access is absolutely necessary.
 
-```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations. For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless array access is absolutely necessary.
