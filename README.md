@@ -83,8 +83,8 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 | OrderedMultiMap<K, V>  | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
 | OrderedMultiSet<T>     | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
 
-Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
-
-```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
-For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless array access is absolutely necessary.
+- Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
+- Multi collection allows duplicate keys.
+- ```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
+  For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless index access is absolutely necessary.
 
