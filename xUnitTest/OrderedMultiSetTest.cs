@@ -8,65 +8,6 @@ using System.Linq;
 
 namespace xUnitTest
 {
-    public class OrderedMultiSetClass : IComparable<OrderedMultiSetClass>
-    {
-        public OrderedMultiSetClass(int id)
-        {
-            this.Id = id;
-            this.Serial = serial++;
-        }
-
-        public int Id { get; set; }
-
-        public int Serial { get; }
-
-        private static int serial;
-
-        public int CompareTo(OrderedMultiSetClass? other)
-        {
-            if (other == null)
-            {
-                return 1;
-            }
-
-            if (this.Id < other.Id)
-            {
-                return -1;
-            }
-            else if (this.Id > other.Id)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-
-        public override string ToString() => $"{this.Id} ({this.Serial})";
-
-        public class InternalComparer : IComparer<int>
-        {
-            public static InternalComparer Instance = new();
-
-            public int Compare(int x, int y)
-            {
-                if (x < y)
-                {
-                    return 1;
-                }
-                else if (x > y)
-                {
-                    return -1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-        }
-    }
-
     public class OrderedMultiSetTest
     {
         [Fact]
@@ -82,6 +23,7 @@ namespace xUnitTest
             ms = new OrderedMultiSet<int>(array, OrderedListClass.InternalComparer.Instance);
             ms.SequenceEqual(array.Reverse()).IsTrue();
 
+            OrderedListClass.serial = 0;
             var ms2 = new OrderedMultiSet<OrderedListClass>();
             ms2.Add(new OrderedListClass(1)); // 0
             ms2.Add(new OrderedListClass(3)); // 1
