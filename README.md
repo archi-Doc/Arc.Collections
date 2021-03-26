@@ -96,4 +96,5 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 
 Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
 
-```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations. For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless array access is absolutely necessary.
+```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
+For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless array access is absolutely necessary.
