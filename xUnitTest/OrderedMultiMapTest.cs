@@ -29,6 +29,11 @@ namespace xUnitTest
 
             AddAndValidate(0, 0);
             AddAndValidate(-1, 0);
+            AddAndValidate(1, 2);
+
+            mm.EnumerateNode(-99).Select(x => x.Value).SequenceEqual(new int[] { });
+            mm.EnumerateNode(0).Select(x => x.Value).SequenceEqual(new int[] { 0, });
+            mm.EnumerateNode(1).Select(x => x.Value).SequenceEqual(new int[] { 1, 2, });
 
             void AddAndValidate(int x, int y)
             {

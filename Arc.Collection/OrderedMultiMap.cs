@@ -1421,6 +1421,39 @@ namespace Arc.Collection
         }
 
         /// <summary>
+        /// Enumerates <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The node with the specified key.</returns>
+        public IEnumerable<Node> EnumerateNode(TKey? key)
+        {
+            var result = this.SearchFirstNode(this.root, key);
+            if (result.cmp != 0 || result.leaf == null)
+            {// Not found
+                yield break;
+            }
+
+            var node = result.leaf;
+            if (node.IsSingleNode)
+            {// SingleNode
+                yield return node;
+            }
+            else
+            {// HeadNode
+                while (true)
+                {
+                    yield return node;
+
+                    node = node.ListNext!;
+                    if (!node.IsLinkedListNode)
+                    {// HeadNode
+                        yield break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
         /// <br/>O(log n) operation.
         /// </summary>
