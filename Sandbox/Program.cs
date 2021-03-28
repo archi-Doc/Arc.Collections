@@ -48,7 +48,6 @@ namespace Sandbox
             ol.Add(3, 0);
             ol.Add(1, 1);
 
-
             var om = new OrderedMap<int?, int?>();
             om.Add(2, 0);
             om.Add(3, 0);
