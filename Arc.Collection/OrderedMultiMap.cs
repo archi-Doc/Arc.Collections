@@ -1454,7 +1454,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
+        /// Adds an element to the set.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
@@ -1500,7 +1500,7 @@ namespace Arc.Collection
                     p.ListPrevious = n;
                 }
 
-                return (n, false);
+                return (n, true);
             }
 
             n.Parent = p;
