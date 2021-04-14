@@ -112,11 +112,11 @@ namespace Arc.Collection
             }
         }
 
-        private const int MinimumLog = 4;
+        private const int MinLogCapacity = 4;
         private int version;
-        private Node?[] hashtable = default!;
+        private Node?[] hashTable = default!;
         private Node? nullNode;
-        private int hashmask;
+        private int hashMask;
 
         private void Initialize(int capacity)
         {
@@ -127,7 +127,7 @@ namespace Arc.Collection
 
             if (capacity == 0)
             {
-                this.hashtable = Array.Empty<Node>();
+                this.hashTable = Array.Empty<Node>();
             }
             else
             {
@@ -144,17 +144,17 @@ namespace Arc.Collection
                     log++;
                 }
 
-                if (log < MinimumLog)
+                if (log < MinLogCapacity)
                 {
-                    log = MinimumLog;
+                    log = MinLogCapacity;
                 }
                 else if (log > 31)
                 {
                     log = 31;
                 }
 
-                this.hashtable = new Node[1 << log];
-                this.hashmask = this.hashtable.Length - 1;
+                this.hashTable = new Node[1 << log];
+                this.hashMask = this.hashTable.Length - 1;
             }
         }
 
@@ -165,9 +165,130 @@ namespace Arc.Collection
 
         public IEqualityComparer<TKey> Comparer { get; private set; }
 
-        protected bool AllowMultiple { get; set; }
+        public bool AllowMultiple { get; protected set; }
 
         #region Main
+
+        public TValue this[TKey key]
+        {
+            get
+            {
+                var node = this.FindFirstNode(key);
+                if (node == null)
+                {
+                    throw new KeyNotFoundException();
+                }
+
+                return node.Value;
+            }
+
+            set
+            {
+                var result = this.Add(key, value);
+                if (!result.newlyAdded)
+                {
+                    result.node.Value = value;
+                }
+            }
+        }
+
+        public bool ContainsKey(TKey? key) => this.FindFirstNode(key) != null;
+
+#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
+#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            var node = this.FindFirstNode(key);
+            if (node == null)
+            {
+                value = default;
+                return false;
+            }
+
+            value = node.Value;
+            return true;
+        }
+
+        /// <summary>
+        /// Removes all elements from a collection.
+        /// </summary>
+        public void Clear()
+        {
+            this.version = 0;
+            this.hashTable = Array.Empty<Node>();
+            this.nullNode = null;
+            this.hashMask = 0;
+            this.Count = 0;
+        }
+
+        /// <summary>
+        /// Copies the elements of the collection to the specified array of KeyValuePair structures, starting at the specified index.
+        /// </summary>
+        /// <param name="array">The one-dimensional array of KeyValuePair structures that is the destination of the elements.</param>
+        /// <param name="index">The zero-based index in array at which copying begins.</param>
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
+
+        /// <summary>
+        /// Removes the first element with the specified key from a collection.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="key">The key of the element to remove.</param>
+        /// <returns>true if the element is found and successfully removed.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(TKey? key)
+        {
+            var p = this.FindFirstNode(key);
+            if (p == null)
+            {
+                return false;
+            }
+
+            this.RemoveNode(p);
+            return true;
+        }
+
+        /// <summary>
+        /// Searches for the first <see cref="UnorderedMap{TKey, TValue}.Node"/> with the specified key.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The first node with the specified key.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Node? FindFirstNode(TKey? key)
+        {
+            if (key == null)
+            {
+                return this.nullNode;
+            }
+            else
+            {
+                var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
+                var index = hashCode & this.hashMask;
+                var n = this.hashTable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && this.Comparer.Equals(n.Key, key))
+                    {// Identical
+                        return n;
+                    }
+
+                    if (n == this.hashTable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+
+                return null; // Not found
+            }
+        }
 
         /// <summary>
         /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets newlyAdded to false.
@@ -177,7 +298,7 @@ namespace Arc.Collection
         /// <param name="value">The value of the element to add.</param>
         /// <returns>node: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded:true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.InternalAdd(key, value, null);
+        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
         /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets newlyAdded to false.
@@ -188,19 +309,80 @@ namespace Arc.Collection
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
         /// <returns>node: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.InternalAdd(key, value, reuse);
+        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
+
+        /// <summary>
+        /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="key">The key to set.</param>
+        /// <returns>true if the node is replaced.</returns>
+        public bool ReplaceNode(Node node, TKey key)
+        {
+            if (this.Comparer.Equals(node.Key, key))
+            {// Identical
+                return false;
+            }
+
+            var value = node.Value;
+            this.RemoveNode(node);
+            this.Probe(key, value, node);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a specified node from the collection.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to remove.</param>
+        public void RemoveNode(Node node)
+        {
+            if (node.Key == null)
+            {
+                if (node.Next == node)
+                {
+                    this.nullNode = null;
+                }
+                else
+                {
+                    node.Next!.Previous = node.Previous;
+                    node.Previous!.Next = node.Next;
+                    if (this.nullNode == node)
+                    {
+                        this.nullNode = node.Next;
+                    }
+                }
+            }
+            else
+            {
+                var index = node.HashCode & this.hashMask;
+                if (node.Next == node)
+                {
+                    this.hashTable[index] = null;
+                }
+                else
+                {
+                    node.Next!.Previous = node.Previous;
+                    node.Previous!.Next = node.Next;
+                    if (this.hashTable[index] == node)
+                    {
+                        this.hashTable[index] = node.Next;
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// Adds an element to the map. If the element is already in the map, this method returns the stored node without creating a new node.
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// <returns>node: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the new key is inserted.</returns>
-        private (Node node, bool newlyAdded) InternalAdd(TKey key, TValue value, Node? reuse)
+        private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node newNode;
-
             if (key == null)
             {// Null key
                 if (this.AllowMultiple == false && this.nullNode != null)
@@ -233,19 +415,33 @@ namespace Arc.Collection
             }
             else
             {
-                var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
-                var index = hashCode & this.hashmask;
-                var n = this.hashtable[index];
-                while (n != null)
+                if (this.Count >= (this.hashTable.Length >> 1))
                 {
-                    if (n.HashCode == hashCode && this.Comparer.Equals(n.Key, key))
-                    {// Identical
-                        return (n, false);
-                    }
+                    this.Resize();
+                }
 
-                    n.Value = value;
-                    this.version++;
-                    return (n, false);
+                var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
+                var index = hashCode & this.hashMask;
+                if (!this.AllowMultiple)
+                {
+                    var n = this.hashTable[index];
+                    while (n != null)
+                    {
+                        if (n.HashCode == hashCode && this.Comparer.Equals(n.Key, key))
+                        {// Identical
+                            return (n, false);
+                        }
+
+                        // Next item
+                        if (n == this.hashTable[index])
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            n = n.Next;
+                        }
+                    }
                 }
 
                 if (reuse != null)
@@ -259,19 +455,71 @@ namespace Arc.Collection
                 }
 
                 newNode.HashCode = hashCode;
-                if (this.hashtable[index] == null)
+                if (this.hashTable[index] == null)
                 {
                     newNode.Previous = newNode;
                     newNode.Next = newNode;
-                    this.hashtable[index] = newNode;
+                    this.hashTable[index] = newNode;
                 }
                 else
                 {
-                    this.InternalInsertNodeBefore(this.hashtable[index]!, newNode);
+                    this.InternalInsertNodeBefore(this.hashTable[index]!, newNode);
                 }
 
+                this.version++;
+                this.Count++;
                 return (newNode, true);
             }
+        }
+
+        internal void Resize()
+        {
+            const int minimumCapacity = 1 << MinLogCapacity;
+            var newSize = this.hashTable.Length << 1;
+            if (newSize < minimumCapacity)
+            {
+                newSize = minimumCapacity;
+            }
+
+            var newMask = newSize - 1;
+            var newTable = new Node[newSize];
+            for (var i = 0; i < this.hashTable.Length; i++)
+            {
+                var n = this.hashTable[i];
+                while (n != null)
+                {
+                    // Add
+                    var i2 = n.HashCode & newMask;
+                    if (newTable[i2] == null)
+                    {
+                        n.Previous = n;
+                        n.Next = n;
+                        newTable[i2] = n;
+                    }
+                    else
+                    {
+                        n.Next = this.hashTable[i2];
+                        n.Previous = this.hashTable[i2]!.Previous;
+                        this.hashTable[i2]!.Previous!.Next = n;
+                        this.hashTable[i2]!.Previous = n;
+                    }
+
+                    // Next item
+                    if (n == this.hashTable[i])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            // New table
+            this.hashTable = newTable;
+            this.hashMask = newMask;
+            this.version++;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -281,8 +529,6 @@ namespace Arc.Collection
             newNode.Previous = node.Previous;
             node.Previous!.Next = newNode;
             node.Previous = newNode;
-            this.version++;
-            this.Count++;
         }
 
         #endregion
