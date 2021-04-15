@@ -178,6 +178,39 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<<#= t.Simple #>, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<<#= t.Simple #>, TValue>.Node?[] hashtable, <#= t.Simple #> key)
+        {
+<# if (t.Simple == "float" || t.Simple == "double" || t.Simple == "DateTime") { #>
+            var hashCode = key.GetHashCode();
+<# } else { #>
+            var hashCode = (int)key;
+<# } #>
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 <# } #>
 }

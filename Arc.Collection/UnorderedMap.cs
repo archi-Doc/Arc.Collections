@@ -264,7 +264,8 @@ namespace Arc.Collection
             {// HotMethod is available for value type (key is not null).
                 return this.HotMethod2.SearchHashtable(this.hashTable, key!);
             }
-            else */if (key == null)
+            else */
+            if (key == null)
             {
                 return this.nullNode;
             }
@@ -375,6 +376,9 @@ namespace Arc.Collection
                     }
                 }
             }
+
+            this.version++;
+            this.Count--;
         }
 
         /// <summary>
@@ -386,8 +390,46 @@ namespace Arc.Collection
         /// newlyAdded: true if the new key is inserted.</returns>
         private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
+            if (this.Count >= (this.hashTable.Length >> 1))
+            {
+                this.Resize();
+            }
+
             Node newNode;
-            if (key == null)
+            /*if (this.HotMethod2 != null)
+            {// HotMethod is available for value type (key is not null).
+                (var node, var hashCode, var index) = this.HotMethod2.Probe(this.AllowMultiple, this.hashTable, key!);
+                if (!this.AllowMultiple && node != null)
+                {
+                    return (node, false);
+                }
+
+                if (reuse != null)
+                {
+                    reuse.Reset(hashCode, key, value);
+                    newNode = reuse;
+                }
+                else
+                {
+                    newNode = new Node(hashCode, key, value);
+                }
+
+                if (this.hashTable[index] == null)
+                {
+                    newNode.Previous = newNode;
+                    newNode.Next = newNode;
+                    this.hashTable[index] = newNode;
+                }
+                else
+                {
+                    this.InternalInsertNodeBefore(this.hashTable[index]!, newNode);
+                }
+
+                this.version++;
+                this.Count++;
+                return (newNode, true);
+            }
+            else */if (key == null)
             {// Null key
                 if (this.AllowMultiple == false && this.nullNode != null)
                 {
@@ -419,11 +461,6 @@ namespace Arc.Collection
             }
             else
             {
-                if (this.Count >= (this.hashTable.Length))
-                {
-                    this.Resize();
-                }
-
                 var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
                 var index = hashCode & this.hashMask;
                 if (!this.AllowMultiple)

@@ -155,6 +155,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<byte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<byte, TValue>.Node?[] hashtable, byte key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class Int8Method : IHotMethod<sbyte>
@@ -301,6 +330,35 @@ namespace Arc.Collection.HotMethod
             }
 
             return null; // Not found
+        }
+
+        public (UnorderedMap<sbyte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<sbyte, TValue>.Node?[] hashtable, sbyte key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
         }
     }
 
@@ -449,6 +507,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<ushort, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<ushort, TValue>.Node?[] hashtable, ushort key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class Int16Method : IHotMethod<short>
@@ -595,6 +682,35 @@ namespace Arc.Collection.HotMethod
             }
 
             return null; // Not found
+        }
+
+        public (UnorderedMap<short, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<short, TValue>.Node?[] hashtable, short key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
         }
     }
 
@@ -743,6 +859,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<uint, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<uint, TValue>.Node?[] hashtable, uint key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class Int32Method : IHotMethod<int>
@@ -889,6 +1034,35 @@ namespace Arc.Collection.HotMethod
             }
 
             return null; // Not found
+        }
+
+        public (UnorderedMap<int, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<int, TValue>.Node?[] hashtable, int key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
         }
     }
 
@@ -1037,6 +1211,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<ulong, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<ulong, TValue>.Node?[] hashtable, ulong key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class Int64Method : IHotMethod<long>
@@ -1183,6 +1386,35 @@ namespace Arc.Collection.HotMethod
             }
 
             return null; // Not found
+        }
+
+        public (UnorderedMap<long, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<long, TValue>.Node?[] hashtable, long key)
+        {
+            var hashCode = (int)key;
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
         }
     }
 
@@ -1331,6 +1563,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<float, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<float, TValue>.Node?[] hashtable, float key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class DoubleMethod : IHotMethod<double>
@@ -1478,6 +1739,35 @@ namespace Arc.Collection.HotMethod
 
             return null; // Not found
         }
+
+        public (UnorderedMap<double, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<double, TValue>.Node?[] hashtable, double key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
+        }
     }
 
     public sealed class DateTimeMethod : IHotMethod<DateTime>
@@ -1624,6 +1914,35 @@ namespace Arc.Collection.HotMethod
             }
 
             return null; // Not found
+        }
+
+        public (UnorderedMap<DateTime, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<DateTime, TValue>.Node?[] hashtable, DateTime key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            if (!allowMultiple)
+            {
+                var n = hashtable[index];
+                while (n != null)
+                {
+                    if (n.HashCode == hashCode && n.Key == key)
+                    {// Identical
+                        return (n, hashCode, index);
+                    }
+
+                    // Next item
+                    if (n == hashtable[index])
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        n = n.Next;
+                    }
+                }
+            }
+
+            return (null, hashCode, index);
         }
     }
 }
