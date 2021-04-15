@@ -130,6 +130,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<byte, TValue>.Node? SearchHashtable(UnorderedMap<byte, TValue>.Node?[] hashtable, byte key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class Int8Method : IHotMethod<sbyte>
@@ -251,6 +276,31 @@ namespace Arc.Collection.HotMethod
             }
 
             return (cmp, p);
+        }
+
+        public UnorderedMap<sbyte, TValue>.Node? SearchHashtable(UnorderedMap<sbyte, TValue>.Node?[] hashtable, sbyte key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
         }
     }
 
@@ -374,6 +424,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<ushort, TValue>.Node? SearchHashtable(UnorderedMap<ushort, TValue>.Node?[] hashtable, ushort key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class Int16Method : IHotMethod<short>
@@ -495,6 +570,31 @@ namespace Arc.Collection.HotMethod
             }
 
             return (cmp, p);
+        }
+
+        public UnorderedMap<short, TValue>.Node? SearchHashtable(UnorderedMap<short, TValue>.Node?[] hashtable, short key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
         }
     }
 
@@ -618,6 +718,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<uint, TValue>.Node? SearchHashtable(UnorderedMap<uint, TValue>.Node?[] hashtable, uint key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class Int32Method : IHotMethod<int>
@@ -739,6 +864,31 @@ namespace Arc.Collection.HotMethod
             }
 
             return (cmp, p);
+        }
+
+        public UnorderedMap<int, TValue>.Node? SearchHashtable(UnorderedMap<int, TValue>.Node?[] hashtable, int key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
         }
     }
 
@@ -862,6 +1012,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<ulong, TValue>.Node? SearchHashtable(UnorderedMap<ulong, TValue>.Node?[] hashtable, ulong key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class Int64Method : IHotMethod<long>
@@ -983,6 +1158,31 @@ namespace Arc.Collection.HotMethod
             }
 
             return (cmp, p);
+        }
+
+        public UnorderedMap<long, TValue>.Node? SearchHashtable(UnorderedMap<long, TValue>.Node?[] hashtable, long key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
         }
     }
 
@@ -1106,6 +1306,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<float, TValue>.Node? SearchHashtable(UnorderedMap<float, TValue>.Node?[] hashtable, float key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class DoubleMethod : IHotMethod<double>
@@ -1228,6 +1453,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<double, TValue>.Node? SearchHashtable(UnorderedMap<double, TValue>.Node?[] hashtable, double key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 
     public sealed class DateTimeMethod : IHotMethod<DateTime>
@@ -1349,6 +1599,31 @@ namespace Arc.Collection.HotMethod
             }
 
             return (cmp, p);
+        }
+
+        public UnorderedMap<DateTime, TValue>.Node? SearchHashtable(UnorderedMap<DateTime, TValue>.Node?[] hashtable, DateTime key)
+        {
+            var hashCode = key.GetHashCode();
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && n.Key == key)
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
         }
     }
 }

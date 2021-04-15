@@ -60,6 +60,8 @@ namespace Arc.Collection
             /// </summary>
             public TValue Value { get; internal set; }
 
+            public override string ToString() => this.Key?.ToString() + " - " + this.Value?.ToString();
+
             internal void Reset(int hashCode, TKey key, TValue value)
             {
                 this.HashCode = hashCode;
@@ -91,6 +93,7 @@ namespace Arc.Collection
         {
             this.Initialize(capacity);
             this.Comparer = comparer ?? EqualityComparer<TKey>.Default;
+            this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
         public UnorderedMap(IDictionary<TKey, TValue> dictionary)
@@ -164,6 +167,8 @@ namespace Arc.Collection
         public int Count { get; private set; }
 
         public IEqualityComparer<TKey> Comparer { get; private set; }
+
+        public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
         public bool AllowMultiple { get; protected set; }
 
@@ -260,7 +265,11 @@ namespace Arc.Collection
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Node? FindFirstNode(TKey? key)
         {
-            if (key == null)
+            if (this.HotMethod2 != null)
+            {// HotMethod is available for value type (key is not null).
+                return this.HotMethod2.SearchHashtable(this.hashTable, key!);
+            }
+            else if (key == null)
             {
                 return this.nullNode;
             }
@@ -485,33 +494,35 @@ namespace Arc.Collection
             var newTable = new Node[newSize];
             for (var i = 0; i < this.hashTable.Length; i++)
             {
-                var n = this.hashTable[i];
-                while (n != null)
+                var node = this.hashTable[i];
+                while (node != null)
                 {
+                    var nodeNext = node.Next;
+
                     // Add
-                    var i2 = n.HashCode & newMask;
+                    var i2 = node.HashCode & newMask;
                     if (newTable[i2] == null)
                     {
-                        n.Previous = n;
-                        n.Next = n;
-                        newTable[i2] = n;
+                        node.Previous = node;
+                        node.Next = node;
+                        newTable[i2] = node;
                     }
                     else
                     {
-                        n.Next = this.hashTable[i2];
-                        n.Previous = this.hashTable[i2]!.Previous;
-                        this.hashTable[i2]!.Previous!.Next = n;
-                        this.hashTable[i2]!.Previous = n;
+                        node.Next = this.hashTable[i2];
+                        node.Previous = this.hashTable[i2]!.Previous;
+                        this.hashTable[i2]!.Previous!.Next = node;
+                        this.hashTable[i2]!.Previous = node;
                     }
 
                     // Next item
-                    if (n == this.hashTable[i])
+                    if (nodeNext == this.hashTable[i])
                     {
                         break;
                     }
                     else
                     {
-                        n = n.Next;
+                        node = nodeNext;
                     }
                 }
             }

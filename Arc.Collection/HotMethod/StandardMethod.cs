@@ -96,5 +96,31 @@ namespace Arc.Collection.HotMethod
 
             return (cmp, p);
         }
+
+        public UnorderedMap<TKey, TValue>.Node? SearchHashtable(UnorderedMap<TKey, TValue>.Node?[] hashtable, TKey key)
+        {
+            var ec = EqualityComparer<TKey>.Default;
+            var hashCode = key == null ? 0 : ec.GetHashCode(key);
+            var index = hashCode & (hashtable.Length - 1);
+            var n = hashtable[index];
+            while (n != null)
+            {
+                if (n.HashCode == hashCode && ec.Equals(n.Key, key))
+                {// Identical
+                    return n;
+                }
+
+                if (n == hashtable[index])
+                {
+                    break;
+                }
+                else
+                {
+                    n = n.Next;
+                }
+            }
+
+            return null; // Not found
+        }
     }
 }
