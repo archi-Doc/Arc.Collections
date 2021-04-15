@@ -50,7 +50,7 @@ namespace Benchmark
             var n = total;
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddSerialInt_Dictionary()
         {
             var c = new Dictionary<int, int>();
@@ -74,7 +74,7 @@ namespace Benchmark
             return c.Count;
         }
 
-        [Benchmark]
+        /*[Benchmark]
         public int AndInt_UnorderedMapReuse()
         {
             var c = new UnorderedMap<int, int>();
@@ -110,7 +110,7 @@ namespace Benchmark
             return c.Count;
         }*/
 
-        [Benchmark]
+        /*[Benchmark]
         public int GetRandomInt_Dictionary()
         {
             var total = 0;
@@ -138,7 +138,7 @@ namespace Benchmark
             }
 
             return total;
-        }
+        }*/
 
 
         /*[Benchmark]
