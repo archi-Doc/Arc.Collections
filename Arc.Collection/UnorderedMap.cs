@@ -419,7 +419,7 @@ namespace Arc.Collection
             }
             else
             {
-                if (this.Count >= (this.hashTable.Length >> 1))
+                if (this.Count >= (this.hashTable.Length))
                 {
                     this.Resize();
                 }
@@ -450,15 +450,14 @@ namespace Arc.Collection
 
                 if (reuse != null)
                 {
-                    reuse.Reset(0, key, value);
+                    reuse.Reset(hashCode, key, value);
                     newNode = reuse;
                 }
                 else
                 {
-                    newNode = new Node(0, key, value);
+                    newNode = new Node(hashCode, key, value);
                 }
 
-                newNode.HashCode = hashCode;
                 if (this.hashTable[index] == null)
                 {
                     newNode.Previous = newNode;
@@ -504,10 +503,10 @@ namespace Arc.Collection
                     }
                     else
                     {
-                        node.Next = this.hashTable[i2];
-                        node.Previous = this.hashTable[i2]!.Previous;
-                        this.hashTable[i2]!.Previous!.Next = node;
-                        this.hashTable[i2]!.Previous = node;
+                        node.Next = newTable[i2];
+                        node.Previous = newTable[i2]!.Previous;
+                        newTable[i2]!.Previous!.Next = node;
+                        newTable[i2]!.Previous = node;
                     }
 
                     // Next item
