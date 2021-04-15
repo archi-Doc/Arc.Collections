@@ -203,11 +203,6 @@ namespace Arc.Collection
         public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
 #pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
-            if (key == null)
-            {
-                throw new ArgumentNullException(nameof(key));
-            }
-
             var node = this.FindFirstNode(key);
             if (node == null)
             {
@@ -265,11 +260,11 @@ namespace Arc.Collection
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Node? FindFirstNode(TKey? key)
         {
-            if (this.HotMethod2 != null)
+            /*if (this.HotMethod2 != null)
             {// HotMethod is available for value type (key is not null).
                 return this.HotMethod2.SearchHashtable(this.hashTable, key!);
             }
-            else if (key == null)
+            else */if (key == null)
             {
                 return this.nullNode;
             }
