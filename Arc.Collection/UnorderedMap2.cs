@@ -175,28 +175,7 @@ namespace Arc.Collection
         public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
 #pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
-            var hashCode = this.Comparer.GetHashCode(key!);
-            var index = hashCode & this.hashMask;
-            var i = this.buckets[index];
-            while (i >= 0)
-            {
-                if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
-                {// Identical
-                    value = this.nodes[i].Value;
-                    return true;
-                }
-
-                i = this.nodes[i].Next;
-                if (i == this.buckets[index])
-                {
-                    break;
-                }
-            }
-
-            value = default!;
-            return false; // Not found
-
-            /*var nodeIndex = this.FindFirstNode(key);
+            var nodeIndex = this.FindFirstNode(key);
             if (nodeIndex == -1)
             {
                 value = default;
@@ -204,7 +183,7 @@ namespace Arc.Collection
             }
 
             value = this.nodes[nodeIndex].Value;
-            return true;*/
+            return true;
         }
 
         /// <summary>
@@ -267,17 +246,18 @@ namespace Arc.Collection
             }
             else
             {
-                var hashCode = this.Comparer.GetHashCode(key);
+                var hashCode = this.Comparer.GetHashCode(key!);
                 var index = hashCode & this.hashMask;
                 var i = this.buckets[index];
                 while (i >= 0)
                 {
-                    if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key))
+                    ref Node n = ref this.nodes[i];
+                    if (n.HashCode == hashCode && this.Comparer.Equals(n.Key, key!))
                     {// Identical
                         return i;
                     }
 
-                    i = this.nodes[i].Next;
+                    i = n.Next;
                     if (i == this.buckets[index])
                     {
                         break;
