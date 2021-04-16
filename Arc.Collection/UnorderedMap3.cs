@@ -15,11 +15,11 @@ using Arc.Collection.HotMethod;
 namespace Arc.Collection
 {
     /// <summary>
-    /// Represents a collection of objects. <see cref="UnorderedMap2{TKey, TValue}"/> uses a hash table structure to store objects.
+    /// Represents a collection of objects. <see cref="UnorderedMap3{TKey, TValue}"/> uses a hash table structure to store objects.
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class UnorderedMap2<TKey, TValue>
+    public class UnorderedMap3<TKey, TValue>
     {
         private struct Node
         {
@@ -30,34 +30,33 @@ namespace Arc.Collection
             public TValue Value; // Value
         }
 
-        public UnorderedMap2()
+        public UnorderedMap3()
             : this(0, null)
         {
         }
 
-        public UnorderedMap2(int capacity)
+        public UnorderedMap3(int capacity)
             : this(capacity, null)
         {
         }
 
-        public UnorderedMap2(IEqualityComparer<TKey> comparer)
+        public UnorderedMap3(IEqualityComparer<TKey> comparer)
             : this(0, comparer)
         {
         }
 
-        public UnorderedMap2(int capacity, IEqualityComparer<TKey>? comparer)
+        public UnorderedMap3(int capacity, IEqualityComparer<TKey>? comparer)
         {
             this.Initialize(capacity);
             this.Comparer = comparer ?? EqualityComparer<TKey>.Default;
-            this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
 
-        public UnorderedMap2(IDictionary<TKey, TValue> dictionary)
+        public UnorderedMap3(IDictionary<TKey, TValue> dictionary)
             : this(dictionary, null)
         {
         }
 
-        public UnorderedMap2(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
+        public UnorderedMap3(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
             : this(dictionary != null ? dictionary.Count : 0, comparer)
         {
             if (dictionary == null)
@@ -134,13 +133,11 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="UnorderedMap2{TKey, TValue}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="UnorderedMap3{TKey, TValue}"/>.
         /// </summary>
         public int Count => this.nodeCount - this.freeCount;
 
         public IEqualityComparer<TKey> Comparer { get; private set; }
-
-        public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
         public bool AllowMultiple { get; protected set; }
 
@@ -198,10 +195,6 @@ namespace Arc.Collection
                     }
 
                     i = n.Next;
-                    if (i == this.buckets[index])
-                    {
-                        break;
-                    }
                 }
             }
 
@@ -256,7 +249,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for the first <see cref="UnorderedMap2{TKey, TValue}.Node"/> index with the specified key.
+        /// Searches for the first <see cref="UnorderedMap3{TKey, TValue}.Node"/> index with the specified key.
         /// </summary>
         /// <param name="key">The key to search in a collection.</param>
         /// <returns>The first node index with the specified key. -1: not found.</returns>
@@ -281,10 +274,6 @@ namespace Arc.Collection
                     }
 
                     i = n.Next;
-                    if (i == this.buckets[index])
-                    {
-                        break;
-                    }
                 }
 
                 return -1; // Not found
@@ -297,7 +286,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>nodeIndex: the added <see cref="UnorderedMap2{TKey, TValue}.Node"/>.<br/>
+        /// <returns>nodeIndex: the added <see cref="UnorderedMap3{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded:true if the new key is inserted.</returns>
         public (int nodeIndex, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
 
@@ -305,7 +294,7 @@ namespace Arc.Collection
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(1) operation.
         /// </summary>
-        /// <param name="nodeIndex">The <see cref="UnorderedMap2{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="nodeIndex">The <see cref="UnorderedMap3{TKey, TValue}.Node"/> to replace.</param>
         /// <param name="key">The key to set.</param>
         /// <returns>true if the node is replaced.</returns>
         public bool ReplaceNode(int nodeIndex, TKey key)
@@ -325,42 +314,42 @@ namespace Arc.Collection
         /// Removes a specified node from the collection.
         /// <br/>O(1) operation.
         /// </summary>
-        /// <param name="nodeIndex">The <see cref="UnorderedMap2{TKey, TValue}.Node"/> to remove.</param>
+        /// <param name="nodeIndex">The <see cref="UnorderedMap3{TKey, TValue}.Node"/> to remove.</param>
         public void RemoveNode(int nodeIndex)
         {
-            var nodeNext = this.nodes[nodeIndex].Next;
             var nodePrevious = this.nodes[nodeIndex].Previous;
+            var nodeNext = this.nodes[nodeIndex].Next;
             if (this.nodes[nodeIndex].Key == null)
             {
-                if (nodeNext == nodeIndex)
+                if (nodePrevious == -1)
                 {
-                    this.nullList = -1;
+                    this.nullList = nodeNext;
                 }
                 else
                 {
-                    this.nodes[nodeNext].Previous = nodePrevious;
                     this.nodes[nodePrevious].Next = nodeNext;
-                    if (this.nullList == nodeIndex)
-                    {
-                        this.nullList = nodeNext;
-                    }
+                }
+
+                if (nodeNext != -1)
+                {
+                    this.nodes[nodeNext].Previous = nodePrevious;
                 }
             }
             else
             {
                 var index = this.nodes[nodeIndex].HashCode & this.hashMask;
-                if (nodeNext == nodeIndex)
+                if (nodePrevious == -1)
                 {
-                    this.buckets[index] = -1;
+                    this.buckets[index] = nodeNext;
                 }
                 else
                 {
-                    this.nodes[nodeNext].Previous = nodePrevious;
                     this.nodes[nodePrevious].Next = nodeNext;
-                    if (this.buckets[index] == nodeIndex)
-                    {
-                        this.buckets[index] = nodeNext;
-                    }
+                }
+
+                if (nodeNext != -1)
+                {
+                    this.nodes[nodeNext].Previous = nodePrevious;
                 }
             }
 
@@ -379,7 +368,7 @@ namespace Arc.Collection
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="UnorderedMap2{TKey, TValue}.Node"/>.<br/>
+        /// <returns>node: the added <see cref="UnorderedMap3{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the new key is inserted.</returns>
         private (int nodeIndex, bool newlyAdded) Probe(TKey key, TValue value)
         {
@@ -403,16 +392,16 @@ namespace Arc.Collection
 
                 if (this.nullList == -1)
                 {
-                    this.nodes[newIndex].Previous = newIndex;
-                    this.nodes[newIndex].Next = newIndex;
+                    this.nodes[newIndex].Previous = -1;
+                    this.nodes[newIndex].Next = -1;
                     this.nullList = newIndex;
                 }
                 else
                 {
                     this.nodes[newIndex].Next = this.nullList;
-                    this.nodes[newIndex].Previous = this.nodes[this.nullList].Previous;
-                    this.nodes[this.nodes[this.nullList].Previous].Next = newIndex;
+                    this.nodes[newIndex].Previous = -1;
                     this.nodes[this.nullList].Previous = newIndex;
+                    this.nullList = newIndex;
                 }
 
                 return (newIndex, true);
@@ -432,10 +421,6 @@ namespace Arc.Collection
                         }
 
                         i = this.nodes[i].Next;
-                        if (i == this.buckets[index])
-                        {
-                            break;
-                        }
                     }
                 }
 
@@ -447,18 +432,16 @@ namespace Arc.Collection
 
                 if (this.buckets[index] == -1)
                 {
-                    newNode.Previous = newIndex;
-                    newNode.Next = newIndex;
+                    newNode.Previous = -1;
+                    newNode.Next = -1;
                     this.buckets[index] = newIndex;
                 }
                 else
                 {
-                    var bucketIndex = this.buckets[index];
-                    ref Node bucketNode = ref this.nodes[bucketIndex];
-                    newNode.Next = bucketIndex;
-                    newNode.Previous = bucketNode.Previous;
-                    this.nodes[bucketNode.Previous].Next = newIndex;
-                    bucketNode.Previous = newIndex;
+                    newNode.Previous = -1;
+                    newNode.Next = this.buckets[index];
+                    this.nodes[this.buckets[index]].Previous = newIndex;
+                    this.buckets[index] = newIndex;
                 }
 
                 this.version++;
@@ -506,21 +489,22 @@ namespace Arc.Collection
 
             for (var i = 0; i < this.nodeCount; i++)
             {
-                if (newNodes[i].HashCode >= 0)
+                ref Node newNode = ref newNodes[i];
+                if (newNode.HashCode >= 0)
                 {
-                    var bucket = newNodes[i].HashCode & newMask;
+                    var bucket = newNode.HashCode & newMask;
                     if (newBuckets[bucket] == -1)
                     {
-                        newNodes[i].Previous = i;
-                        newNodes[i].Next = i;
+                        newNode.Previous = -1;
+                        newNode.Next = -1;
                         newBuckets[bucket] = i;
                     }
                     else
                     {
                         var newBucket = newBuckets[bucket];
-                        newNodes[i].Next = newBucket;
-                        newNodes[i].Previous = newNodes[newBucket].Previous;
-                        newNodes[newNodes[newBucket].Previous].Next = i;
+                        newNode.Previous = -1;
+                        newNode.Next = newBucket;
+                        newBuckets[bucket] = i;
                         newNodes[newBucket].Previous = i;
                     }
                 }
