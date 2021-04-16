@@ -60,15 +60,15 @@ namespace Arc.Collection
             /// </summary>
             public TValue Value { get; internal set; }
 
-            public override string ToString() => this.Key?.ToString() + " - " + this.Value?.ToString();
+            public override string ToString() => this.Key?.ToString() + " : " + this.Value?.ToString();
 
             internal void Reset(int hashCode, TKey key, TValue value)
             {
                 this.HashCode = hashCode;
                 this.Key = key;
                 this.Value = value;
-                this.Previous = null;
-                this.Next = null;
+                // this.Previous = null;
+                // this.Next = null;
             }
         }
 
@@ -271,7 +271,7 @@ namespace Arc.Collection
             }
             else
             {
-                var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
+                var hashCode = this.Comparer.GetHashCode(key);
                 var index = hashCode & this.hashMask;
                 var n = this.hashTable[index];
                 while (n != null)
@@ -540,8 +540,8 @@ namespace Arc.Collection
                     }
                     else
                     {
-                        node.Next = newTable[i2];
                         node.Previous = newTable[i2]!.Previous;
+                        node.Next = newTable[i2];
                         newTable[i2]!.Previous!.Next = node;
                         newTable[i2]!.Previous = node;
                     }

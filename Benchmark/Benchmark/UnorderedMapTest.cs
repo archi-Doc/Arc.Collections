@@ -98,7 +98,7 @@ namespace Benchmark
             var n = total;
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddSerialInt_Dictionary__()
         {
             var c = new Dictionary<int, int>();
@@ -123,6 +123,18 @@ namespace Benchmark
         }
 
         [Benchmark]
+        public int AddSerialInt_UnorderedMap2()
+        {
+            var c = new UnorderedMap2<int, int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(n, n);
+            }
+
+            return c.Count;
+        }
+
+        /*[Benchmark]
         public int AndInt_UnorderedMapReuse()
         {
             var c = new UnorderedMap<int, int>();
@@ -134,7 +146,7 @@ namespace Benchmark
             return c.Count;
         }*/
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddRandomInt_Dictionary__()
         {
             var c = new Dictionary<int, int>(2);
@@ -168,7 +180,7 @@ namespace Benchmark
             }
 
             return c.Count;
-        }*/
+        }
 
         /*[Benchmark]
         public int RemoveAdd_Dictionary__()
@@ -197,7 +209,7 @@ namespace Benchmark
             return this.IntUnorderedMap.Count;
         }*/
 
-        [Benchmark]
+        /*[Benchmark]
         public int GetRandomInt_Dictionary__()
         {
             var total = 0;
@@ -240,9 +252,9 @@ namespace Benchmark
             }
 
             return total;
-        }
+        }*/
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddString_Dictionary__()
         {
             var c = new Dictionary<string, int>();
@@ -267,6 +279,18 @@ namespace Benchmark
         }
 
         [Benchmark]
+        public int AndString_UnorderedMap2()
+        {
+            var c = new UnorderedMap2<string, int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(n.ToString(), n);
+            }
+
+            return c.Count;
+        }
+
+        /*[Benchmark]
         public int AddCustom_Dictionary__()
         {
             var c = new Dictionary<CustomEqualityClass, int>();

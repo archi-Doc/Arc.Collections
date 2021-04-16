@@ -365,7 +365,7 @@ namespace Arc.Collection
                 this.Resize();
             }
 
-            int newNode;
+            int newIndex;
             if (key == null)
             {// Null key
                 if (this.AllowMultiple == false && this.nullList != -1)
@@ -373,26 +373,26 @@ namespace Arc.Collection
                     return (this.nullList, false);
                 }
 
-                newNode = this.NewNode();
-                this.nodes[newNode].HashCode = 0;
-                this.nodes[newNode].Key = key;
-                this.nodes[newNode].Value = value;
+                newIndex = this.NewNode();
+                this.nodes[newIndex].HashCode = 0;
+                this.nodes[newIndex].Key = key;
+                this.nodes[newIndex].Value = value;
 
                 if (this.nullList == -1)
                 {
-                    this.nodes[newNode].Previous = newNode;
-                    this.nodes[newNode].Next = newNode;
-                    this.nullList = newNode;
+                    this.nodes[newIndex].Previous = newIndex;
+                    this.nodes[newIndex].Next = newIndex;
+                    this.nullList = newIndex;
                 }
                 else
                 {
-                    this.nodes[newNode].Next = this.nullList;
-                    this.nodes[newNode].Previous = this.nodes[this.nullList].Previous;
-                    this.nodes[this.nodes[this.nullList].Previous].Next = newNode;
-                    this.nodes[this.nullList].Previous = newNode;
+                    this.nodes[newIndex].Next = this.nullList;
+                    this.nodes[newIndex].Previous = this.nodes[this.nullList].Previous;
+                    this.nodes[this.nodes[this.nullList].Previous].Next = newIndex;
+                    this.nodes[this.nullList].Previous = newIndex;
                 }
 
-                return (newNode, true);
+                return (newIndex, true);
             }
             else
             {
@@ -416,28 +416,30 @@ namespace Arc.Collection
                     }
                 }
 
-                newNode = this.NewNode();
-                this.nodes[newNode].HashCode = hashCode;
-                this.nodes[newNode].Key = key;
-                this.nodes[newNode].Value = value;
+                newIndex = this.NewNode();
+                ref Node newNode = ref this.nodes[newIndex];
+                newNode.HashCode = hashCode;
+                newNode.Key = key;
+                newNode.Value = value;
 
                 if (this.buckets[index] == -1)
                 {
-                    this.nodes[newNode].Previous = newNode;
-                    this.nodes[newNode].Next = newNode;
-                    this.buckets[index] = newNode;
+                    newNode.Previous = newIndex;
+                    newNode.Next = newIndex;
+                    this.buckets[index] = newIndex;
                 }
                 else
                 {
                     var bucketIndex = this.buckets[index];
-                    this.nodes[newNode].Next = bucketIndex;
-                    this.nodes[newNode].Previous = this.nodes[bucketIndex].Previous;
-                    this.nodes[this.nodes[bucketIndex].Previous].Next = newNode;
-                    this.nodes[bucketIndex].Previous = newNode;
+                    ref Node bucketNode = ref this.nodes[bucketIndex];
+                    newNode.Next = bucketIndex;
+                    newNode.Previous = bucketNode.Previous;
+                    this.nodes[bucketNode.Previous].Next = newIndex;
+                    bucketNode.Previous = newIndex;
                 }
 
                 this.version++;
-                return (newNode, true);
+                return (newIndex, true);
             }
         }
 
