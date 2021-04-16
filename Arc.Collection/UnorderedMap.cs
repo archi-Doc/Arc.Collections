@@ -461,7 +461,7 @@ namespace Arc.Collection
             }
             else
             {
-                var hashCode = key == null ? 0 : this.Comparer.GetHashCode(key);
+                var hashCode = this.Comparer.GetHashCode(key);
                 var index = hashCode & this.hashMask;
                 if (!this.AllowMultiple)
                 {
