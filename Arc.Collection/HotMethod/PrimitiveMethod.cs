@@ -131,7 +131,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<byte, TValue>.Node? SearchHashtable(UnorderedMap<byte, TValue>.Node?[] hashtable, byte key)
+        public UnorderedMapClass<byte, TValue>.Node? SearchHashtable(UnorderedMapClass<byte, TValue>.Node?[] hashtable, byte key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -156,7 +156,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<byte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<byte, TValue>.Node?[] hashtable, byte key)
+        public (UnorderedMapClass<byte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<byte, TValue>.Node?[] hashtable, byte key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -307,7 +307,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<sbyte, TValue>.Node? SearchHashtable(UnorderedMap<sbyte, TValue>.Node?[] hashtable, sbyte key)
+        public UnorderedMapClass<sbyte, TValue>.Node? SearchHashtable(UnorderedMapClass<sbyte, TValue>.Node?[] hashtable, sbyte key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -332,7 +332,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<sbyte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<sbyte, TValue>.Node?[] hashtable, sbyte key)
+        public (UnorderedMapClass<sbyte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<sbyte, TValue>.Node?[] hashtable, sbyte key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -483,7 +483,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<ushort, TValue>.Node? SearchHashtable(UnorderedMap<ushort, TValue>.Node?[] hashtable, ushort key)
+        public UnorderedMapClass<ushort, TValue>.Node? SearchHashtable(UnorderedMapClass<ushort, TValue>.Node?[] hashtable, ushort key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -508,7 +508,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<ushort, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<ushort, TValue>.Node?[] hashtable, ushort key)
+        public (UnorderedMapClass<ushort, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<ushort, TValue>.Node?[] hashtable, ushort key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -659,7 +659,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<short, TValue>.Node? SearchHashtable(UnorderedMap<short, TValue>.Node?[] hashtable, short key)
+        public UnorderedMapClass<short, TValue>.Node? SearchHashtable(UnorderedMapClass<short, TValue>.Node?[] hashtable, short key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -684,7 +684,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<short, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<short, TValue>.Node?[] hashtable, short key)
+        public (UnorderedMapClass<short, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<short, TValue>.Node?[] hashtable, short key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -835,7 +835,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<uint, TValue>.Node? SearchHashtable(UnorderedMap<uint, TValue>.Node?[] hashtable, uint key)
+        public UnorderedMapClass<uint, TValue>.Node? SearchHashtable(UnorderedMapClass<uint, TValue>.Node?[] hashtable, uint key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -860,7 +860,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<uint, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<uint, TValue>.Node?[] hashtable, uint key)
+        public (UnorderedMapClass<uint, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<uint, TValue>.Node?[] hashtable, uint key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -1011,7 +1011,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<int, TValue>.Node? SearchHashtable(UnorderedMap<int, TValue>.Node?[] hashtable, int key)
+        public UnorderedMapClass<int, TValue>.Node? SearchHashtable(UnorderedMapClass<int, TValue>.Node?[] hashtable, int key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1036,7 +1036,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<int, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<int, TValue>.Node?[] hashtable, int key)
+        public (UnorderedMapClass<int, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<int, TValue>.Node?[] hashtable, int key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -1187,7 +1187,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<ulong, TValue>.Node? SearchHashtable(UnorderedMap<ulong, TValue>.Node?[] hashtable, ulong key)
+        public UnorderedMapClass<ulong, TValue>.Node? SearchHashtable(UnorderedMapClass<ulong, TValue>.Node?[] hashtable, ulong key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1212,7 +1212,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<ulong, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<ulong, TValue>.Node?[] hashtable, ulong key)
+        public (UnorderedMapClass<ulong, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<ulong, TValue>.Node?[] hashtable, ulong key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -1363,7 +1363,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<long, TValue>.Node? SearchHashtable(UnorderedMap<long, TValue>.Node?[] hashtable, long key)
+        public UnorderedMapClass<long, TValue>.Node? SearchHashtable(UnorderedMapClass<long, TValue>.Node?[] hashtable, long key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1388,7 +1388,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<long, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<long, TValue>.Node?[] hashtable, long key)
+        public (UnorderedMapClass<long, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<long, TValue>.Node?[] hashtable, long key)
         {
             var hashCode = (int)key;
             var index = hashCode & (hashtable.Length - 1);
@@ -1539,7 +1539,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<float, TValue>.Node? SearchHashtable(UnorderedMap<float, TValue>.Node?[] hashtable, float key)
+        public UnorderedMapClass<float, TValue>.Node? SearchHashtable(UnorderedMapClass<float, TValue>.Node?[] hashtable, float key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1564,7 +1564,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<float, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<float, TValue>.Node?[] hashtable, float key)
+        public (UnorderedMapClass<float, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<float, TValue>.Node?[] hashtable, float key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1715,7 +1715,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<double, TValue>.Node? SearchHashtable(UnorderedMap<double, TValue>.Node?[] hashtable, double key)
+        public UnorderedMapClass<double, TValue>.Node? SearchHashtable(UnorderedMapClass<double, TValue>.Node?[] hashtable, double key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1740,7 +1740,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<double, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<double, TValue>.Node?[] hashtable, double key)
+        public (UnorderedMapClass<double, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<double, TValue>.Node?[] hashtable, double key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1891,7 +1891,7 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMap<DateTime, TValue>.Node? SearchHashtable(UnorderedMap<DateTime, TValue>.Node?[] hashtable, DateTime key)
+        public UnorderedMapClass<DateTime, TValue>.Node? SearchHashtable(UnorderedMapClass<DateTime, TValue>.Node?[] hashtable, DateTime key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);
@@ -1916,7 +1916,7 @@ namespace Arc.Collection.HotMethod
             return null; // Not found
         }
 
-        public (UnorderedMap<DateTime, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<DateTime, TValue>.Node?[] hashtable, DateTime key)
+        public (UnorderedMapClass<DateTime, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<DateTime, TValue>.Node?[] hashtable, DateTime key)
         {
             var hashCode = key.GetHashCode();
             var index = hashCode & (hashtable.Length - 1);

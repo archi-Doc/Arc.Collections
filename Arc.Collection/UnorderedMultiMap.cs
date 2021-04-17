@@ -9,7 +9,7 @@ namespace Arc.Collection
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class UnorderedMultiMap<TKey, TValue> : UnorderedMap<TKey, TValue>
+    public class UnorderedMultiMap<TKey, TValue> : UnorderedMapClass<TKey, TValue>
     {
         public UnorderedMultiMap()
             : base()
