@@ -138,7 +138,7 @@ namespace Benchmark
             }
 
             return c.Count;
-        }
+        }*/
 
         [Benchmark]
         public int AddSerialInt_UnorderedMap()
@@ -246,7 +246,7 @@ namespace Benchmark
             }
 
             return c.Count;
-        }*/
+        }
 
         /*[Benchmark]
         public int RemoveAdd_Dictionary__()

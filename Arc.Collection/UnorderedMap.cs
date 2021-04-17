@@ -422,12 +422,13 @@ namespace Arc.Collection
                 }
                 else
                 {
-                    this.nodes[newIndex].Next = this.nullList;
                     this.nodes[newIndex].Previous = -1;
+                    this.nodes[newIndex].Next = this.nullList;
                     this.nodes[this.nullList].Previous = newIndex;
                     this.nullList = newIndex;
                 }
 
+                this.version++;
                 return (newIndex, true);
             }
             else
@@ -449,21 +450,20 @@ namespace Arc.Collection
                 }
 
                 newIndex = this.NewNode();
-                ref Node newNode = ref this.nodes[newIndex];
-                newNode.HashCode = hashCode;
-                newNode.Key = key;
-                newNode.Value = value;
+                this.nodes[newIndex].HashCode = hashCode;
+                this.nodes[newIndex].Key = key;
+                this.nodes[newIndex].Value = value;
 
                 if (this.buckets[index] == -1)
                 {
-                    newNode.Previous = -1;
-                    newNode.Next = -1;
+                    this.nodes[newIndex].Previous = -1;
+                    this.nodes[newIndex].Next = -1;
                     this.buckets[index] = newIndex;
                 }
                 else
                 {
-                    newNode.Previous = -1;
-                    newNode.Next = this.buckets[index];
+                    this.nodes[newIndex].Previous = -1;
+                    this.nodes[newIndex].Next = this.buckets[index];
                     this.nodes[this.buckets[index]].Previous = newIndex;
                     this.buckets[index] = newIndex;
                 }
@@ -516,20 +516,26 @@ namespace Arc.Collection
                 ref Node newNode = ref newNodes[i];
                 if (newNode.HashCode >= 0)
                 {
-                    var bucket = newNode.HashCode & newMask;
-                    if (newBuckets[bucket] == -1)
-                    {
-                        newNode.Previous = -1;
-                        newNode.Next = -1;
-                        newBuckets[bucket] = i;
+                    if (newNode.Key == null)
+                    {// Null list. No need to modify.
                     }
                     else
                     {
-                        var newBucket = newBuckets[bucket];
-                        newNode.Previous = -1;
-                        newNode.Next = newBucket;
-                        newBuckets[bucket] = i;
-                        newNodes[newBucket].Previous = i;
+                        var bucket = newNode.HashCode & newMask;
+                        if (newBuckets[bucket] == -1)
+                        {
+                            newNode.Previous = -1;
+                            newNode.Next = -1;
+                            newBuckets[bucket] = i;
+                        }
+                        else
+                        {
+                            var newBucket = newBuckets[bucket];
+                            newNode.Previous = -1;
+                            newNode.Next = newBucket;
+                            newBuckets[bucket] = i;
+                            newNodes[newBucket].Previous = i;
+                        }
                     }
                 }
             }
