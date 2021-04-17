@@ -51,7 +51,7 @@ namespace Benchmark
     public class UnorderedMapTest
     {
         // [Params(100, 1_000, 10_000)]
-        [Params(100)]
+        [Params(1000)]
         public int Count;
 
         public int TargetInt = 90;
@@ -75,7 +75,7 @@ namespace Benchmark
         {
             var r = new Random(12);
             this.IntArray = BenchmarkHelper.GetRandomNumbers(r, 0, this.Count, this.Count).ToArray();
-            this.Reuse = new UnorderedMap<int, int>.Node[100];
+            this.Reuse = new UnorderedMap<int, int>.Node[1000];
 
             this.IntDictionary = new();
             this.IntUnorderedMap = new(0);
@@ -152,6 +152,30 @@ namespace Benchmark
             return c.Count;
         }
 
+        [Benchmark]
+        public int AddSerialInt_UnorderedMap3b()
+        {
+            var c = new UnorderedMap3<int, int>(1000);
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(n, n);
+            }
+
+            return c.Count;
+        }
+
+        /*[Benchmark]
+        public int AddSerialInt_UnorderedMap4()
+        {
+            var c = new UnorderedMap4<int, int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(n, n);
+            }
+
+            return c.Count;
+        }*/
+
         /*[Benchmark]
         public int AndInt_UnorderedMapReuse()
         {
@@ -201,6 +225,18 @@ namespace Benchmark
         }
 
         [Benchmark]
+        public int AddRandomInt_UnorderedMap3()
+        {
+            var c = new UnorderedMap3<int, int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(this.IntArray[n], this.IntArray[n]);
+            }
+
+            return c.Count;
+        }*/
+
+        /*[Benchmark]
         public int AddRandomInt_UnorderedMap4()
         {
             var c = new UnorderedMap4<int, int>();
@@ -212,7 +248,7 @@ namespace Benchmark
             return c.Count;
         }*/
 
-        [Benchmark]
+        /*[Benchmark]
         public int RemoveAdd_Dictionary__()
         {
             this.IntDictionary.Remove(TargetInt);
@@ -255,7 +291,7 @@ namespace Benchmark
             this.IntUnorderedMap3.Add(TargetInt, TargetInt);
 
             return this.IntUnorderedMap3.Count;
-        }
+        }*/
 
         /*[Benchmark]
         public int GetRandomInt_Dictionary__()
@@ -303,21 +339,21 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int GetRandomInt_UnorderedMap4()
+        public int GetRandomInt_UnorderedMap3()
         {
             var total = 0;
             for (var n = 0; n < this.Count; n++)
             {
-                if (this.IntUnorderedMap4.TryGetValue(n, out var value))
+                if (this.IntUnorderedMap3.TryGetValue(n, out var value))
                 {
                     total += value;
                 }
             }
 
             return total;
-        }
+        }*/
 
-        [Benchmark]
+        /*[Benchmark]
         public int AddString_Dictionary__()
         {
             var c = new Dictionary<string, int>();
@@ -354,9 +390,9 @@ namespace Benchmark
         }
 
         [Benchmark]
-        public int AndString_UnorderedMap4()
+        public int AndString_UnorderedMap3()
         {
-            var c = new UnorderedMap4<string, int>();
+            var c = new UnorderedMap3<string, int>();
             for (var n = 0; n < this.Count; n++)
             {
                 c.Add(n.ToString(), n);
