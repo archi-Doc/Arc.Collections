@@ -966,6 +966,78 @@ namespace Arc.Collection
         }
 
         /// <summary>
+        /// Enumerates <see cref="UnorderedMap{TKey, TValue}.Node"/> indexes with the specified key.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The node indexes with the specified key.</returns>
+        public IEnumerable<int> EnumerateNode(TKey? key)
+        {
+            var i = this.FindFirstNode(key);
+            if (i < 0)
+            {// Not found
+                yield break;
+            }
+
+            if (key == null)
+            {// Null list
+                while (i >= 0)
+                {
+                    yield return i;
+                    i = this.nodes[i].Next;
+                }
+            }
+            else
+            {
+                var hashCode = this.nodes[i].HashCode;
+                while (i >= 0)
+                {
+                    if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                    {// Identical
+                        yield return i;
+                    }
+
+                    i = this.nodes[i].Next;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enumerates <see cref="UnorderedMap{TKey, TValue}.Node"/> values with the specified key.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The node values with the specified key.</returns>
+        public IEnumerable<TValue> EnumerateValue(TKey? key)
+        {
+            var i = this.FindFirstNode(key);
+            if (i < 0)
+            {// Not found
+                yield break;
+            }
+
+            if (key == null)
+            {// Null list
+                while (i >= 0)
+                {
+                    yield return this.nodes[i].Value;
+                    i = this.nodes[i].Next;
+                }
+            }
+            else
+            {
+                var hashCode = this.nodes[i].HashCode;
+                while (i >= 0)
+                {
+                    if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                    {// Identical
+                        yield return this.nodes[i].Value;
+                    }
+
+                    i = this.nodes[i].Next;
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets newlyAdded to false.
         /// <br/>O(1) operation.
         /// </summary>
