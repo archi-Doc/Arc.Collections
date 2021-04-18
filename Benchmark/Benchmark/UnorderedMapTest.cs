@@ -64,7 +64,9 @@ namespace Benchmark
         public UnorderedMapClass<int, int> IntUnorderedMapClass = default!;
         public UnorderedMap<int, int> IntUnorderedMap = default!;
         public UnorderedMap2<int, int> IntUnorderedMap2 = default!;
-        public UnorderedMap4<int, int> IntUnorderedMap4 = default!;
+        public UnorderedMapPrime<int, int> IntUnorderedMap4 = default!;
+
+        public UnorderedSet<int> IntUnorderedSet = default!;
 
         public UnorderedMapTest()
         {
@@ -78,10 +80,11 @@ namespace Benchmark
             this.Reuse = new UnorderedMapClass<int, int>.Node[1000];
 
             this.IntDictionary = new();
-            this.IntUnorderedMapClass = new(0);
-            this.IntUnorderedMap2 = new(0);
-            this.IntUnorderedMap = new(0);
-            this.IntUnorderedMap4 = new(0);
+            this.IntUnorderedMapClass = new();
+            this.IntUnorderedMap2 = new();
+            this.IntUnorderedMap = new();
+            this.IntUnorderedMap4 = new();
+            this.IntUnorderedSet = new();
             var om = new OrderedMap<int, int>();
             var total = 0;
             foreach (var x in this.IntArray)
@@ -91,6 +94,7 @@ namespace Benchmark
                 this.IntUnorderedMap2.Add(x, x * 2);
                 this.IntUnorderedMap.Add(x, x * 2);
                 this.IntUnorderedMap4.Add(x, x * 2);
+                this.IntUnorderedSet.Add(x);
 
                 var result = om.Add(x, x * 2);
                 if (result.newlyAdded)
@@ -102,9 +106,17 @@ namespace Benchmark
             this.TargetNode = this.IntUnorderedMapClass.FindFirstNode(TargetInt)!;
             this.TargetNodeIndex3 = this.IntUnorderedMap.FindFirstNode(TargetInt)!;
             var n = total;
+
+            // var om2 = new OrderedMap<int, int>(this.IntUnorderedMap);
+            var node = this.IntUnorderedMap.FindFirstNode(45);
+            this.IntUnorderedMap.SetNodeKey(node, 52);
+            var umm = new UnorderedMultiMap<int, int>(this.IntUnorderedMap);
+            umm.Add(1, 1);
+            umm.Add(1, 1);
+            var om2 = new OrderedMultiMap<int, int>(umm);
         }
 
-        /*[Benchmark]
+        [Benchmark]
         public int AddSerialInt_Dictionary__()
         {
             var c = new Dictionary<int, int>();
@@ -138,7 +150,7 @@ namespace Benchmark
             }
 
             return c.Count;
-        }*/
+        }
 
         [Benchmark]
         public int AddSerialInt_UnorderedMap()
@@ -179,10 +191,22 @@ namespace Benchmark
         [Benchmark]
         public int AddSerialInt_UnorderedMap4()
         {
-            var c = new UnorderedMap4<int, int>();
+            var c = new UnorderedMapPrime<int, int>();
             for (var n = 0; n < this.Count; n++)
             {
                 c.Add(n, n);
+            }
+
+            return c.Count;
+        }
+
+        [Benchmark]
+        public int AddSerialInt_UnorderedSet()
+        {
+            var c = new UnorderedSet<int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(n);
             }
 
             return c.Count;
@@ -239,10 +263,22 @@ namespace Benchmark
         [Benchmark]
         public int AddRandomInt_UnorderedMap4()
         {
-            var c = new UnorderedMap4<int, int>();
+            var c = new UnorderedMapPrime<int, int>();
             for (var n = 0; n < this.Count; n++)
             {
                 c.Add(this.IntArray[n], this.IntArray[n]);
+            }
+
+            return c.Count;
+        }
+
+        [Benchmark]
+        public int AddRandomInt_UnorderedSet()
+        {
+            var c = new UnorderedSet<int>();
+            for (var n = 0; n < this.Count; n++)
+            {
+                c.Add(this.IntArray[n]);
             }
 
             return c.Count;

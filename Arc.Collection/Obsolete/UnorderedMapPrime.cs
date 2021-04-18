@@ -12,14 +12,14 @@ using Arc.Collection.HotMethod;
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
 
-namespace Arc.Collection
+namespace Arc.Collection.Obsolete
 {
     /// <summary>
-    /// Represents a collection of objects. <see cref="UnorderedMap4{TKey, TValue}"/> uses a hash table structure to store objects.
+    /// Represents a collection of objects. <see cref="UnorderedMapPrime{TKey, TValue}"/> uses a hash table structure to store objects.
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class UnorderedMap4<TKey, TValue>
+    public class UnorderedMapPrime<TKey, TValue>
     {
         private const int HashCodeMask = 0x7FFFFFFF;
 
@@ -32,33 +32,33 @@ namespace Arc.Collection
             public TValue Value; // Value
         }
 
-        public UnorderedMap4()
+        public UnorderedMapPrime()
             : this(0, null)
         {
         }
 
-        public UnorderedMap4(int capacity)
+        public UnorderedMapPrime(int capacity)
             : this(capacity, null)
         {
         }
 
-        public UnorderedMap4(IEqualityComparer<TKey> comparer)
+        public UnorderedMapPrime(IEqualityComparer<TKey> comparer)
             : this(0, comparer)
         {
         }
 
-        public UnorderedMap4(int capacity, IEqualityComparer<TKey>? comparer)
+        public UnorderedMapPrime(int capacity, IEqualityComparer<TKey>? comparer)
         {
             this.Initialize(capacity);
             this.Comparer = comparer ?? EqualityComparer<TKey>.Default;
         }
 
-        public UnorderedMap4(IDictionary<TKey, TValue> dictionary)
+        public UnorderedMapPrime(IDictionary<TKey, TValue> dictionary)
             : this(dictionary, null)
         {
         }
 
-        public UnorderedMap4(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
+        public UnorderedMapPrime(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
             : this(dictionary != null ? dictionary.Count : 0, comparer)
         {
             if (dictionary == null)
@@ -109,7 +109,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="UnorderedMap4{TKey, TValue}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="UnorderedMapPrime{TKey, TValue}"/>.
         /// </summary>
         public int Count => this.nodeCount - this.freeCount;
 
@@ -225,7 +225,7 @@ namespace Arc.Collection
         }
 
         /// <summary>
-        /// Searches for the first <see cref="UnorderedMap4{TKey, TValue}.Node"/> index with the specified key.
+        /// Searches for the first <see cref="UnorderedMapPrime{TKey, TValue}.Node"/> index with the specified key.
         /// </summary>
         /// <param name="key">The key to search in a collection.</param>
         /// <returns>The first node index with the specified key. -1: not found.</returns>
@@ -262,7 +262,7 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>nodeIndex: the added <see cref="UnorderedMap4{TKey, TValue}.Node"/>.<br/>
+        /// <returns>nodeIndex: the added <see cref="UnorderedMapPrime{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded:true if the new key is inserted.</returns>
         public (int nodeIndex, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
 
@@ -270,7 +270,7 @@ namespace Arc.Collection
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(1) operation.
         /// </summary>
-        /// <param name="nodeIndex">The <see cref="UnorderedMap4{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="nodeIndex">The <see cref="UnorderedMapPrime{TKey, TValue}.Node"/> to replace.</param>
         /// <param name="key">The key to set.</param>
         /// <returns>true if the node is replaced.</returns>
         public bool ReplaceNode(int nodeIndex, TKey key)
@@ -290,7 +290,7 @@ namespace Arc.Collection
         /// Removes a specified node from the collection.
         /// <br/>O(1) operation.
         /// </summary>
-        /// <param name="nodeIndex">The <see cref="UnorderedMap4{TKey, TValue}.Node"/> to remove.</param>
+        /// <param name="nodeIndex">The <see cref="UnorderedMapPrime{TKey, TValue}.Node"/> to remove.</param>
         public void RemoveNode(int nodeIndex)
         {
             var nodePrevious = this.nodes[nodeIndex].Previous;
@@ -344,7 +344,7 @@ namespace Arc.Collection
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="UnorderedMap4{TKey, TValue}.Node"/>.<br/>
+        /// <returns>node: the added <see cref="UnorderedMapPrime{TKey, TValue}.Node"/>.<br/>
         /// newlyAdded: true if the new key is inserted.</returns>
         private (int nodeIndex, bool newlyAdded) Probe(TKey key, TValue value)
         {

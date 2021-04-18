@@ -9,42 +9,42 @@ namespace Arc.Collection
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-    public class UnorderedMultiMap<TKey, TValue> : UnorderedMapClass<TKey, TValue>
+    public class UnorderedMultiMap<TKey, TValue> : UnorderedMap<TKey, TValue>
     {
         public UnorderedMultiMap()
             : base()
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
 
         public UnorderedMultiMap(int capacity)
             : base(capacity)
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
 
         public UnorderedMultiMap(IEqualityComparer<TKey> comparer)
             : base(comparer)
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
 
         public UnorderedMultiMap(int capacity, IEqualityComparer<TKey>? comparer)
             : base(capacity, comparer)
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
 
         public UnorderedMultiMap(IDictionary<TKey, TValue> dictionary)
             : base(dictionary)
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
 
         public UnorderedMultiMap(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
             : base(dictionary, comparer)
         {
-            this.AllowMultiple = true;
+            this.AllowDuplicate = true;
         }
     }
 }

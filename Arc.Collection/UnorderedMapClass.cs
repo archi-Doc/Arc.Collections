@@ -3,12 +3,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Arc.Collection.HotMethod;
 
-#pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
 

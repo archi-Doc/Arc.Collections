@@ -9,49 +9,46 @@ using System.Collections.Generic;
 namespace Arc.Collection
 {
     /// <summary>
-    /// Represents a collection of objects that is maintained in sorted order.
-    /// <br/><see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
+    /// Represents a collection of objects.
+    /// <br/><see cref="UnorderedSet{T}"/> uses a hash table structure to store objects.
     /// </summary>
     /// <typeparam name="T">The type of elements in the set.</typeparam>
-    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+    public class UnorderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
         /// </summary>
-        public OrderedSet()
+        public UnorderedSet()
         {
             this.map = new();
-            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IComparer<T> comparer)
+        public UnorderedSet(IEqualityComparer<T> comparer)
         {
             this.map = new(comparer);
-            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
-        public OrderedSet(IEnumerable<T> collection)
-            : this(collection, Comparer<T>.Default)
+        public UnorderedSet(IEnumerable<T> collection)
+            : this(collection, EqualityComparer<T>.Default)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+        /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer)
+        public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T> comparer)
         {
             this.map = new(comparer);
-            // this.map.CreateNode = static (key, value, color) => new Node(key, color);
 
             foreach (var x in collection)
             {
@@ -59,42 +56,23 @@ namespace Arc.Collection
             }
         }
 
-        private OrderedMap<T, int> map;
-
-        /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
-        public class Node : OrderedMap<T, int>.Node
-        {
-            internal Node(T key, NodeColor color)
-                : base(key, 0, color)
-            {
-            }
-        }*/
+        private UnorderedMap<T, int> map;
 
         #region Main
 
         /// <summary>
-        /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
+        /// Gets the number of nodes actually contained in the <see cref="UnorderedSet{T}"/>.
         /// </summary>
         public int Count => this.map.Count;
 
         /// <summary>
-        /// Gets the first node in the <see cref="OrderedSet{T}"/>.
-        /// </summary>
-        public OrderedMap<T, int>.Node? First => this.map.First;
-
-        /// <summary>
-        /// Gets the last node in the <see cref="OrderedSet{T}"/>.
-        /// </summary>
-        public OrderedMap<T, int>.Node? Last => this.map.Last;
-
-        /// <summary>
         /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
-        /// <br/>O(log n) operation.
+        /// <br/>O(1) operation.
         /// </summary>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// <returns>nodeIndex: the added node index.<br/>
         /// newlyAdded: true if the node is created.</returns>
-        public (OrderedMap<T, int>.Node node, bool newlyAdded) Add(T value)
+        public (int nodeIndex, bool newlyAdded) Add(T value)
         {
             var result = this.map.Add(value, 0);
             return result;
@@ -102,15 +80,24 @@ namespace Arc.Collection
 
         /// <summary>
         /// Determines whether a collection contains a specific value.
-        /// <br/>O(log n) operation.
+        /// <br/>O(1) operation.
         /// </summary>
         /// <param name="value">The value to locate in the collection.</param>
         /// <returns>true if the collection contains an element with the specified value; otherwise, false.</returns>
         public bool Contains(T value) => this.map.ContainsKey(value);
 
         /// <summary>
+        /// Updates the node's value with the specified value. Removes the node and inserts it in the correct position if necessary.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to set the value.</param>
+        /// <param name="value">The value to set.</param>
+        /// <returns>true if the node is successfully updated.</returns>
+        public bool SetNodeValue(int nodeIndex, T? value) => this.map.SetNodeKey(nodeIndex, value);
+
+        /// <summary>
         /// Removes a specified value from the collection."/>.
-        /// <br/>O(log n) operation.
+        /// <br/>O(1) operation.
         /// </summary>
         /// <param name="value">The element to remove.</param>
         /// <returns>true if the element is found and successfully removed.</returns>
@@ -118,21 +105,15 @@ namespace Arc.Collection
 
         /// <summary>
         /// Removes a specified node from the collection.
-        /// <br/>O(log n) operation.
+        /// <br/>O(1) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
-        public void RemoveNode(OrderedMap<T, int>.Node node) => this.map.RemoveNode(node);
+        /// <param name="nodeIndex">The index of the node to remove.</param>
+        public void RemoveNode(int nodeIndex) => this.map.RemoveNode(nodeIndex);
 
         /// <summary>
         /// Removes all elements from a collection.
         /// </summary>
         public void Clear() => this.map.Clear();
-
-        /// <summary>
-        /// Validate Red-Black Tree.
-        /// </summary>
-        /// <returns>true if the tree is valid.</returns>
-        public bool Validate() => this.map.Validate();
 
         #endregion
 

@@ -311,9 +311,9 @@ namespace Arc.Collection
             private TKey? key;
             private TValue? value;
 
-            internal Enumerator(OrderedMap<TKey, TValue> set, int getEnumeratorRetType)
+            internal Enumerator(OrderedMap<TKey, TValue> map, int getEnumeratorRetType)
             {
-                this.map = set;
+                this.map = map;
                 this.version = this.map.version;
                 this.getEnumeratorRetType = getEnumeratorRetType;
                 this.node = this.map.First;
