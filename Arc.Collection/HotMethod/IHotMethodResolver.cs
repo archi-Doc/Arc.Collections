@@ -54,6 +54,19 @@ namespace Arc.Collection.HotMethod
 
             return method;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IEqualityComparer<TKey> comparer)
+        {
+            IHotMethod2<TKey, TValue>? method = null;
+
+            if (comparer == EqualityComparer<TKey>.Default)
+            {
+                method = PrimitiveResolver.Instance.TryGet<TKey, TValue>();
+            }
+
+            return method;
+        }
     }
 
     public class FormatterNotRegisteredException : Exception

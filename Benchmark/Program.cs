@@ -17,11 +17,12 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            DebugRun<OrderedMultiMapTest>();
+            DebugRun<UnorderedMapTest>();
 
             // var summary = BenchmarkRunner.Run<TestBenchmark>();
             var switcher = new BenchmarkSwitcher(new[]
             {
+                typeof(UnorderedMapTest),
                 typeof(OrderedPublicTest),
                 typeof(OrderedListTest2),
                 typeof(OrderedListTest),

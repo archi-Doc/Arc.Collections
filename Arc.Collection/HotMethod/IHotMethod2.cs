@@ -34,5 +34,9 @@ namespace Arc.Collection.HotMethod
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
         (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
+
+        // UnorderedMap<TKey, TValue>.Node? SearchHashtable(UnorderedMap<TKey, TValue>.Node?[] hashtable, TKey key);
+
+        // (UnorderedMap<TKey, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMap<TKey, TValue>.Node?[] hashtable, TKey key);
     }
 }

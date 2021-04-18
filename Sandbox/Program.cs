@@ -43,6 +43,11 @@ namespace Sandbox
         {
             Console.WriteLine("Hello World!");
 
+            var um = new UnorderedMapClass<int, int>();
+            um.Add(1, 2);
+            um.Add(1, 3);
+            um.Add(2, 4);
+
             var ol = new OrderedKeyValueList<int, int>();
             ol.Add(2, 0);
             ol.Add(3, 0);
