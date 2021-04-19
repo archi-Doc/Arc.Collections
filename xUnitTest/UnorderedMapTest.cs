@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace xUnitTest
 {
-    public class UnorderedMapTestClass : IEqualityComparer<UnorderedMapTestClass>
+    public class UnorderedMapTestClass : IEquatable<UnorderedMapTestClass>
     {
         public UnorderedMapTestClass(int id)
         {
@@ -16,20 +16,14 @@ namespace xUnitTest
 
         public int Id { get; set; }
 
-        public bool Equals(UnorderedMapTestClass? x, UnorderedMapTestClass? y)
+        public bool Equals(UnorderedMapTestClass? other)
         {
-            if (x == null)
-            {
-                return y == null;
-            }
-            else if (y == null)
+            if (other == null)
             {
                 return false;
             }
-            else
-            {
-                return x.Id == y.Id;
-            }
+
+            return this.Id == other.Id;
         }
 
         public int GetHashCode([DisallowNull] UnorderedMapTestClass obj) => this.Id.GetHashCode();
@@ -102,6 +96,15 @@ namespace xUnitTest
         }
 
         [Fact]
+        public void TestClass()
+        {
+            var um = new UnorderedMap<UnorderedMapTestClass, int>();
+            um.Add(new UnorderedMapTestClass(1), 1);
+            um.Add(new UnorderedMapTestClass(2), 0);
+            um.Add(new UnorderedMapTestClass(3), 3);
+        }
+
+            [Fact]
         public void Random()
         {
             var r = new Random(12);

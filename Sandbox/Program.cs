@@ -4,7 +4,7 @@ using Arc.Collection;
 
 namespace Sandbox
 {
-    public class TestClass : IComparable<TestClass>
+    public class TestClass : IComparable<TestClass>, IEquatable<TestClass>
     {
         public TestClass(int id)
         {
@@ -34,6 +34,18 @@ namespace Sandbox
             }
         }
 
+        public bool Equals(TestClass? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return this.Id == other.Id;
+        }
+
+        public override int GetHashCode() => this.Id.GetHashCode();
+
         public override string ToString() => this.Id.ToString();
     }
 
@@ -47,6 +59,10 @@ namespace Sandbox
             um.Add(1, 2);
             um.Add(1, 3);
             um.Add(2, 4);
+
+            var um2 = new UnorderedMap<TestClass, int>();
+            um2.Add(new TestClass(1), 2);
+            um2.Add(new TestClass(2), 4);
 
             var ol = new OrderedKeyValueList<int, int>();
             ol.Add(2, 0);
