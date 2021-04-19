@@ -91,6 +91,8 @@ namespace xUnitTest
         [Fact]
         public void Test1()
         {
+            OrderedListClass.serial = 0;
+
             var ol = new OrderedList<int>() { 1, 3, 2, 0, 5, -10, 0, };
             var array = new int[] { 1, 3, 2, 0, 5, -10, 0, };
             Array.Sort(array);
