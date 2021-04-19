@@ -199,6 +199,8 @@ namespace Arc.Collection
         /// </summary>
         public int Count { get; private set; }
 
+        public bool Reverse { get; }
+
         public IComparer<TKey> Comparer { get; private set; }
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
@@ -206,8 +208,10 @@ namespace Arc.Collection
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
-        public OrderedMap()
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(bool reverse = false)
         {
+            this.Reverse = reverse;
             this.Comparer = Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -216,8 +220,10 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IComparer<TKey> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IComparer<TKey> comparer, bool reverse = false)
         {
+            this.Reverse = reverse;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -226,8 +232,9 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary)
-            : this(dictionary, Comparer<TKey>.Default)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IDictionary<TKey, TValue> dictionary, bool reverse = false)
+            : this(dictionary, Comparer<TKey>.Default, reverse)
         {
         }
 
@@ -236,8 +243,10 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool reverse = false)
         {
+            this.Reverse = reverse;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
 

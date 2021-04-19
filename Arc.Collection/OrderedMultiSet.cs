@@ -23,9 +23,10 @@ namespace Arc.Collection
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
-        public OrderedMultiSet()
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMultiSet(bool reverse = false)
         {
-            this.map = new();
+            this.map = new(reverse);
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
@@ -33,9 +34,10 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMultiSet(IComparer<T> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMultiSet(IComparer<T> comparer, bool reverse = false)
         {
-            this.map = new(comparer);
+            this.map = new(comparer, reverse);
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
         }
 
@@ -43,8 +45,9 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
-        public OrderedMultiSet(IEnumerable<T> collection)
-            : this(collection, Comparer<T>.Default)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMultiSet(IEnumerable<T> collection, bool reverse = false)
+            : this(collection, Comparer<T>.Default, reverse)
         {
         }
 
@@ -53,9 +56,10 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="collection">The enumerable collection to be copied.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMultiSet(IEnumerable<T> collection, IComparer<T> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMultiSet(IEnumerable<T> collection, IComparer<T> comparer, bool reverse = false)
         {
-            this.map = new(comparer);
+            this.map = new(comparer, reverse);
             // this.map.CreateNode = static (key, value, color) => new Node(key, color);
 
             foreach (var x in collection)

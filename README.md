@@ -13,7 +13,7 @@ Arc.Collection is a fast C# Collection Library which includes
 - ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TKey int is not used).
 - ```OrderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class.
 - ```OrderedMultiSet<T>``` :  A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class.
-- ```UnorderedMap<TKey, TValue>``` (```Dictionary<TKey, TValue>```) : A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>``` in some situations, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key.
+- ```UnorderedMap<TKey, TValue>``` (```Dictionary<TKey, TValue>```) : A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>```, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key.
 - ```UnorderedSet<T>``` : A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used).
 - ```UnorderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class.
 - ```UnorderedMultiSet<T>``` : A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used).
