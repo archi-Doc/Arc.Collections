@@ -199,7 +199,7 @@ namespace Arc.Collection
         /// </summary>
         public int Count { get; private set; }
 
-        public bool Reverse { get; }
+        public int CompareFactor { get; }
 
         public IComparer<TKey> Comparer { get; private set; }
 
@@ -211,7 +211,7 @@ namespace Arc.Collection
         /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
         public OrderedMap(bool reverse = false)
         {
-            this.Reverse = reverse;
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -223,7 +223,7 @@ namespace Arc.Collection
         /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
         public OrderedMap(IComparer<TKey> comparer, bool reverse = false)
         {
-            this.Reverse = reverse;
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -246,7 +246,7 @@ namespace Arc.Collection
         /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
         public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool reverse = false)
         {
-            this.Reverse = reverse;
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
 
