@@ -1229,65 +1229,133 @@ namespace Arc.Collection
             Node? p = null;
             int cmp = 0;
 
-            if (this.HotMethod2 != null)
-            {// HotMethod is available for value type (key is not null).
-                return this.HotMethod2.SearchNode(x, key!);
-            }
-            else if (key == null)
-            {// key is null
-                while (x != null)
-                {
-                    if (x.Key == null)
-                    {// null == null
-                        return (0, x);
-                    }
-                    else
-                    {// null < not null
-                        p = x;
-                        cmp = -1;
-                        x = x.Left;
+            if (this.CompareFactor > 0)
+            {
+                if (this.HotMethod2 != null)
+                {// HotMethod is available for value type (key is not null).
+                    return this.HotMethod2.SearchNode(x, key!);
+                }
+                else if (key == null)
+                {// key is null
+                    while (x != null)
+                    {
+                        if (x.Key == null)
+                        {// null == null
+                            return (0, x);
+                        }
+                        else
+                        {// null < not null
+                            p = x;
+                            cmp = -1;
+                            x = x.Left;
+                        }
                     }
                 }
-            }
-            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (x != null)
-                {
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    // cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
+                else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
+                {// IComparable<TKey>
+                    while (x != null)
                     {
-                        x = x.Left;
+                        cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp < 0)
+                        {
+                            x = x.Left;
+                        }
+                        else if (cmp > 0)
+                        {
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
-                    else if (cmp > 0)
+                }
+                else
+                {// IComparer<TKey>
+                    while (x != null)
                     {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
+                        cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp < 0)
+                        {
+                            x = x.Left;
+                        }
+                        else if (cmp > 0)
+                        {
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
                 }
             }
             else
-            {// IComparer<TKey>
-                while (x != null)
-                {
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    // cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
+            {// Reverse
+                if (this.HotMethod2 != null)
+                {// HotMethod is available for value type (key is not null).
+                    return this.HotMethod2.SearchNodeReverse(x, key!);
+                }
+                else if (key == null)
+                {// key is null
+                    while (x != null)
                     {
-                        x = x.Left;
+                        if (x.Key == null)
+                        {// null == null
+                            return (0, x);
+                        }
+                        else
+                        {// null > not null
+                            p = x;
+                            cmp = 1;
+                            x = x.Right;
+                        }
                     }
-                    else if (cmp > 0)
+                }
+                else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
+                {// IComparable<TKey>
+                    while (x != null)
                     {
-                        x = x.Right;
+                        cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp > 0)
+                        {
+                            cmp = -1;
+                            x = x.Left;
+                        }
+                        else if (cmp < 0)
+                        {
+                            cmp = 1;
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
-                    else
-                    {// Found
-                        return (0, x);
+                }
+                else
+                {// IComparer<TKey>
+                    while (x != null)
+                    {
+                        cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp > 0)
+                        {
+                            cmp = -1;
+                            x = x.Left;
+                        }
+                        else if (cmp < 0)
+                        {
+                            cmp = 1;
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
                 }
             }

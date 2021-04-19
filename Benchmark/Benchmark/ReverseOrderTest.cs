@@ -10,7 +10,7 @@ namespace Benchmark
     [Config(typeof(BenchmarkConfig))]
     public class ReverseOrderTest
     {
-        [Params(100)]
+        [Params(1000)]
         public int Length;
 
         public int[] IntArray = default!;
