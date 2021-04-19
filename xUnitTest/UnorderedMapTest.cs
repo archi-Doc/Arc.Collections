@@ -170,8 +170,38 @@ namespace xUnitTest
         {
             var r = new Random(12);
 
-            for (var n = 0; n < 10; n++)
+            RandomTest2(r, 0, 100, 50, 1);
+            RandomTest2(r, 0, 100, 50, 10);
+            RandomTest2(r, -100, 100, 50, 10);
+            RandomTest2(r, -1000, 1000, 50, 10);
+            RandomTest2(r, -10000, 10000, 1000, 10);
+            RandomTest2(r, int.MinValue, int.MaxValue, 1000, 10);
+        }
+
+        private void RandomTest2(Random r, int start, int end, int count, int repeat)
+        {
+            var dic = new Dictionary<int, int>();
+            var um = new UnorderedMap<int, int>();
+
+            for (var n = 0; n < repeat; n++)
             {
+                for (var m = 0; m < count; m++)
+                {
+                    var x = r.Next(start, end);
+                    dic[x] = x;
+                    um[x] = x;
+                }
+
+                um.ValidateWithDictionary(dic);
+
+                for (var m = 0; m < count; m++)
+                {
+                    var x = r.Next(start, end);
+                    dic.Remove(x);
+                    um.Remove(x);
+                }
+
+                um.ValidateWithDictionary(dic);
             }
         }
     }

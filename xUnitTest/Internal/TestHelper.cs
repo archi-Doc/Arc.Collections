@@ -16,10 +16,21 @@ namespace xUnitTest
 {
     public static class TestHelper
     {
+        public static void ValidateWithOrderedMultiMap<TKey, TValue>(this UnorderedMultiMap<TKey, TValue> um, OrderedMultiMap<TKey, TValue> map)
+        {
+            um.Count.Is(map.Count);
+
+            foreach (var x in map)
+            {
+                um.Contains(x).IsTrue();
+            }
+        }
+
 #pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
         public static void ValidateWithDictionary<TKey, TValue>(this UnorderedMap<TKey, TValue> um, Dictionary<TKey, TValue> dic)
 #pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
         {
+            um.Count.Is(dic.Count);
             foreach (var x in um)
             {
                 dic.TryGetValue(x.Key, out var value).IsTrue();

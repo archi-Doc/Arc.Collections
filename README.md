@@ -72,16 +72,20 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 
 ## Collection
 
-| Name                         | Structure   | Access | Add      | Remove   | Search   | Sort       | Enum.    |
-| ---------------------------- | ----------- | ------ | -------- | -------- | -------- | ---------- | -------- |
-| ```UnorderedList<T>```       | Array       | Index  | O(1)     | O(n)     | O(n)     | O(n log n) | O(1)     |
-| ```UnorderedLinkedList<T>``` | Linked List | Node   | O(1)     | O(1)     | O(n)     | O(n log n) | O(1)     |
-| ```OrderedList<T>```         | Array       | Index  | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
-| ```OrderedKeyValueList<V>``` | Array       | Index  | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
-| ```OrderedMap<K, V>```       | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| ```OrderedSet<T>```          | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| ```OrderedMultiMap<K, V>```  | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| ```OrderedMultiSet<T>```     | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
+| Name                          | Structure   | Access | Add      | Remove   | Search   | Sort       | Enum.    |
+| ----------------------------- | ----------- | ------ | -------- | -------- | -------- | ---------- | -------- |
+| ```UnorderedList<T>```        | Array       | Index  | O(1)     | O(n)     | O(n)     | O(n log n) | O(1)     |
+| ```UnorderedLinkedList<T>```  | Linked List | Node   | O(1)     | O(1)     | O(n)     | O(n log n) | O(1)     |
+| ```OrderedList<T>```          | Array       | Index  | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
+| ```OrderedKeyValueList<V>```  | Array       | Index  | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
+| ```OrderedMap<K, V>```        | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
+| ```OrderedSet<T>```           | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
+| ```OrderedMultiMap<K, V>```   | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
+| ```OrderedMultiSet<T>```      | RB Tree     | Node   | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
+| ```UnorderedMap<K, V>```      | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
+| ```UnorderedSet<T>```         | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
+| ```UnorderedMultiMap<K, V>``` | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
+| ```UnorderedMultiSet<T>```    | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
 
 - Ordered collection requires ```IComparable<T>``` or ```IComparer<T>```.
 - Multi collection allows duplicate keys.

@@ -10,7 +10,7 @@ using Arc.Collection.HotMethod;
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
 
-namespace Arc.Collection
+namespace Arc.Collection.Obsolete
 {
     /// <summary>
     /// Represents a collection of objects. <see cref="UnorderedMapClass{TKey, TValue}"/> uses a hash table structure to store objects.
