@@ -92,7 +92,7 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 | ```UnorderedMultiSet<T>```    | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
 
 - Ordered collections require ```IComparable<T>``` or ```IComparer<T>```.
-- Unordered collections based on hash tables (e.g. ```UnorderedMap<TKey, TValue>```) require ```IEquatable<T>``` or ```IEqualityComparer<T>```.
+- Unordered collections based on hash tables (e.g. ```UnorderedMap<TKey, TValue>```) require ```IEquatable<T>```/```GetHashCode()``` or ```IEqualityComparer<T>```.
 - ```Multi``` collection allows duplicate keys.
 - ```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
   For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless index access is absolutely necessary.
