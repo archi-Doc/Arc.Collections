@@ -114,6 +114,14 @@ namespace Benchmark
             umm.Add(1, 1);
             umm.Add(1, 1);
             var om2 = new OrderedMultiMap<int, int>(umm);
+
+            foreach (var x in umm.EnumerateNode(1))
+            {
+            }
+
+            foreach (var x in umm.EnumerateValue(1))
+            {
+            }
         }
 
         [Benchmark]

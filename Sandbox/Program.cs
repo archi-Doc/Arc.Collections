@@ -43,7 +43,7 @@ namespace Sandbox
         {
             Console.WriteLine("Hello World!");
 
-            var um = new UnorderedMapClass<int, int>();
+            var um = new UnorderedMap<int, int>();
             um.Add(1, 2);
             um.Add(1, 3);
             um.Add(2, 4);

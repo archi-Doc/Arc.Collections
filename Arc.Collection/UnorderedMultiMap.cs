@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Arc.Collection
 {
     /// <summary>
-    /// Represents a collection of objects. <see cref="UnorderedMultiMap{TKey, TValue}"/> uses a hash table structure to store objects.
+    /// Represents a collection of objects. <see cref="UnorderedMultiMap{TKey, TValue}"/> uses a hash table structure to store objects and allows duplicate keys.
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
