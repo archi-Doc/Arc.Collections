@@ -139,7 +139,7 @@ namespace Arc.Collection
 
                 while ((uint)this.index < (uint)this.map.nodeCount)
                 {
-                    if (this.map.nodes[this.index].HashCode >= 0)
+                    if (this.map.nodes[this.index].HashCode != -1)
                     {
                         this.key = this.map.nodes[this.index].Key;
                         this.value = this.map.nodes[this.index].Value;
@@ -240,7 +240,7 @@ namespace Arc.Collection
             {
                 while (nodeIndex < (uint)this.nodeCount)
                 {
-                    if (this.nodes[nodeIndex].HashCode >= 0)
+                    if (this.nodes[nodeIndex].HashCode != -1)
                     {
                         keyValuePairArray[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].Key, this.nodes[nodeIndex].Value);
                     }
@@ -260,7 +260,7 @@ namespace Arc.Collection
                 {
                     while (nodeIndex < (uint)this.nodeCount)
                     {
-                        if (this.nodes[nodeIndex].HashCode >= 0)
+                        if (this.nodes[nodeIndex].HashCode != -1)
                         {
                             objects[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].Key, this.nodes[nodeIndex].Value);
                         }
@@ -434,7 +434,7 @@ namespace Arc.Collection
                 uint nodeIndex = 0;
                 while (nodeIndex < (uint)this.map.nodeCount)
                 {
-                    if (this.map.nodes[nodeIndex].HashCode >= 0)
+                    if (this.map.nodes[nodeIndex].HashCode != -1)
                     {
                         array[index++] = this.map.nodes[nodeIndex].Key;
                     }
@@ -483,7 +483,7 @@ namespace Arc.Collection
                         uint nodeIndex = 0;
                         while (nodeIndex < (uint)this.map.nodeCount)
                         {
-                            if (this.map.nodes[nodeIndex].HashCode >= 0)
+                            if (this.map.nodes[nodeIndex].HashCode != -1)
                             {
                                 objects[index++] = this.map.nodes[nodeIndex].Key!;
                             }
@@ -575,7 +575,7 @@ namespace Arc.Collection
                 uint nodeIndex = 0;
                 while (nodeIndex < (uint)this.map.nodeCount)
                 {
-                    if (this.map.nodes[nodeIndex].HashCode >= 0)
+                    if (this.map.nodes[nodeIndex].HashCode != -1)
                     {
                         array[index++] = this.map.nodes[nodeIndex].Value;
                     }
@@ -624,7 +624,7 @@ namespace Arc.Collection
                         uint nodeIndex = 0;
                         while (nodeIndex < (uint)this.map.nodeCount)
                         {
-                            if (this.map.nodes[nodeIndex].HashCode >= 0)
+                            if (this.map.nodes[nodeIndex].HashCode != -1)
                             {
                                 objects[index++] = this.map.nodes[nodeIndex].Value;
                             }
@@ -790,7 +790,7 @@ namespace Arc.Collection
             {
                 for (var i = 0; i < this.nodeCount; i++)
                 {
-                    if (this.nodes[i].HashCode >= 0 && this.nodes[i].Value == null)
+                    if (this.nodes[i].HashCode != -1 && this.nodes[i].Value == null)
                     {
                         return true;
                     }
@@ -801,7 +801,7 @@ namespace Arc.Collection
                 var c = EqualityComparer<TValue>.Default;
                 for (int i = 0; i < this.nodeCount; i++)
                 {
-                    if (this.nodes[i].HashCode >= 0 && c.Equals(this.nodes[i].Value, value))
+                    if (this.nodes[i].HashCode != -1 && c.Equals(this.nodes[i].Value, value))
                     {
                         return true;
                     }
@@ -1086,7 +1086,7 @@ namespace Arc.Collection
         /// <returns>true if the node is successfully updated.</returns>
         public bool SetNodeValue(int nodeIndex, TValue value)
         {
-            if (this.nodes[nodeIndex].HashCode < 0)
+            if (this.nodes[nodeIndex].HashCode == -1)
             {
                 return false;
             }
@@ -1110,7 +1110,7 @@ namespace Arc.Collection
         /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to remove.</param>
         public void RemoveNode(int nodeIndex)
         {
-            if (this.nodes[nodeIndex].HashCode < 0)
+            if (this.nodes[nodeIndex].HashCode == -1)
             {
                 return;
             }
@@ -1294,7 +1294,7 @@ namespace Arc.Collection
             for (var i = 0; i < this.nodeCount; i++)
             {
                 ref Node newNode = ref newNodes[i];
-                if (newNode.HashCode >= 0)
+                if (newNode.HashCode != -1)
                 {
                     if (newNode.Key == null)
                     {// Null list. No need to modify.
