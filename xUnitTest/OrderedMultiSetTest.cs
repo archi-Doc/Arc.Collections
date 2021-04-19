@@ -23,18 +23,17 @@ namespace xUnitTest
             ms = new OrderedMultiSet<int>(array, OrderedListClass.InternalComparer.Instance);
             ms.SequenceEqual(array.Reverse()).IsTrue();
 
-            OrderedListClass.serial = 0;
             var ms2 = new OrderedMultiSet<OrderedListClass>();
-            ms2.Add(new OrderedListClass(1)); // 0
-            ms2.Add(new OrderedListClass(3)); // 1
-            ms2.Add(new OrderedListClass(2)); // 2
-            ms2.Add(new OrderedListClass(0)); // 3
-            ms2.Add(new OrderedListClass(5)); // 4
-            ms2.Add(new OrderedListClass(-10)); // 5
-            ms2.Add(new OrderedListClass(2)); // 6
-            ms2.Add(new OrderedListClass(0)); // 7
-            ms2.Add(new OrderedListClass(2)); // 8
-            ms2.Add(new OrderedListClass(2)); // 9
+            ms2.Add(new OrderedListClass(1, 0)); // 0
+            ms2.Add(new OrderedListClass(3, 1)); // 1
+            ms2.Add(new OrderedListClass(2, 2)); // 2
+            ms2.Add(new OrderedListClass(0, 3)); // 3
+            ms2.Add(new OrderedListClass(5, 4)); // 4
+            ms2.Add(new OrderedListClass(-10, 5)); // 5
+            ms2.Add(new OrderedListClass(2, 6)); // 6
+            ms2.Add(new OrderedListClass(0, 7)); // 7
+            ms2.Add(new OrderedListClass(2, 8)); // 8
+            ms2.Add(new OrderedListClass(2, 9)); // 9
 
             var node = ms2.First;
             node!.Key.Id.Is(-10);

@@ -10,17 +10,15 @@ namespace xUnitTest
 {
     public class OrderedListClass : IComparable<OrderedListClass>
     {
-        public OrderedListClass(int id)
+        public OrderedListClass(int id, int serial)
         {
             this.Id = id;
-            this.Serial = serial++;
+            this.Serial = serial;
         }
 
         public int Id { get; set; }
 
         public int Serial { get; }
-
-        public static int serial;
 
         public int CompareTo(OrderedListClass? other)
         {
@@ -99,18 +97,17 @@ namespace xUnitTest
             ol = new OrderedList<int>(array, OrderedListClass.InternalComparer.Instance);
             ol.SequenceEqual(array.Reverse()).IsTrue();
 
-            OrderedListClass.serial = 0;
             var ol2 = new OrderedList<OrderedListClass>();
-            ol2.Add(new OrderedListClass(1)); // 0
-            ol2.Add(new OrderedListClass(3)); // 1
-            ol2.Add(new OrderedListClass(2)); // 2
-            ol2.Add(new OrderedListClass(0)); // 3
-            ol2.Add(new OrderedListClass(5)); // 4
-            ol2.Add(new OrderedListClass(-10)); // 5
-            ol2.Add(new OrderedListClass(2)); // 6
-            ol2.Add(new OrderedListClass(0)); // 7
-            ol2.Add(new OrderedListClass(2)); // 8
-            ol2.Add(new OrderedListClass(2)); // 9
+            ol2.Add(new OrderedListClass(1, 0)); // 0
+            ol2.Add(new OrderedListClass(3, 1)); // 1
+            ol2.Add(new OrderedListClass(2, 2)); // 2
+            ol2.Add(new OrderedListClass(0, 3)); // 3
+            ol2.Add(new OrderedListClass(5, 4)); // 4
+            ol2.Add(new OrderedListClass(-10, 5)); // 5
+            ol2.Add(new OrderedListClass(2, 6)); // 6
+            ol2.Add(new OrderedListClass(0, 7)); // 7
+            ol2.Add(new OrderedListClass(2, 8)); // 8
+            ol2.Add(new OrderedListClass(2, 9)); // 9
 
             var n = 0;
             ol2[n].Id.Is(-10);

@@ -199,6 +199,8 @@ namespace Arc.Collection
         /// </summary>
         public int Count { get; private set; }
 
+        public int CompareFactor { get; }
+
         public IComparer<TKey> Comparer { get; private set; }
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
@@ -206,8 +208,10 @@ namespace Arc.Collection
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
-        public OrderedMap()
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(bool reverse = false)
         {
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -216,8 +220,10 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IComparer<TKey> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IComparer<TKey> comparer, bool reverse = false)
         {
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
         }
@@ -226,8 +232,9 @@ namespace Arc.Collection
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary)
-            : this(dictionary, Comparer<TKey>.Default)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IDictionary<TKey, TValue> dictionary, bool reverse = false)
+            : this(dictionary, Comparer<TKey>.Default, reverse)
         {
         }
 
@@ -236,8 +243,10 @@ namespace Arc.Collection
         /// </summary>
         /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
         /// <param name="comparer">The default comparer to use for comparing objects.</param>
-        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
+        /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+        public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool reverse = false)
         {
+            this.CompareFactor = reverse ? -1 : 1;
             this.Comparer = comparer ?? Comparer<TKey>.Default;
             this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
 
@@ -995,35 +1004,13 @@ namespace Arc.Collection
         public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
-        /// <br/>O(log n) operation.
-        /// </summary>
-        /// <param name="key">The key of the element to add.</param>
-        /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// replaced: true if the node is replaced.</returns>
-        public (Node node, bool replaced) Replace(TKey key, TValue value)
-        {
-            var result = this.Probe(key, value, null);
-            if (result.newlyAdded)
-            {// New
-                return (result.node, false);
-            }
-
-            // Replace
-            this.version++;
-            result.node.Value = value;
-            return (result.node, true);
-        }
-
-        /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the key.</param>
         /// <param name="key">The key to set.</param>
-        /// <returns>true if the node is replaced.</returns>
-        public bool ReplaceNode(Node node, TKey key)
+        /// <returns>true if the key is changed.</returns>
+        public bool SetNodeKey(Node node, TKey key)
         {
             if (this.Comparer.Compare(node.Key, key) == 0)
             {// Identical
@@ -1035,6 +1022,14 @@ namespace Arc.Collection
             this.Probe(key, value, node);
             return true;
         }
+
+        /// <summary>
+        /// Updates the node's value with the specified value.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the value.</param>
+        /// <param name="value">The value to set.</param>
+        public void SetNodeValue(Node node, TValue value) => node.Value = value;
 
         /// <summary>
         /// Removes a specified node from the collection"/>.
@@ -1234,65 +1229,133 @@ namespace Arc.Collection
             Node? p = null;
             int cmp = 0;
 
-            if (this.HotMethod2 != null)
-            {// HotMethod is available for value type (key is not null).
-                return this.HotMethod2.SearchNode(x, key!);
-            }
-            else if (key == null)
-            {// key is null
-                while (x != null)
-                {
-                    if (x.Key == null)
-                    {// null == null
-                        return (0, x);
-                    }
-                    else
-                    {// null < not null
-                        p = x;
-                        cmp = -1;
-                        x = x.Left;
+            if (this.CompareFactor > 0)
+            {
+                if (this.HotMethod2 != null)
+                {// HotMethod is available for value type (key is not null).
+                    return this.HotMethod2.SearchNode(x, key!);
+                }
+                else if (key == null)
+                {// key is null
+                    while (x != null)
+                    {
+                        if (x.Key == null)
+                        {// null == null
+                            return (0, x);
+                        }
+                        else
+                        {// null < not null
+                            p = x;
+                            cmp = -1;
+                            x = x.Left;
+                        }
                     }
                 }
-            }
-            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (x != null)
-                {
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    // cmp = x.Key == null ? 1 : ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
+                else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
+                {// IComparable<TKey>
+                    while (x != null)
                     {
-                        x = x.Left;
+                        cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp < 0)
+                        {
+                            x = x.Left;
+                        }
+                        else if (cmp > 0)
+                        {
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
-                    else if (cmp > 0)
+                }
+                else
+                {// IComparer<TKey>
+                    while (x != null)
                     {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
+                        cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp < 0)
+                        {
+                            x = x.Left;
+                        }
+                        else if (cmp > 0)
+                        {
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
                 }
             }
             else
-            {// IComparer<TKey>
-                while (x != null)
-                {
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    // cmp = x.Key == null ? 1 : this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
+            {// Reverse
+                if (this.HotMethod2 != null)
+                {// HotMethod is available for value type (key is not null).
+                    return this.HotMethod2.SearchNodeReverse(x, key!);
+                }
+                else if (key == null)
+                {// key is null
+                    while (x != null)
                     {
-                        x = x.Left;
+                        if (x.Key == null)
+                        {// null == null
+                            return (0, x);
+                        }
+                        else
+                        {// null > not null
+                            p = x;
+                            cmp = 1;
+                            x = x.Right;
+                        }
                     }
-                    else if (cmp > 0)
+                }
+                else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
+                {// IComparable<TKey>
+                    while (x != null)
                     {
-                        x = x.Right;
+                        cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp > 0)
+                        {
+                            cmp = -1;
+                            x = x.Left;
+                        }
+                        else if (cmp < 0)
+                        {
+                            cmp = 1;
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
-                    else
-                    {// Found
-                        return (0, x);
+                }
+                else
+                {// IComparer<TKey>
+                    while (x != null)
+                    {
+                        cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
+                        p = x;
+                        if (cmp > 0)
+                        {
+                            cmp = -1;
+                            x = x.Left;
+                        }
+                        else if (cmp < 0)
+                        {
+                            cmp = 1;
+                            x = x.Right;
+                        }
+                        else
+                        {// Found
+                            return (0, x);
+                        }
                     }
                 }
             }

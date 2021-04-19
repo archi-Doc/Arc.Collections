@@ -103,6 +103,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<byte, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<byte, TValue>.Node? target, byte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<byte, TValue>.Node? leaf) SearchNode(OrderedMultiMap<byte, TValue>.Node? target, byte key)
         {
             var x = target;
@@ -131,58 +159,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<byte, TValue>.Node? SearchHashtable(UnorderedMapClass<byte, TValue>.Node?[] hashtable, byte key)
+        public (int cmp, OrderedMultiMap<byte, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<byte, TValue>.Node? target, byte key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<byte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<byte, TValue>.Node?[] hashtable, byte key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -279,6 +281,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<sbyte, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<sbyte, TValue>.Node? leaf) SearchNode(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
         {
             var x = target;
@@ -307,58 +337,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<sbyte, TValue>.Node? SearchHashtable(UnorderedMapClass<sbyte, TValue>.Node?[] hashtable, sbyte key)
+        public (int cmp, OrderedMultiMap<sbyte, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<sbyte, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<sbyte, TValue>.Node?[] hashtable, sbyte key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -455,6 +459,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<ushort, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<ushort, TValue>.Node? target, ushort key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<ushort, TValue>.Node? leaf) SearchNode(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
         {
             var x = target;
@@ -483,58 +515,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<ushort, TValue>.Node? SearchHashtable(UnorderedMapClass<ushort, TValue>.Node?[] hashtable, ushort key)
+        public (int cmp, OrderedMultiMap<ushort, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<ushort, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<ushort, TValue>.Node?[] hashtable, ushort key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -631,6 +637,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<short, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<short, TValue>.Node? target, short key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<short, TValue>.Node? leaf) SearchNode(OrderedMultiMap<short, TValue>.Node? target, short key)
         {
             var x = target;
@@ -659,58 +693,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<short, TValue>.Node? SearchHashtable(UnorderedMapClass<short, TValue>.Node?[] hashtable, short key)
+        public (int cmp, OrderedMultiMap<short, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<short, TValue>.Node? target, short key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<short, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<short, TValue>.Node?[] hashtable, short key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -807,6 +815,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<uint, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<uint, TValue>.Node? target, uint key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<uint, TValue>.Node? leaf) SearchNode(OrderedMultiMap<uint, TValue>.Node? target, uint key)
         {
             var x = target;
@@ -835,58 +871,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<uint, TValue>.Node? SearchHashtable(UnorderedMapClass<uint, TValue>.Node?[] hashtable, uint key)
+        public (int cmp, OrderedMultiMap<uint, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<uint, TValue>.Node? target, uint key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<uint, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<uint, TValue>.Node?[] hashtable, uint key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -983,6 +993,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<int, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<int, TValue>.Node? target, int key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<int, TValue>.Node? leaf) SearchNode(OrderedMultiMap<int, TValue>.Node? target, int key)
         {
             var x = target;
@@ -1011,58 +1049,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<int, TValue>.Node? SearchHashtable(UnorderedMapClass<int, TValue>.Node?[] hashtable, int key)
+        public (int cmp, OrderedMultiMap<int, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<int, TValue>.Node? target, int key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<int, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<int, TValue>.Node?[] hashtable, int key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -1159,6 +1171,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<ulong, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<ulong, TValue>.Node? target, ulong key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<ulong, TValue>.Node? leaf) SearchNode(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
         {
             var x = target;
@@ -1187,58 +1227,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<ulong, TValue>.Node? SearchHashtable(UnorderedMapClass<ulong, TValue>.Node?[] hashtable, ulong key)
+        public (int cmp, OrderedMultiMap<ulong, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<ulong, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<ulong, TValue>.Node?[] hashtable, ulong key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -1335,6 +1349,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<long, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<long, TValue>.Node? target, long key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<long, TValue>.Node? leaf) SearchNode(OrderedMultiMap<long, TValue>.Node? target, long key)
         {
             var x = target;
@@ -1363,58 +1405,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<long, TValue>.Node? SearchHashtable(UnorderedMapClass<long, TValue>.Node?[] hashtable, long key)
+        public (int cmp, OrderedMultiMap<long, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<long, TValue>.Node? target, long key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<long, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<long, TValue>.Node?[] hashtable, long key)
-        {
-            var hashCode = (int)key;
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -1511,6 +1527,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<float, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<float, TValue>.Node? target, float key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<float, TValue>.Node? leaf) SearchNode(OrderedMultiMap<float, TValue>.Node? target, float key)
         {
             var x = target;
@@ -1539,58 +1583,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<float, TValue>.Node? SearchHashtable(UnorderedMapClass<float, TValue>.Node?[] hashtable, float key)
+        public (int cmp, OrderedMultiMap<float, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<float, TValue>.Node? target, float key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<float, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<float, TValue>.Node?[] hashtable, float key)
-        {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -1687,6 +1705,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<double, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<double, TValue>.Node? target, double key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<double, TValue>.Node? leaf) SearchNode(OrderedMultiMap<double, TValue>.Node? target, double key)
         {
             var x = target;
@@ -1715,58 +1761,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<double, TValue>.Node? SearchHashtable(UnorderedMapClass<double, TValue>.Node?[] hashtable, double key)
+        public (int cmp, OrderedMultiMap<double, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<double, TValue>.Node? target, double key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<double, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<double, TValue>.Node?[] hashtable, double key)
-        {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 
@@ -1863,6 +1883,34 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
+        public (int cmp, OrderedMap<DateTime, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
         public (int cmp, OrderedMultiMap<DateTime, TValue>.Node? leaf) SearchNode(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
         {
             var x = target;
@@ -1891,58 +1939,32 @@ namespace Arc.Collection.HotMethod
             return (cmp, p);
         }
 
-        public UnorderedMapClass<DateTime, TValue>.Node? SearchHashtable(UnorderedMapClass<DateTime, TValue>.Node?[] hashtable, DateTime key)
+        public (int cmp, OrderedMultiMap<DateTime, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
         {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            var n = hashtable[index];
-            while (n != null)
-            {
-                if (n.HashCode == hashCode && n.Key == key)
-                {// Identical
-                    return n;
-                }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-                if (n == hashtable[index])
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
                 {
-                    break;
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
                 }
                 else
-                {
-                    n = n.Next;
+                {// Found
+                    return (0, x);
                 }
             }
 
-            return null; // Not found
-        }
-
-        public (UnorderedMapClass<DateTime, TValue>.Node? found, int hashCode, int index) Probe(bool allowMultiple, UnorderedMapClass<DateTime, TValue>.Node?[] hashtable, DateTime key)
-        {
-            var hashCode = key.GetHashCode();
-            var index = hashCode & (hashtable.Length - 1);
-            if (!allowMultiple)
-            {
-                var n = hashtable[index];
-                while (n != null)
-                {
-                    if (n.HashCode == hashCode && n.Key == key)
-                    {// Identical
-                        return (n, hashCode, index);
-                    }
-
-                    // Next item
-                    if (n == hashtable[index])
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        n = n.Next;
-                    }
-                }
-            }
-
-            return (null, hashCode, index);
+            return (cmp, p);
         }
     }
 }
