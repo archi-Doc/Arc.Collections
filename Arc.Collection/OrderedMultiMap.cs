@@ -1034,10 +1034,10 @@ namespace Arc.Collection
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMultiMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the key.</param>
         /// <param name="key">The key to set.</param>
-        /// <returns>true if the node is replaced.</returns>
-        public bool ReplaceNode(Node node, TKey key)
+        /// <returns>true if the key is changed.</returns>
+        public bool SetNodeKey(Node node, TKey key)
         {
             if (this.Comparer.Compare(node.Key, key) == 0)
             {// Identical
@@ -1049,6 +1049,14 @@ namespace Arc.Collection
             this.Probe(key, value, node);
             return true;
         }
+
+        /// <summary>
+        /// Updates the node's value with the specified value.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the value.</param>
+        /// <param name="value">The value to set.</param>
+        public void SetNodeValue(Node node, TValue value) => node.Value = value;
 
         /// <summary>
         /// Removes a specified node from the collection.
@@ -1443,6 +1451,39 @@ namespace Arc.Collection
                 while (true)
                 {
                     yield return node;
+
+                    node = node.ListNext!;
+                    if (!node.IsLinkedListNode)
+                    {// HeadNode
+                        yield break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enumerates <see cref="OrderedMultiMap{TKey, TValue}.Node"/> values with the specified key.
+        /// </summary>
+        /// <param name="key">The key to search in a collection.</param>
+        /// <returns>The node values with the specified key.</returns>
+        public IEnumerable<TValue> EnumerateValue(TKey? key)
+        {
+            var result = this.SearchFirstNode(this.root, key);
+            if (result.cmp != 0 || result.leaf == null)
+            {// Not found
+                yield break;
+            }
+
+            var node = result.leaf;
+            if (node.IsSingleNode)
+            {// SingleNode
+                yield return node.Value;
+            }
+            else
+            {// HeadNode
+                while (true)
+                {
+                    yield return node.Value;
 
                     node = node.ListNext!;
                     if (!node.IsLinkedListNode)

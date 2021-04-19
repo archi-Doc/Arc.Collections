@@ -342,10 +342,10 @@ namespace Benchmark
         [Benchmark]
         public int AddRemoveReplace_OrderedSet()
         {
-            this.IntSet.ReplaceNode(this.Node0, 0);
-            this.IntSet.ReplaceNode(this.Node7, 7);
-            this.IntSet.ReplaceNode(this.Node11, 11);
-            this.IntSet.ReplaceNode(this.Node55, 55);
+            this.IntSet.SetNodeKey(this.Node0, 0);
+            this.IntSet.SetNodeKey(this.Node7, 7);
+            this.IntSet.SetNodeKey(this.Node11, 11);
+            this.IntSet.SetNodeKey(this.Node55, 55);
 
             return this.IntSet.Count;
         }

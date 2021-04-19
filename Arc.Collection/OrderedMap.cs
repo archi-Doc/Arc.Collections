@@ -995,35 +995,13 @@ namespace Arc.Collection
         public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
-        /// <br/>O(log n) operation.
-        /// </summary>
-        /// <param name="key">The key of the element to add.</param>
-        /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// replaced: true if the node is replaced.</returns>
-        public (Node node, bool replaced) Replace(TKey key, TValue value)
-        {
-            var result = this.Probe(key, value, null);
-            if (result.newlyAdded)
-            {// New
-                return (result.node, false);
-            }
-
-            // Replace
-            this.version++;
-            result.node.Value = value;
-            return (result.node, true);
-        }
-
-        /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
         /// <br/>O(log n) operation.
         /// </summary>
-        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to replace.</param>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the key.</param>
         /// <param name="key">The key to set.</param>
-        /// <returns>true if the node is replaced.</returns>
-        public bool ReplaceNode(Node node, TKey key)
+        /// <returns>true if the key is changed.</returns>
+        public bool SetNodeKey(Node node, TKey key)
         {
             if (this.Comparer.Compare(node.Key, key) == 0)
             {// Identical
@@ -1035,6 +1013,14 @@ namespace Arc.Collection
             this.Probe(key, value, node);
             return true;
         }
+
+        /// <summary>
+        /// Updates the node's value with the specified value.
+        /// <br/>O(1) operation.
+        /// </summary>
+        /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the value.</param>
+        /// <param name="value">The value to set.</param>
+        public void SetNodeValue(Node node, TValue value) => node.Value = value;
 
         /// <summary>
         /// Removes a specified node from the collection"/>.
