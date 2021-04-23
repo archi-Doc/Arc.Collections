@@ -1,6 +1,8 @@
 ﻿## Arc.Collection
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collection) ![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
 
+日本語ドキュメントは[こちら](/doc/README.jp.md)
+
 
 
 Arc.Collection is a fast C# Collection Library which includes
@@ -10,7 +12,7 @@ Arc.Collection is a fast C# Collection Library which includes
 - ```OrderedList<T> ``` : A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required.
 - ```OrderedKeyValueList<TKey, TValue>``` (```SortedList<TKey,TValue>```) : A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
 - ```OrderedMap<TKey, TValue>``` (```SortedDictionary<TKey, TValue>```) : A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
-- ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TKey int is not used).
+- ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used).
 - ```OrderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class.
 - ```OrderedMultiSet<T>``` :  A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class.
 - ```UnorderedMap<TKey, TValue>``` (```Dictionary<TKey, TValue>```) : A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>```, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key.
@@ -18,15 +20,19 @@ Arc.Collection is a fast C# Collection Library which includes
 - ```UnorderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class.
 - ```UnorderedMultiSet<T>``` : A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used).
 
+I know it's reinventing the wheels, but these classes are necessary for implementing [CrossLink](https://github.com/archi-Doc/CrossLink). And reinventing the wheels is a kind of fun for me :)
+
 
 
 ## Quick Start
+
+Install Arc.Collection using Package Manager Console.
 
 ```
 Install-Package Arc.Collection
 ```
 
-Sample code
+Sample code. You can use these classes in the same way as generic collection classes.
 
 ```csharp
 using Arc.Collection;
@@ -54,9 +60,9 @@ static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
 
 ## Performance
 
-```OrderedMap<T>``` and ```OrderedSet<T>``` use the same tree structure (Red-Black Tree) as ```SortedSet<T>```. The difference is that ```OrderedSet<T>``` has a link to a parent node and is overall faster than ```SortedSet<T>```.
+`OrderedSet<T>` use the same tree structure (Red-Black Tree) as `SortedSet<T>`. The difference is that `OrderedSet<T>` has a link to a parent node and is overall faster than `SortedSet<T>`.
 
-Reference: ```System.Collections.Generic.SortedSet<T>```
+Reference: `System.Collections.Generic.SortedSet<T>`
 
 | Method                      | Length    |                Mean |            Error |           StdDev |              Median |       Gen 0 |    Allocated |
 | --------------------------- | --------- | ------------------: | ---------------: | ---------------: | ------------------: | ----------: | -----------: |
@@ -74,7 +80,9 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 
 
 
-## Collection
+## Collections
+
+The features of the various collections. Please use them well.
 
 | Name                          | Structure   | Access | Add      | Remove   | Search   | Sort       | Enum.    |
 | ----------------------------- | ----------- | ------ | -------- | -------- | -------- | ---------- | -------- |
@@ -92,8 +100,8 @@ Reference: ```System.Collections.Generic.SortedSet<T>```
 | ```UnorderedMultiSet<T>```    | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
 
 - Ordered collections require ```IComparable<T>``` or ```IComparer<T>```.
-- Unordered collections based on hash tables (e.g. ```UnorderedMap<TKey, TValue>```) require ```IEquatable<T>```/```GetHashCode()``` or ```IEqualityComparer<T>```.
+- Unordered collections which based on hash tables (e.g. ```UnorderedMap<TKey, TValue>```) require ```IEquatable<T>```/```GetHashCode()``` or ```IEqualityComparer<T>```.
 - ```Multi``` collection allows duplicate keys.
-- ```OrderedMap<TKey, TValue>``` uses Red-black trees and is fast in most situations.
+- ```OrderedMap<TKey, TValue>``` uses Red-black trees and is faster than `OrderedKeyValueList<TKey, TValue>` in most situations.
   For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless index access is absolutely necessary.
 
