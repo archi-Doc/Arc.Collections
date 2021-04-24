@@ -7,18 +7,22 @@
 
 Arc.Collection is a fast C# Collection Library which includes
 
-- ```UnorderedList<T>  ``` (equivalent to ```List<T>```) : A list of objects that can be accessed by index.
-- ```UnorderedLinkedList<T>``` (```LinkedList<T>```) : A doubly linked list which has ```Node<T>``` operation.
-- ```OrderedList<T> ``` : A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required.
-- ```OrderedKeyValueList<TKey, TValue>``` (```SortedList<TKey,TValue>```) : A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
-- ```OrderedMap<TKey, TValue>``` (```SortedDictionary<TKey, TValue>```) : A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.
-- ```OrderedSet<T>``` (```SortedSet<T>```) : A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used).
-- ```OrderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class.
-- ```OrderedMultiSet<T>``` :  A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class.
-- ```UnorderedMap<TKey, TValue>``` (```Dictionary<TKey, TValue>```) : A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>```, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key.
-- ```UnorderedSet<T>``` : A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used).
-- ```UnorderedMultiMap<TKey, TValue>``` : A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class.
-- ```UnorderedMultiSet<T>``` : A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used).
+| Collection                                                   | Description                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ```UnorderedList<T>  ```<br />(equivalent to ```List<T>```)  | A list of objects that can be accessed by index.             |
+| ```UnorderedLinkedList<T>```<br />(```LinkedList<T>```)      | A doubly linked list which has ```Node<T>``` operation.      |
+| OrderedList<T>                                               | A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required. |
+| ```OrderedKeyValueList<TKey, TValue>```<br />(```SortedList<TKey,TValue>```) | A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required. |
+| ```OrderedMap<TKey, TValue>```<br />(```SortedDictionary<TKey, TValue>```) | A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required. |
+| ```OrderedSet<T>```<br />```SortedSet<T>```)                 | A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used). |
+| ```OrderedMultiMap<TKey, TValue>```                          | A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class. |
+| ```OrderedMultiSet<T>```                                     | A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class. |
+| ```UnorderedMap<TKey, TValue>```<br />(```Dictionary<TKey, TValue>```) | A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>```, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key. |
+| ```UnorderedSet<T>```                                        | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
+| ```UnorderedMultiMap<TKey, TValue>```                        | A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class. |
+| ```UnorderedMultiSet<T>```                                   | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
+
+
 
 I know it's reinventing the wheels, but these classes are necessary for implementing [CrossLink](https://github.com/archi-Doc/CrossLink). And reinventing the wheels is a kind of fun for me :)
 

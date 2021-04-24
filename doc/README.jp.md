@@ -1,22 +1,24 @@
 ﻿## Arc.Collection
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collection) ![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
 
+Arc.Collectionは各種コレクションを実装した高速なC#ライブラリーです。
 
+本家はGitHub [archi-Doc/Arc.Collection](https://github.com/archi-Doc/Arc.Collection) にあります。
 
-Arc.Collectionは各種コレクションを実装したC#ライブラリーです。
-
-- ```UnorderedList<T>  ``` (`List<T>`と同等) : Indexアクセスが可能な、オブジェクトのリスト。
-- ```UnorderedLinkedList<T>``` (`LinkedList<T>`と同等) : 双方向リストで、`Node` による操作が可能です。
-- ```OrderedList<T> ``` : ソート済みでIndexアクセスが可能な、オブジェクトのリスト。`IComparable<T>` または `IComparer<T>` が必要。
-- ```OrderedKeyValueList<TKey, TValue>``` (`SortedList<TKey,TValue>`と同等) : ソート済みでIndexアクセスが可能な、Key/Valueのリスト。`IComparable<TKey>` または `IComparer<TKey>` が必要。
-- ```OrderedMap<TKey, TValue>``` (`SortedDictionary<TKey, TValue>`と同等) : Keyでソート済み（Red-Black Tree）のKey/Value コレクション。 `SortedDictionary<TKey, TValue>` との違いは、`Node`アクセスが可能なこと、`TKey`がnullも可ということです。`IComparable<TKey>` または `IComparer<TKey>` が必要。
-- ```OrderedSet<T>``` (`SortedSet<T>`と同等) : ソート済み（Red-Black Tree）のコレクション。 `OrderedSet<T>` は `OrderedMap<TKey, TValue>` のサブセットで、実際は ```OrderedMap<T, int>``` です（TValue は int で、使用されません)。
-- ```OrderedMultiMap<TKey, TValue>``` : Keyでソート済み（Red-Black Tree）のKey/Value コレクション。 重複キーを使用可能です。
-- ```OrderedMultiSet<T>``` :   ソート済み（Red-Black Tree）のコレクション。重複オブジェクトも可。
-- `UnorderedMap<TKey, TValue>` (`Dictionary<TKey, TValue>`と同等) : Hash tableで管理されるKey/Value コレクション。`UnorderedMap<TKey, TValue>` は `Dictionary<TKey, TValue>` より少し遅いですが、`UnorderedMap<TKey, TValue>` は`Node index`操作が可能で、`TKey`がnullも可です。
-- ```UnorderedSet<T>``` : `UnorderedMap<TKey, TValue>` のサブセットで、実際は `UnorderedMap<T, int>` です（TValue は int で、使用されません)。
-- ```UnorderedMultiMap<TKey, TValue>``` : Hash tableで管理されるKey/Value コレクション。重複キーを使用可能です。
-- ```UnorderedMultiSet<T>``` : `UnorderedMap<TKey, TValue>` のサブセットで、実際は `UnorderedMap<T, int>` です（TValue は int で、使用されません)。
+| コレクション                                                 | 説明                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ```UnorderedList<T>  ``` <br />(`List<T>`と同等)             | Indexアクセスが可能な、オブジェクトのリスト。                |
+| ```UnorderedLinkedList<T>```<br />(`LinkedList<T>`と同等)    | 双方向リストで、`Node` による操作が可能です。                |
+| ```OrderedList<T> ```                                        | ソート済みでIndexアクセスが可能な、オブジェクトのリスト。<br />`IComparable<T>` または `IComparer<T>` が必要。 |
+| ```OrderedKeyValueList<TKey, TValue>``` <br />(`SortedList<TKey,TValue>`と同等) | ソート済みでIndexアクセスが可能な、Key/Valueのリスト。<br />`IComparable<TKey>` または `IComparer<TKey>` が必要。 |
+| ```OrderedMap<TKey, TValue>``` (`SortedDictionary<TKey, TValue>`と同等) | Keyでソート済み（Red-Black Tree）のKey/Value コレクション。 `SortedDictionary<TKey, TValue>` との違いは、`Node`アクセスが可能なこと、`TKey`がnullも可ということです。<br />`IComparable<TKey>` または `IComparer<TKey>` が必要。 |
+| ```OrderedSet<T>```<br />(`SortedSet<T>`と同等)              | ソート済み（Red-Black Tree）のコレクション。 `OrderedSet<T>` は `OrderedMap<TKey, TValue>` のサブセットで、実際は ```OrderedMap<T, int>``` です（TValue は int で、使用されません)。 |
+| ```OrderedMultiMap<TKey, TValue>```                          | Keyでソート済み（Red-Black Tree）のKey/Value コレクション。 重複キーを使用可能です。 |
+| ```OrderedMultiSet<T>```                                     | ソート済み（Red-Black Tree）のコレクション。重複オブジェクトも可。 |
+| `UnorderedMap<TKey, TValue>`<br />(`Dictionary<TKey, TValue>`と同等) | Hash tableで管理されるKey/Value コレクション。`UnorderedMap<TKey, TValue>` は `Dictionary<TKey, TValue>` より少し遅いですが、`UnorderedMap<TKey, TValue>` は`Node index`操作が可能で、`TKey`がnullも可です。 |
+| ```UnorderedSet<T>```                                        | `UnorderedMap<TKey, TValue>` のサブセットで、実際は `UnorderedMap<T, int>` です（TValue は int で、使用されません)。 |
+| ```UnorderedMultiMap<TKey, TValue>```                        | Hash tableで管理されるKey/Value コレクション。重複キーを使用可能です。 |
+| ```UnorderedMultiSet<T>```                                   | `UnorderedMap<TKey, TValue>` のサブセットで、実際は `UnorderedMap<T, int>` です（TValue は int で、使用されません)。 |
 
 
 
@@ -104,7 +106,7 @@ Reference: `System.Collections.Generic.SortedSet<T>`
 | ```UnorderedMultiSet<T>```    | Hash table  | Node   | O(1)     | O(1)     | O(1)     | -          | O(1)     |
 
 - `Ordered` コレクションはオブジェクトをソートするため、`IComparable<T>` または `IComparer<T>` が必要です。
-- Hash tableを使用するコレクション（`UnorderedMap<TKey, TValue>`とか）は当然 ```IEquatable<T>```/```GetHashCode()``` または `IEqualityComparer<T>` が必要です。
+- Hash tableを使用するコレクション（`UnorderedMap<TKey, TValue>`とか）は適切な ```IEquatable<T>```/```GetHashCode()``` または `IEqualityComparer<T>` が必要です。
 - ```Multi``` がついたコレクションは、重複キーを使用可能です。
 - `OrderedMap<TKey, TValue>` は赤黒木（Red-black trees）を使用し、`OrderedKeyValueList<TKey, TValue>` よりもほとんどのシチュエーションで高速です。絶対にIndexアクセスが必要な場面以外は、`OrderedMap<TKey, TValue>` の使用をお勧めします。
 
