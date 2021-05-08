@@ -684,7 +684,7 @@ namespace Arc.Collection
 
         #endregion
 
-        private const int MinLogCapacity = 4;
+        private const int MinLogCapacity = 2;
         private const int MaxLogCapacity = 31;
         private int version;
         private KeyCollection? keys;
@@ -704,45 +704,37 @@ namespace Arc.Collection
                 throw new ArgumentOutOfRangeException(nameof(capacity));
             }
 
-            if (capacity == 0)
+            var log = -1;
+            var n = capacity;
+            while (n > 0)
             {
-                this.buckets = Array.Empty<int>();
-                this.nodes = Array.Empty<Node>();
+                log++;
+                n >>= 1;
             }
-            else
+
+            if (capacity != (1 << log))
             {
-                var log = -1;
-                var n = capacity;
-                while (n > 0)
-                {
-                    log++;
-                    n >>= 1;
-                }
-
-                if (capacity != (1 << log))
-                {
-                    log++;
-                }
-
-                if (log < MinLogCapacity)
-                {
-                    log = MinLogCapacity;
-                }
-                else if (log > MaxLogCapacity)
-                {
-                    log = MaxLogCapacity;
-                }
-
-                var size = 1 << log;
-                this.hashMask = size - 1;
-                this.buckets = new int[size];
-                for (n = 0; n < size; n++)
-                {
-                    this.buckets[n] = -1;
-                }
-
-                this.nodes = new Node[size];
+                log++;
             }
+
+            if (log < MinLogCapacity)
+            {
+                log = MinLogCapacity;
+            }
+            else if (log > MaxLogCapacity)
+            {
+                log = MaxLogCapacity;
+            }
+
+            var size = 1 << log;
+            this.hashMask = size - 1;
+            this.buckets = new int[size];
+            for (n = 0; n < size; n++)
+            {
+                this.buckets[n] = -1;
+            }
+
+            this.nodes = new Node[size];
 
             this.nullList = -1;
             this.freeList = -1;

@@ -39,6 +39,8 @@ namespace xUnitTest
             var dic = new Dictionary<int, int>();
             var um = new UnorderedMap<int, int>();
 
+            um.TryGetValue(1, out var nn);
+
             AddAndValidate(0, 0);
             RemoveAndValidate(0);
 
