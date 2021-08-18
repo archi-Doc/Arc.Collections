@@ -2,6 +2,7 @@
 
 using System;
 
+#pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1509 // Opening braces should not be preceded by blank line
 
 namespace Arc.Collection.HotMethod
@@ -31,7 +32,7 @@ namespace Arc.Collection.HotMethod
 
             static MethodCache()
             {
-                MethodCache<T>.Method = (IHotMethod<T>)Activator.CreateInstance(typeof(StandardMethod<>).MakeGenericType(typeof(T)));
+                MethodCache<T>.Method = (IHotMethod<T>)Activator.CreateInstance(typeof(StandardMethod<>).MakeGenericType(typeof(T)))!;
             }
         }
 
@@ -46,7 +47,7 @@ namespace Arc.Collection.HotMethod
 
             static MethodCache2()
             {
-                MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(typeof(StandardMethod2<,>).MakeGenericType(typeof(TKey), typeof(TValue)));
+                MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(typeof(StandardMethod2<,>).MakeGenericType(typeof(TKey), typeof(TValue)))!;
             }
         }
     }
