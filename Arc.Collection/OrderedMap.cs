@@ -472,7 +472,7 @@ namespace Arc.Collection
 
         #region IDictionary
 
-        object IDictionary.this[object key]
+        object? IDictionary.this[object key]
         {
             get
             {
@@ -480,23 +480,23 @@ namespace Arc.Collection
                 {
                     if (this.TryGetValue(default, out var value))
                     {
-                        return value!;
+                        return value;
                     }
                 }
                 else if (key is TKey k)
                 {
                     if (this.TryGetValue(k, out var value))
                     {
-                        return value!;
+                        return value;
                     }
                 }
 
-                return null!;
+                return null;
             }
 
             set
             {
-                this[(TKey)key] = (TValue)value;
+                this[(TKey)key] = (TValue)value!;
             }
         }
 
@@ -508,7 +508,7 @@ namespace Arc.Collection
 
         ICollection IDictionary.Values => (ICollection)this.Values;
 
-        void IDictionary.Add(object key, object value) => this.Add((TKey)key, (TValue)value);
+        void IDictionary.Add(object key, object? value) => this.Add((TKey)key, (TValue)value!);
 
         bool IDictionary.Contains(object key)
         {

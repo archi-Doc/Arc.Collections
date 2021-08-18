@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+#pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1509 // Opening braces should not be preceded by blank line
 
 namespace Arc.Collection.HotMethod
@@ -90,7 +91,7 @@ namespace Arc.Collection.HotMethod
             {
                 if (PrimitiveResolver.TypeToMethod2.TryGetValue(typeof(TKey), out var type))
                 {
-                    MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(type.MakeGenericType(typeof(TValue)));
+                    MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(type.MakeGenericType(typeof(TValue)))!;
                 }
             }
         }
