@@ -2,7 +2,7 @@
 
 using System;
 using System.Collections.Generic;
-using Arc.Collection;
+using Arc.Collections;
 
 namespace ConsoleApp1
 {

@@ -1,6 +1,6 @@
 using System;
 using Xunit;
-using Arc.Collection;
+using Arc.Collections;
 using System.Collections.Generic;
 using System.Linq;
 

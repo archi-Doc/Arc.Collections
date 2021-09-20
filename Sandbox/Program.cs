@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using Arc.Collection;
+using Arc.Collections;
 
 namespace Sandbox
 {

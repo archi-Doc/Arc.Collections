@@ -1,11 +1,11 @@
-﻿﻿## Arc.Collection
-![Nuget](https://img.shields.io/nuget/v/Arc.Collection) ![Build and Test](https://github.com/archi-Doc/Arc.Collection/workflows/Build%20and%20Test/badge.svg)
+﻿﻿﻿## Arc.Collections
+![Nuget](https://img.shields.io/nuget/v/Arc.Collections) ![Build and Test](https://github.com/archi-Doc/Arc.Collections/workflows/Build%20and%20Test/badge.svg)
 
 日本語ドキュメントは[こちら](/doc/README.jp.md)
 
 
 
-Arc.Collection is a fast C# Collection Library which includes
+Arc.Collections is a fast C# Collection Library which includes
 
 | Collection                                                   | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -21,7 +21,7 @@ Arc.Collection is a fast C# Collection Library which includes
 | ```UnorderedSet<T>```                                        | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
 | ```UnorderedMultiMap<TKey, TValue>```                        | A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class. |
 | ```UnorderedMultiSet<T>```                                   | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
-| `LooseObjectPool<T>`                                         | A fast and thread-safe pool of objects.                      |
+| `ObjectPool<T>`                                              | A fast and thread-safe pool of objects.                      |
 
 
 

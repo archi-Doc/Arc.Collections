@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Arc.Collection;
-using Arc.Collection.Obsolete;
+using Arc.Collections;
+using Arc.Collections.Obsolete;
 using Xunit;
 
 #pragma warning disable SA1401 // Fields should be private
