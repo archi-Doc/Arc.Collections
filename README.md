@@ -1,4 +1,4 @@
-﻿﻿﻿## Arc.Collections
+﻿## Arc.Collections
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collections) ![Build and Test](https://github.com/archi-Doc/Arc.Collections/workflows/Build%20and%20Test/badge.svg)
 
 日本語ドキュメントは[こちら](/doc/README.jp.md)
