@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,10 @@ namespace Arc.Collections;
 #pragma warning disable SA1401 // Fields should be private
 
 /// <summary>
-/// A fast and thread-safe pool of objects.<br/>
+/// A fast and thread-safe pool of objects (uses <see cref="ConcurrentQueue{T}"/>).<br/>
+/// <see cref="ObjectPool{T}"/> is intended for classes that will be used frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
+/// If <typeparamref name="T"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
+/// It is not necessary, but you can dispose this class.
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
 public class ObjectPool<T> : IDisposable
@@ -26,6 +30,11 @@ public class ObjectPool<T> : IDisposable
     private readonly ConcurrentQueue<T> objects;
     private bool isDisposable = false;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
+    /// </summary>
+    /// <param name="objectGenerator">Delegate to create a new instance.</param>
+    /// <param name="limit">The maximum number of objects in the pool.</param>
     public ObjectPool(Func<T> objectGenerator, int limit = DefaultLimit)
     {
         this.objectGenerator = objectGenerator ?? throw new ArgumentNullException(nameof(objectGenerator));
@@ -48,17 +57,28 @@ public class ObjectPool<T> : IDisposable
     /// </summary>
     public int Limit { get; }
 
+    /// <summary>
+    /// Gets an instance from the pool or create a new instance if not available.<br/>
+    /// The instance is guaranteed to be unique even if multiple threads called this method simultaneously.<br/>
+    /// </summary>
+    /// <returns>An instance of type <typeparamref name="T"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Get() => this.objects.TryDequeue(out T? item) ? item : this.objectGenerator();
 
+    /// <summary>
+    /// Returns an instance to the pool.<br/>
+    /// Forgetting to return is not fatal, but may lead to decreased performance.<br/>
+    /// Do not call this method multiple times on the same instance.
+    /// </summary>
+    /// <param name="instance">The instance to return to the pool.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Return(T item)
+    public void Return(T instance)
     {
         if (this.objects.Count < this.Limit)
         {
-            this.objects.Enqueue(item);
+            this.objects.Enqueue(instance);
         }
-        else if (this.isDisposable && item is IDisposable disposable)
+        else if (this.isDisposable && instance is IDisposable disposable)
         {
             disposable.Dispose();
         }
