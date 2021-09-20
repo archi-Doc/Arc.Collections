@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
 #pragma warning disable SA1401 // Fields should be private
 
-namespace Arc.Collection
+namespace Arc.Collection.Obsolete
 {
     /// <summary>
     /// A fast and thread-safe pool of objects.<br/>
