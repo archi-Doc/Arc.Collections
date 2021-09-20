@@ -25,10 +25,10 @@ jobs:
       uses: rohith/publish-nuget@v2
       with:
         # Filepath of the project to be packaged, relative to root of repository
-        PROJECT_FILE_PATH: Arc.Collection/Arc.Collection.csproj
+        PROJECT_FILE_PATH: Arc.Collections/Arc.Collections.csproj
         
         # NuGet package id, used for version detection & defaults to project name
-        PACKAGE_NAME: Arc.Collection
+        PACKAGE_NAME: Arc.Collections
         
         # Filepath with version info, relative to root of repository & defaults to PROJECT_FILE_PATH
         VERSION_FILE_PATH: Directory.Build.props
