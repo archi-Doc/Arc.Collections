@@ -1,6 +1,6 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
-using Arc.Collection;
+using Arc.Collections;
 using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;

@@ -3,8 +3,8 @@ using BenchmarkDotNet.Attributes;
 using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
-using Arc.Collection;
-using Arc.Collection.Obsolete;
+using Arc.Collections;
+using Arc.Collections.Obsolete;
 
 namespace Benchmark
 {

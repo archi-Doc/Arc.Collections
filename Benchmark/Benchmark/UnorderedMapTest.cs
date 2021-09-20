@@ -1,9 +1,9 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
-using Arc.Collection;
+using Arc.Collections;
 using System.Linq;
 using System.Diagnostics;
-using Arc.Collection.Obsolete;
+using Arc.Collections.Obsolete;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
