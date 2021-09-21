@@ -1,4 +1,4 @@
-﻿## Arc.Collections
+﻿﻿## Arc.Collections
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collections) ![Build and Test](https://github.com/archi-Doc/Arc.Collections/workflows/Build%20and%20Test/badge.svg)
 
 日本語ドキュメントは[こちら](/doc/README.jp.md)
@@ -13,15 +13,15 @@ Arc.Collections is a fast C# Collection Library which includes
 | ```UnorderedLinkedList<T>```<br />(```LinkedList<T>```)      | A doubly linked list which has ```Node<T>``` operation.      |
 | OrderedList<T>                                               | A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required. |
 | ```OrderedKeyValueList<TKey, TValue>```<br />(```SortedList<TKey,TValue>```) | A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required. |
-| ```OrderedMap<TKey, TValue>```<br />(```SortedDictionary<TKey, TValue>```) | A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required. |
-| ```OrderedSet<T>```<br />```SortedSet<T>```)                 | A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used). |
+| ```OrderedMap<TKey, TValue>```<br />(```SortedDictionary<TKey, TValue>```) | A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.` |
+| `OrderedSet`<br/> `(SortedSet<T>`)                           | A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used). |
 | ```OrderedMultiMap<TKey, TValue>```                          | A collection of key/value pairs that are sorted on the key. Duplicate keys are allowed in this class. |
 | ```OrderedMultiSet<T>```                                     | A collection of objects that is maintained in sorted order. Duplicate keys are allowed in this class. |
 | ```UnorderedMap<TKey, TValue>```<br />(```Dictionary<TKey, TValue>```) | A collection of key/value pairs that are stored as a hash table. ```UnorderedMap<TKey, TValue>```  is a bit slower than ```Dictionary<TKey, TValue>```, but ```UnorderedMap<TKey, TValue>``` has Node index interface and allows null key. |
 | ```UnorderedSet<T>```                                        | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
 | ```UnorderedMultiMap<TKey, TValue>```                        | A collection of key/value pairs that are stored as a hash table. Duplicate keys are allowed in this class. |
 | ```UnorderedMultiSet<T>```                                   | A subset of ```UnorderedMap<TKey, TValue>``` and it's actually ```UnorderedMap<T, int>``` (TValue int is not used). |
-| `ObjectPool<T>`                                              | A fast and thread-safe pool of objects.                      |
+| `ObjectPool<T>`                                              | A fast and thread-safe pool of objects (implemented using `ConcurrentQueue<T>`). |
 
 
 
@@ -105,8 +105,8 @@ The features of the various collections. Please use them well.
 | ```UnorderedMultiSet<T>```    | Hash table  | Node   | O(1)     | O(1)     | O(1)     | No         | O(1)     |
 
 - Ordered collections require ```IComparable<T>``` or ```IComparer<T>```.
-- Unordered collections which based on hash tables (e.g. ```UnorderedMap<TKey, TValue>```) require ```IEquatable<T>```/```GetHashCode()``` or ```IEqualityComparer<T>```.
+- Unordered collections (e.g. ```UnorderedMap<TKey, TValue>```) are based on hash tables, which require ```IEquatable<T>```/```GetHashCode()``` or ```IEqualityComparer<T>```.
 - ```Multi``` collection allows duplicate keys.
-- ```OrderedMap<TKey, TValue>``` uses Red-black trees and is faster than `OrderedKeyValueList<TKey, TValue>` in most situations.
+- `OrderedMap` uses Red-black trees and is faster than `OrderedKeyValueList<TKey, TValue>` in most situations.
   For this reason, I recommend using ```OrderedMap<TKey, TValue>``` over ```OrderedKeyValueList<TKey, TValue>``` unless index access is absolutely necessary.
 
