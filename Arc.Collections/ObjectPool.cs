@@ -24,7 +24,8 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
 public class ObjectPool<T> : IDisposable
 {
-    public const int DefaultLimit = 32;
+    public const uint MinimumPoolSize = 4;
+    public const uint DefaultPoolSize = 32;
 
     private readonly Func<T> objectGenerator;
     private readonly ConcurrentQueue<T> objects;
@@ -34,13 +35,17 @@ public class ObjectPool<T> : IDisposable
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
     /// </summary>
     /// <param name="objectGenerator">Delegate to create a new instance.</param>
-    /// <param name="limit">The maximum number of objects in the pool.</param>
-    public ObjectPool(Func<T> objectGenerator, int limit = DefaultLimit)
+    /// <param name="poolSize">The maximum number of objects in the pool.</param>
+    public ObjectPool(Func<T> objectGenerator, uint poolSize = DefaultPoolSize)
     {
         this.objectGenerator = objectGenerator ?? throw new ArgumentNullException(nameof(objectGenerator));
-        if (limit <= 0)
+        if (poolSize < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(limit));
+            throw new ArgumentOutOfRangeException(nameof(poolSize));
+        }
+        else if (poolSize < MinimumPoolSize)
+        {
+            poolSize = MinimumPoolSize;
         }
 
         if (typeof(IDisposable).IsAssignableFrom(typeof(T)))
@@ -48,14 +53,14 @@ public class ObjectPool<T> : IDisposable
             this.isDisposable = true;
         }
 
-        this.Limit = limit;
+        this.PoolSize = poolSize;
         this.objects = new ConcurrentQueue<T>();
     }
 
     /// <summary>
     /// Gets the maximum number of objects in the pool.
     /// </summary>
-    public int Limit { get; }
+    public uint PoolSize { get; }
 
     /// <summary>
     /// Gets an instance from the pool or create a new instance if not available.<br/>
@@ -74,7 +79,7 @@ public class ObjectPool<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Return(T instance)
     {
-        if (this.objects.Count < this.Limit)
+        if (this.objects.Count < this.PoolSize)
         {
             this.objects.Enqueue(instance);
         }
