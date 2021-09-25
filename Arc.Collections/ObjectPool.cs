@@ -17,7 +17,7 @@ namespace Arc.Collections;
 
 /// <summary>
 /// A fast and thread-safe pool of objects (uses <see cref="ConcurrentQueue{T}"/>).<br/>
-/// <see cref="ObjectPool{T}"/> is intended for classes that will be used frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
+/// Target: Classes that will be used/reused frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
 /// If <typeparamref name="T"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
 /// It is not necessary, but you can dispose this class.
 /// </summary>
