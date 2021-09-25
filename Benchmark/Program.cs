@@ -17,22 +17,24 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<ReverseOrderTest>();
+        DebugRun<ObjectPoolBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
-                typeof(ReverseOrderTest),
-                typeof(UnorderedMapTest),
-                typeof(OrderedPublicTest),
-                typeof(OrderedListTest2),
-                typeof(OrderedListTest),
-                typeof(IComparerTest),
-                typeof(BinarySearchTest),
-                typeof(BinarySearchStringTest),
-                typeof(OrderedSetTest),
-                typeof(OrderedMultiMapTest),
-            });
+            typeof(ObjectPoolBenchmark),
+            typeof(ReverseOrderTest),
+            typeof(UnorderedMapTest),
+            typeof(OrderedPublicTest),
+            typeof(OrderedListTest2),
+            typeof(OrderedListTest),
+            typeof(IComparerTest),
+            typeof(BinarySearchTest),
+            typeof(BinarySearchStringTest),
+            typeof(OrderedSetTest),
+            typeof(OrderedMultiMapTest),
+        });
+
         switcher.Run(args);
     }
 
