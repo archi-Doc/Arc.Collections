@@ -56,33 +56,6 @@ public class ObjectPoolBenchmark
     }
 
     /*[Benchmark]
-    public SHA3_256 Class_Copy()
-    {
-        this.SHA3Instance2 = this.SHA3Instance;
-        return this.SHA3Instance2;
-    }
-
-    [Benchmark]
-    public SHA3_256 Class_Interlocked()
-    {
-        Interlocked.Exchange(ref this.SHA3Instance2, this.SHA3Instance);
-        return this.SHA3Instance2;
-    }
-
-    [Benchmark]
-    public SHA3_256 Class_Volatile()
-    {
-        Volatile.Write(ref this.SHA3Instance2, this.SHA3Instance);
-        return this.SHA3Instance2;
-    }
-
-    [Benchmark]
-    public ulong Farmhash()
-    {
-        return FarmHash.Hash64(this.ByteArray);
-    }*/
-
-    [Benchmark]
     public byte[] SHA3_NewAndGet()
     {
         var h = new SHA3_256();
@@ -135,7 +108,7 @@ public class ObjectPoolBenchmark
     public byte[] SHA3_NoInstance()
     {
         return this.SHA3Instance.GetHash(this.ByteArray);
-    }
+    }*/
 
     [Benchmark]
     public SHA3 SHA3_NewInstance()

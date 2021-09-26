@@ -54,9 +54,10 @@ public class ObjectPool<T> : IDisposable
         this.prepareInstances = prepareInstances;
         if (prepareInstances)
         {
+            this.prepareThreshold = this.PoolSize / 4;
+            this.prepareThreshold = this.prepareThreshold == 0 ? 1 : this.prepareThreshold;
             this.objectsLimit += 4;
             this.PrepareInstanceInternal();
-            // this.prepareCount = 1; // Avoid executing PrepareInstanceInternal() in the next Get().
         }
     }
 
@@ -75,16 +76,21 @@ public class ObjectPool<T> : IDisposable
     {
         if (this.prepareInstances)
         {
-            var count = Interlocked.Increment(ref this.prepareCount);
-            if (count % (this.PoolSize >> 1) == 0)
+            /*var count = Interlocked.Increment(ref this.prepareCount);
+            if (count % this.prepareDivisor == 0 &&
+                this.objects.Count <= (this.PoolSize >> 1))
             {
                 this.PrepareInstanceInternal();
-            }
-
-            /*if (this.prepareCount++ % (this.PoolSize >> 2) == 0)
-            {
-                this.GenerateInternal();
             }*/
+
+            if (this.prepareCount++ >= this.prepareThreshold)
+            {
+                this.prepareCount = 0;
+                if (this.objects.Count <= (this.PoolSize >> 1))
+                {
+                    this.PrepareInstanceInternal();
+                }
+            }
         }
 
         return this.objects.TryDequeue(out T? item) ? item : this.objectGenerator();
@@ -109,20 +115,28 @@ public class ObjectPool<T> : IDisposable
         }
     }
 
-    public Task PrepareInstance() => this.PrepareInstanceInternal();
+    // public Task PrepareInstance() => this.PrepareInstanceInternal();
 
     private Task PrepareInstanceInternal()
     {
-        if (this.objects.Count > (this.PoolSize >> 1))
+        if (this.isTaskRunning)
         {
             return Task.CompletedTask;
         }
 
+        this.isTaskRunning = true;
         return Task.Run(() =>
         {
-            while (this.objects.Count < this.PoolSize)
+            try
             {
-                this.objects.Enqueue(this.objectGenerator());
+                while (this.objects.Count < this.PoolSize)
+                {
+                    this.objects.Enqueue(this.objectGenerator());
+                }
+            }
+            finally
+            {
+                this.isTaskRunning = false;
             }
         });
     }
@@ -132,6 +146,8 @@ public class ObjectPool<T> : IDisposable
     private readonly uint objectsLimit;
     private readonly bool prepareInstances;
     private uint prepareCount;
+    private uint prepareThreshold;
+    private bool isTaskRunning = false;
     private bool isDisposable = false;
 
 #pragma warning disable SA1124 // Do not use regions
