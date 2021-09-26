@@ -35,17 +35,13 @@ public class ObjectPool<T> : IDisposable
     public ObjectPool(Func<T> objectGenerator, uint poolSize = DefaultPoolSize)
     {
         this.objectGenerator = objectGenerator ?? throw new ArgumentNullException(nameof(objectGenerator));
-        if (poolSize < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(poolSize));
-        }
-        else if (poolSize < MinimumPoolSize)
+        if (poolSize < MinimumPoolSize)
         {
             poolSize = MinimumPoolSize;
         }
 
         if (typeof(IDisposable).IsAssignableFrom(typeof(T)))
-        {
+        {// T is disposable.
             this.isDisposable = true;
         }
 
