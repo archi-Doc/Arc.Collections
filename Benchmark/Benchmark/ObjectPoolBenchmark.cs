@@ -53,7 +53,7 @@ public class ObjectPoolBenchmark
     {
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public SHA3_256 Class_Copy()
     {
         this.SHA3Instance2 = this.SHA3Instance;
@@ -78,7 +78,7 @@ public class ObjectPoolBenchmark
     public ulong Farmhash()
     {
         return FarmHash.Hash64(this.ByteArray);
-    }
+    }*/
 
     [Benchmark]
     public byte[] SHA3_NewAndGet()

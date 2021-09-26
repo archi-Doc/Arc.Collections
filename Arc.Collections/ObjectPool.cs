@@ -27,10 +27,6 @@ public class ObjectPool<T> : IDisposable
     public const uint MinimumPoolSize = 4;
     public const uint DefaultPoolSize = 32;
 
-    private readonly Func<T> objectGenerator;
-    private readonly ConcurrentQueue<T> objects;
-    private bool isDisposable = false;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
     /// </summary>
@@ -88,6 +84,10 @@ public class ObjectPool<T> : IDisposable
             disposable.Dispose();
         }
     }
+
+    private readonly Func<T> objectGenerator;
+    private readonly ConcurrentQueue<T> objects;
+    private bool isDisposable = false;
 
 #pragma warning disable SA1124 // Do not use regions
     #region IDisposable Support
