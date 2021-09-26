@@ -38,6 +38,8 @@ public class ObjectPoolBenchmark
 
     public LooseObjectPool<SHA3_256> LooseObjectPool { get; } = new(() => new SHA3_256());
 
+    public ObjectPool<SHA3_256> ObjectPoolPrepare { get; } = new(() => new SHA3_256(), 32, true);
+
     [GlobalSetup]
     public void Setup()
     {
@@ -133,5 +135,25 @@ public class ObjectPoolBenchmark
     public byte[] SHA3_NoInstance()
     {
         return this.SHA3Instance.GetHash(this.ByteArray);
+    }
+
+    [Benchmark]
+    public SHA3 SHA3_NewInstance()
+    {
+        return new SHA3_256();
+    }
+
+    [Benchmark]
+    public SHA3 SHA3_PrepareInstance()
+    {
+        var h = this.ObjectPoolPrepare.Get();
+        try
+        {
+            return h;
+        }
+        finally
+        {
+            this.ObjectPoolPrepare.Return(h);
+        }
     }
 }
