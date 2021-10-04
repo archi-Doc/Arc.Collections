@@ -10,6 +10,8 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        ObjectPoolSlow.Test();
+
         var array = new int[] { 2, 1, 3, };
         var os = new OrderedSet<int>(array);
 
