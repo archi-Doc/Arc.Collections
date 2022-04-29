@@ -26,19 +26,19 @@ public class ObjectPoolBenchmark
 
     public byte[] ByteArray { get; set; } = default!;
 
-    public SHA3_256 SHA3Instance { get; } = new();
+    public Sha3_256 SHA3Instance { get; } = new();
 
 #pragma warning disable SA1401 // Fields should be private
-    public SHA3_256? SHA3Instance2;
+    public Sha3_256? SHA3Instance2;
 #pragma warning restore SA1401 // Fields should be private
 
-    public ObjectPool<SHA3_256> ObjectPool { get; } = new(() => new SHA3_256());
+    public ObjectPool<Sha3_256> ObjectPool { get; } = new(() => new Sha3_256());
 
-    public ObjectPoolObsolete<SHA3_256> ObjectPoolObsolete { get; } = new(() => new SHA3_256());
+    public ObjectPoolObsolete<Sha3_256> ObjectPoolObsolete { get; } = new(() => new Sha3_256());
 
-    public LooseObjectPool<SHA3_256> LooseObjectPool { get; } = new(() => new SHA3_256());
+    public LooseObjectPool<Sha3_256> LooseObjectPool { get; } = new(() => new Sha3_256());
 
-    public ObjectPool<SHA3_256> ObjectPoolPrepare { get; } = new(() => new SHA3_256(), 32, true);
+    public ObjectPool<Sha3_256> ObjectPoolPrepare { get; } = new(() => new Sha3_256(), 32, true);
 
     [GlobalSetup]
     public void Setup()
@@ -111,13 +111,13 @@ public class ObjectPoolBenchmark
     }*/
 
     [Benchmark]
-    public SHA3 SHA3_NewInstance()
+    public Sha3 SHA3_NewInstance()
     {
-        return new SHA3_256();
+        return new Sha3_256();
     }
 
     [Benchmark]
-    public SHA3 SHA3_PrepareInstance()
+    public Sha3 SHA3_PrepareInstance()
     {
         var h = this.ObjectPoolPrepare.Get();
         try
