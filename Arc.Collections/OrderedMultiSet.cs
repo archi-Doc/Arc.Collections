@@ -153,7 +153,7 @@ namespace Arc.Collections
 
         void ICollection.CopyTo(Array array, int index) => ((ICollection)this.map.Keys).CopyTo(array, index);
 
-        public IEnumerator<T> GetEnumerator() => this.map.Keys.GetEnumerator();
+        public OrderedMultiMap<T, int>.KeyCollection.Enumerator GetEnumerator() => this.map.Keys.GetEnumerator();
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.map.Keys.GetEnumerator();
 
