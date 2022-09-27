@@ -493,7 +493,7 @@ namespace Arc.Collections
             return this.values[index];
         }
 
-        public IDictionaryEnumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair); // IEnumerator<KeyValuePair<TKey, TValue>>
+        public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair); // IEnumerator<KeyValuePair<TKey, TValue>>
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
@@ -743,7 +743,7 @@ namespace Arc.Collections
 
         #region Enumerator
 
-        private struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
         {
             private readonly OrderedKeyValueList<TKey, TValue> list;
             private readonly int version;
