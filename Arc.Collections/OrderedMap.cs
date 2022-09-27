@@ -302,7 +302,7 @@ namespace Arc.Collections
 
         #region Enumerator
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
+        public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 

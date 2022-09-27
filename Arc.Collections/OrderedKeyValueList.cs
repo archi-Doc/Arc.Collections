@@ -493,7 +493,7 @@ namespace Arc.Collections
             return this.values[index];
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
+        public IDictionaryEnumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair); // IEnumerator<KeyValuePair<TKey, TValue>>
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
 
