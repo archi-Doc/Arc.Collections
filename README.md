@@ -11,7 +11,7 @@ Arc.Collections is a fast C# Collection Library which includes
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ```UnorderedList<T>  ```<br />(equivalent to ```List<T>```)  | A list of objects that can be accessed by index.             |
 | ```UnorderedLinkedList<T>```<br />(```LinkedList<T>```)      | A doubly linked list which has ```Node<T>``` operation.      |
-| OrderedList<T>                                               | A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required. |
+| `OrderedList<T>`                                             | A list of objects that can be accessed by index and maintained in sorted order. ```IComparable<T>``` or ```IComparer<T>``` is required. |
 | ```OrderedKeyValueList<TKey, TValue>```<br />(```SortedList<TKey,TValue>```) | A list of key-value pairs that can be accessed by index and maintained in sorted order.```IComparable<TKey>``` or ```IComparer<TKey>``` is required. |
 | ```OrderedMap<TKey, TValue>```<br />(```SortedDictionary<TKey, TValue>```) | A collection of key/value pairs that are sorted on the key (Red-Black Tree). The difference from ```SortedDictionary<TKey, TValue>``` is that ```OrderedMap<TKey, TValue>``` has ```Node<T>``` interface and ```TKey``` can be null. ```IComparable<TKey>``` or ```IComparer<TKey>``` is required.` |
 | `OrderedSet`<br/> `(SortedSet<T>`)                           | A collection of objects that is maintained in sorted order. ```OrderedSet<T>``` is a subset of ```OrderedMap<TKey, TValue>``` and it's actually ```OrderedMap<T, int>``` (TValue int is not used). |
