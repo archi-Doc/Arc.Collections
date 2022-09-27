@@ -16,7 +16,9 @@ namespace Arc.Collections
     /// <typeparam name="TValue">The type of values in the collection.</typeparam>
     public class KeyValueList<TKey, TValue>
     {
-        protected Pair[] pairs;
+        protected TKey[] keys;
+        protected TValue[] keys;
+
         protected int size;
         protected int version;
 
