@@ -203,10 +203,10 @@ namespace Arc.Collections
         }
 
         /// <summary>
-        /// Get the index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified value).
+        /// Get the index of the last element equal to or lower than the specified value (-1: all elements are greater than the specified value).
         /// </summary>
         /// <param name="value">The value to search for.</param>
-        /// <returns>The index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified value).</returns>
+        /// <returns>The index of the last element equal to or lower than the specified value (-1: all elements are greater than the specified value).</returns>
         public int GetUpperBound(T value)
         {
             var index = this.BinarySearch(value);

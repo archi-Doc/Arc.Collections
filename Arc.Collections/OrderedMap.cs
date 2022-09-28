@@ -1376,6 +1376,52 @@ namespace Arc.Collections
         }
 
         /// <summary>
+        /// Searches for the first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).
+        /// </summary>
+        /// <param name="key">The key to search for.</param>
+        /// <returns>The first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).</returns>
+        public Node? GetLowerBound(TKey? key)
+        {
+            var (cmp, p) = this.SearchNode(this.root, key);
+
+            if (cmp == 0)
+            {// Found
+                return p;
+            }
+            else if (cmp < 0)
+            {// Left leaf < key < p
+                return p;
+            }
+            else
+            {// p < key < Right leaf
+                return p?.Next;
+            }
+        }
+
+        /// <summary>
+        /// Searches for the last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).
+        /// </summary>
+        /// <param name="key">The key to search for.</param>
+        /// <returns>The last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).</returns>
+        public Node? GetUpperBound(TKey? key)
+        {
+            var (cmp, p) = this.SearchNode(this.root, key);
+
+            if (cmp == 0)
+            {// Found
+                return p;
+            }
+            else if (cmp < 0)
+            {// Left leaf < key < p
+                return p?.Previous;
+            }
+            else
+            {// p < key < Right leaf
+                return p;
+            }
+        }
+
+        /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
         /// <br/>O(log n) operation.
         /// </summary>
