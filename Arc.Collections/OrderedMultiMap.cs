@@ -1504,6 +1504,60 @@ namespace Arc.Collections
         }
 
         /// <summary>
+        /// Searches for the first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).
+        /// </summary>
+        /// <param name="key">The key to search for.</param>
+        /// <returns>The first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).</returns>
+        public Node? GetLowerBound(TKey? key)
+        {
+            var (cmp, p) = this.SearchFirstNode(this.root, key);
+
+            if (p == null)
+            {// Node is null
+                return null;
+            }
+            else if (cmp == 0)
+            {// Found
+                return p;
+            }
+            else if (cmp < 0)
+            {// Left leaf < key < p
+                return p;
+            }
+            else
+            {// p < key < Right leaf
+                return p.ListPrevious?.Next ?? p.Next; // NextLeaf
+            }
+        }
+
+        /// <summary>
+        /// Searches for the last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).
+        /// </summary>
+        /// <param name="key">The key to search for.</param>
+        /// <returns>The last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).</returns>
+        public Node? GetUpperBound(TKey? key)
+        {
+            var (cmp, p) = this.SearchFirstNode(this.root, key);
+
+            if (p == null)
+            {// Node is null
+                return null;
+            }
+            else if (cmp == 0)
+            {// Found
+                return p.ListPrevious ?? p;
+            }
+            else if (cmp < 0)
+            {// Left leaf < key < p
+                return p.Previous;
+            }
+            else
+            {// p < key < Right leaf
+                return p.ListPrevious ?? p;
+            }
+        }
+
+        /// <summary>
         /// Enumerates <see cref="OrderedMultiMap{TKey, TValue}.Node"/> with the specified key.
         /// </summary>
         /// <param name="key">The key to search in a collection.</param>

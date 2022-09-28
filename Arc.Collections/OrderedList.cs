@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using Arc.Collections.HotMethod;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
@@ -164,6 +165,76 @@ namespace Arc.Collections
             }
 
             return ~min;
+        }
+
+        /// <summary>
+        /// Get the index of the first element equal to or greater than the specified value (-1: all elements are less than the specified value).
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the first element equal to or greater than the specified value (-1: all elements are less than the specified value).</returns>
+        public int GetLowerBound(T value)
+        {
+            var index = this.BinarySearch(value);
+            if (index >= 0)
+            {
+                if (this.Comparer == Comparer<T>.Default && value is IComparable<T> ic)
+                {// IComparable<T>
+                    while (index > 0 &&
+                    ic.CompareTo(this.items[index - 1]) == 0)
+                    {
+                        index--;
+                    }
+                }
+                else
+                {
+                    while (index > 0 &&
+                    this.Comparer.Compare(value, this.items[index - 1]) == 0)
+                    {
+                        index--;
+                    }
+                }
+
+                return index;
+            }
+            else
+            {
+                return ~index < this.items.Length ? ~index : -1;
+            }
+        }
+
+        /// <summary>
+        /// Get the index of the last element equal to or lower than the specified value (-1: all elements are greater than the specified value).
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the last element equal to or lower than the specified value (-1: all elements are greater than the specified value).</returns>
+        public int GetUpperBound(T value)
+        {
+            var index = this.BinarySearch(value);
+            if (index >= 0)
+            {
+                if (this.Comparer == Comparer<T>.Default && value is IComparable<T> ic)
+                {// IComparable<T>
+                    while (index < this.items.Length - 1 &&
+                    ic.CompareTo(this.items[index + 1]) == 0)
+                    {
+                        index++;
+                    }
+                }
+                else
+                {
+                    while (index < this.items.Length - 1 &&
+                    this.Comparer.Compare(value, this.items[index + 1]) == 0)
+                    {
+                        index++;
+                    }
+                }
+
+                return index;
+            }
+            else
+            {
+                return ~index - 1;
+            }
         }
 
         // public int ArrayBinarySearch(T value) => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
