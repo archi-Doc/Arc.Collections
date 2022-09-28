@@ -184,5 +184,37 @@ namespace xUnitTest
 
             ol.SequenceEqual(sortedArray).IsTrue();
         }
+
+        [Fact]
+        public void BoundTest()
+        {
+            var array = new int[] { 1, 3, 2, 0, 5, -10, 0, 2, };
+            var array2 = new int[] { -10, 0, 0, 1, 2, 2, 3, 5, };
+
+            var list = new OrderedList<int>(array);
+            list.SequenceEqual(array2).IsTrue();
+
+            list.GetLowerBound(-11).Is(0);
+            list.GetLowerBound(-10).Is(0);
+            list.GetLowerBound(-9).Is(1);
+            list.GetLowerBound(0).Is(1);
+            list.GetLowerBound(1).Is(3);
+            list.GetLowerBound(2).Is(4);
+            list.GetLowerBound(3).Is(6);
+            list.GetLowerBound(4).Is(7);
+            list.GetLowerBound(5).Is(7);
+            list.GetLowerBound(6).Is(-1);
+
+            list.GetUpperBound(-11).Is(-1);
+            list.GetUpperBound(-10).Is(0);
+            list.GetUpperBound(-9).Is(0);
+            list.GetUpperBound(0).Is(2);
+            list.GetUpperBound(1).Is(3);
+            list.GetUpperBound(2).Is(5);
+            list.GetUpperBound(3).Is(6);
+            list.GetUpperBound(4).Is(6);
+            list.GetUpperBound(5).Is(7);
+            list.GetUpperBound(6).Is(7);
+        }
     }
 }

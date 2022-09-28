@@ -188,6 +188,76 @@ namespace Arc.Collections
             return ~min;
         }
 
+        /// <summary>
+        /// Get the index of the first element equal to or greater than the specified value (-1: all elements are less than the specified value).
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the first element equal to or greater than the specified value (-1: all elements are less than the specified value).</returns>
+        public int GetLowerBound(TKey value)
+        {
+            var index = this.BinarySearch(value);
+            if (index >= 0)
+            {
+                if (this.Comparer == Comparer<TKey>.Default && value is IComparable<TKey> ic)
+                {// IComparable<TKey>
+                    while (index > 0 &&
+                    ic.CompareTo(this.keys[index - 1]) == 0)
+                    {
+                        index--;
+                    }
+                }
+                else
+                {
+                    while (index > 0 &&
+                    this.Comparer.Compare(value, this.keys[index - 1]) == 0)
+                    {
+                        index--;
+                    }
+                }
+
+                return index;
+            }
+            else
+            {
+                return ~index < this.keys.Length ? ~index : -1;
+            }
+        }
+
+        /// <summary>
+        /// Get the index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified value).
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified value).</returns>
+        public int GetUpperBound(TKey value)
+        {
+            var index = this.BinarySearch(value);
+            if (index >= 0)
+            {
+                if (this.Comparer == Comparer<TKey>.Default && value is IComparable<TKey> ic)
+                {// IComparable<T>
+                    while (index < this.keys.Length - 1 &&
+                    ic.CompareTo(this.keys[index + 1]) == 0)
+                    {
+                        index++;
+                    }
+                }
+                else
+                {
+                    while (index < this.keys.Length - 1 &&
+                    this.Comparer.Compare(value, this.keys[index + 1]) == 0)
+                    {
+                        index++;
+                    }
+                }
+
+                return index;
+            }
+            else
+            {
+                return ~index - 1;
+            }
+        }
+
         #region IDictionary
 
         public void Add(TKey key, TValue value)
