@@ -256,4 +256,26 @@ public class OrderedMapTest
         map.GetUpperBound(5)!.Key.Is(5);
         map.GetUpperBound(6)!.Key.Is(5);
     }
+
+    [Fact]
+    public void BoundTest2()
+    {
+        var array = new string[] { "Authority", "Authority\\", "Authority\\abb", "Authority\\abc", "Authority\\‚ ", "NodePrivateKey", };
+
+        var map = new OrderedMap<string, int>();
+        foreach (var x in array)
+        {
+            map.Add(x, 0);
+        }
+
+        map.GetLowerBound("a")!.Key.Is("Authority");
+        map.GetLowerBound("b")!.Key.Is("NodePrivateKey");
+
+        map.GetLowerBound("Authority")!.Key.Is("Authority");
+        map.GetLowerBound("Authority\\")!.Key.Is("Authority\\");
+
+        map.GetUpperBound("Authority\\\uffff")!.Key.Is("Authority\\‚ ");
+        map.GetUpperBound("Authority\\X")!.Key.Is("Authority\\abc");
+        map.GetUpperBound("Authority\\" + char.MaxValue)!.Key.Is("Authority\\‚ ");
+    }
 }
