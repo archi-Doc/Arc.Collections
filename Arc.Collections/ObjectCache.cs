@@ -5,6 +5,16 @@ using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
+/// <summary>
+/// A fast and thread-safe cache of objects (uses <see cref="UnorderedMap{TKey, TValue}"/> and <see cref="UnorderedLinkedList{T}"/>).<br/>
+/// You can cache used objects and retrieve them the next time by specifying the <typeparamref name="TKey"/>.<br/>
+/// This is for classes with very high costs, such as encryption.<br/>
+/// <br/>
+/// If <typeparamref name="TObject"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
+/// This class can also be disposed, although this is not always necessary.
+/// </summary>
+/// <typeparam name="TKey">The type of the key used to retrieve an object from the cache.</typeparam>
+/// <typeparam name="TObject">The type of objects contained in the cache.</typeparam>
 public sealed class ObjectCache<TKey, TObject> : IDisposable
     where TKey : IEquatable<TKey>
 {
@@ -12,33 +22,39 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     {
         /*public Item()
         {
-            this.Key = default!;
             this.Object = default!;
             this.MapIndex = -1;
             this.LinkedListNode = null;
         }*/
 
-        public Item(TKey key, TObject obj)
+        public Item(TObject obj)
         {
-            this.Key = key;
             this.Object = obj;
             this.MapIndex = -1;
             this.LinkedListNode = null;
         }
 
 #pragma warning disable SA1401 // Fields should be private
-        internal TKey Key;
         internal TObject Object;
         internal int MapIndex;
         internal UnorderedLinkedList<Item>.Node? LinkedListNode;
 #pragma warning restore SA1401 // Fields should be private
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ObjectCache{TKey, TObject}"/> class.<br/>
+    /// </summary>
+    /// <param name="cacheSize">The maximum number of objects in the cache.</param>
     public ObjectCache(int cacheSize)
     {
         this.CacheSize = cacheSize;
     }
 
+    /// <summary>
+    /// Gets an instance from the cache by specifying the key.
+    /// </summary>
+    /// <param name="key">The key used to retrieve an object from the cache.</param>
+    /// <returns>An instance of type <typeparamref name="TObject"/>.</returns>
     public TObject? TryGet(TKey key)
     {
         Item? item;
@@ -56,6 +72,13 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
         }
     }
 
+    /// <summary>
+    /// Add an instance to the cache by specifying the key.
+    /// </summary>
+    /// <param name="key">The key of the object to cache.</param>
+    /// <param name="obj">The object to cache.</param>
+    /// <returns><see langword="true"/>; The object is successfully cached.<br/>
+    /// <see langword="false"/>; An object with the same key already exists.</returns>
     public bool Cache(TKey key, TObject obj)
     {
         lock (this.syncObject)
@@ -70,7 +93,7 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
 
             if (!this.map.ContainsKey(key))
             {
-                var item = new Item(key, obj);
+                var item = new Item(obj);
                 (item.MapIndex, _) = this.map.Add(key, item);
                 item.LinkedListNode = this.linkedList.AddLast(item);
                 return true;

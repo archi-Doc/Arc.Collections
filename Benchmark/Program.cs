@@ -17,11 +17,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<UnorderedMapTest2>();
+        DebugRun<ObjectCacheBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(ObjectCacheBenchmark),
             typeof(UnorderedMapTest2),
             typeof(ObjectPoolBenchmark),
             typeof(ReverseOrderTest),
