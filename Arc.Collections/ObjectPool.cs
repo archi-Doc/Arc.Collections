@@ -20,7 +20,7 @@ namespace Arc.Collections;
 /// Target: Classes that will be used/reused frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
 /// <br/>
 /// If <typeparamref name="T"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
-/// It is not necessary, but you can dispose this class.
+/// This class can also be disposed, although this is not always necessary.
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
 public class ObjectPool<T> : IDisposable
