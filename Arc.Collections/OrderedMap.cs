@@ -1422,6 +1422,34 @@ namespace Arc.Collections
         }
 
         /// <summary>
+        /// Gets <see cref="Node"/> whose keys are in the range from the lower bound to the upper bound.
+        /// </summary>
+        /// <param name="lower">Lower bound key.</param>
+        /// <param name="upper">Upper bound key.</param>
+        /// <returns>The lower and upper <see cref="Node"/>.</returns>
+        public (Node? Lower, Node? Upper) GetRange(TKey? lower, TKey? upper)
+        {
+            var lowerNode = this.GetLowerBound(lower);
+            if (lowerNode == null)
+            {
+                return (null, null);
+            }
+
+            var upperNode = this.GetUpperBound(upper);
+            if (upperNode == null)
+            {
+                return (null, null);
+            }
+
+            if (this.Comparer.Compare(lowerNode.Key, upperNode.Key) > 0)
+            {
+                return (null, null);
+            }
+
+            return (lowerNode, upperNode);
+        }
+
+        /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
         /// <br/>O(log n) operation.
         /// </summary>
