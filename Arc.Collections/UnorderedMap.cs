@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
@@ -1189,6 +1190,47 @@ namespace Arc.Collections
             this.freeCount++;
 
             this.version++;
+        }
+
+        protected (TKey? Key, int Count) TryGetMostDuplicateKeyInternal()
+        {
+            TKey? key = default;
+            int count = 0;
+
+            for (var index = 0; index <= this.hashMask; index++)
+            {
+                var currentIndex = this.buckets[index];
+                if (currentIndex >= 0)
+                {
+                    var currentCount = 1;
+                    var currentKey = this.nodes[currentIndex].Key;
+                    var hashCode = currentKey != null ? this.Comparer.GetHashCode(currentKey) : 0;
+
+                    currentIndex = this.nodes[currentIndex].Next;
+                    while (currentIndex >= 0)
+                    {
+                        if (this.nodes[currentIndex].HashCode == hashCode &&
+                            this.Comparer.Equals(this.nodes[currentIndex].Key, currentKey))
+                        {// Identical
+                            currentCount++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+
+                        currentIndex = this.nodes[currentIndex].Next;
+                    }
+
+                    if (currentCount > count)
+                    {
+                        count = currentCount;
+                        key = currentKey;
+                    }
+                }
+            }
+
+            return (key, count);
         }
 
         /// <summary>
