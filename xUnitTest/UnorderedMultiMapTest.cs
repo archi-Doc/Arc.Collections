@@ -149,6 +149,31 @@ namespace xUnitTest
 
             um.ValidateWithOrderedMultiMap(mm);
         }
-    }
+
+        [Fact]
+        public void Test2()
+        {
+            var um = new UnorderedMultiMap<int, int>();
+            um.TryGetMostDuplicateKey().Is((0, 0));
+
+            um.Add(1, 1);
+            um.TryGetMostDuplicateKey().Is((1, 1));
+
+            um.Add(2, 1);
+            um.TryGetMostDuplicateKey().Is((1, 1));
+            um.Add(2, 2);
+            um.TryGetMostDuplicateKey().Is((2, 2));
+
+            um.Add(3, 1);
+            um.TryGetMostDuplicateKey().Is((2, 2));
+            um.Add(3, 2);
+            um.TryGetMostDuplicateKey().Is((2, 2));
+            um.Add(3, 3);
+            um.TryGetMostDuplicateKey().Is((3, 3));
+
+            um.Add(4, 1);
+            um.TryGetMostDuplicateKey().Is((3, 3));
+        }
+        }
 }
 

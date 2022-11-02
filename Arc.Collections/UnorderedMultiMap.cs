@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Arc.Collections
 {
@@ -46,5 +47,8 @@ namespace Arc.Collections
         {
             this.AllowDuplicate = true;
         }
+
+        public (TKey? Key, int Count) TryGetMostDuplicateKey()
+            => this.TryGetMostDuplicateKeyInternal();
     }
 }
