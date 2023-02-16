@@ -188,9 +188,9 @@ namespace Arc.Collections.Obsolete
             set
             {
                 var result = this.Add(key, value);
-                if (!result.newlyAdded)
+                if (!result.NewlyAdded)
                 {
-                    result.node.Value = value;
+                    result.Node.Value = value;
                 }
             }
         }
@@ -294,25 +294,25 @@ namespace Arc.Collections.Obsolete
         }
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded:true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
+        /// <returns>Node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded:true if the new key is inserted.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
+        /// <returns>Node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the new key is inserted.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
@@ -384,9 +384,9 @@ namespace Arc.Collections.Obsolete
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the new key is inserted.</returns>
-        private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
+        /// <returns>Node: the added <see cref="UnorderedMapClass{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the new key is inserted.</returns>
+        private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             if (this.Count >= (this.hashTable.Length >> 1))
             {

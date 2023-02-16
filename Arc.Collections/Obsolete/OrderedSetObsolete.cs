@@ -460,43 +460,43 @@ namespace Arc.Collections.Obsolete
         }
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value) => this.Probe(value, null);
+        /// <returns>Node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (Node Node, bool NewlyAdded) Add(T value) => this.Probe(value, null);
 
         /// <summary>
-        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to the set. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(T value, Node reuse) => this.Probe(value, reuse);
+        /// <returns>Node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (Node Node, bool NewlyAdded) Add(T value, Node reuse) => this.Probe(value, reuse);
 
         /// <summary>
         /// Adds an element to the set. If the element is already in the set, this method replaces the stored element with the new element and sets the replaced flag to true.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
-        /// replaced: true if the node is replaced.</returns>
-        public (Node node, bool replaced) Replace(T value)
+        /// <returns>Node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
+        /// Replaced: true if the node is replaced.</returns>
+        public (Node Node, bool Replaced) Replace(T value)
         {
             var result = this.Probe(value, null);
-            if (result.newlyAdded)
+            if (result.NewlyAdded)
             {// New
-                return (result.node, false);
+                return (result.Node, false);
             }
 
             // Replace
             this.version++;
-            result.node.Value = value;
-            return (result.node, true);
+            result.Node.Value = value;
+            return (result.Node, true);
         }
 
         /// <summary>
@@ -780,9 +780,9 @@ namespace Arc.Collections.Obsolete
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        private (Node node, bool newlyAdded) Probe(T value, Node? reuse)
+        /// <returns>Node: the added <see cref="OrderedSetObsolete{T}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        private (Node Node, bool NewlyAdded) Probe(T value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.

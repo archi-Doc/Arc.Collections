@@ -10,7 +10,7 @@ namespace Arc.Collections.HotMethod
     {
         public int BinarySearch(T[] array, int index, int length, T value) => Array.BinarySearch<T>(array, index, length, value);
 
-        public (int cmp, OrderedSetObsolete<T>.Node? leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value)
+        public (int Cmp, OrderedSetObsolete<T>.Node? Leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value)
         {
             var x = target;
             var p = target;
@@ -41,7 +41,7 @@ namespace Arc.Collections.HotMethod
 
     public sealed class StandardMethod2<TKey, TValue> : IHotMethod2<TKey, TValue>
     {
-        public (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key)
+        public (int Cmp, OrderedMap<TKey, TValue>.Node? Leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key)
         {
             var x = target;
             var p = target;
@@ -69,7 +69,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<TKey, TValue>.Node? target, TKey key)
+        public (int Cmp, OrderedMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<TKey, TValue>.Node? target, TKey key)
         {
             var x = target;
             var p = target;
@@ -99,7 +99,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key)
+        public (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key)
         {
             var x = target;
             var p = target;
@@ -127,7 +127,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<TKey, TValue>.Node? target, TKey key)
+        public (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<TKey, TValue>.Node? target, TKey key)
         {
             var x = target;
             var p = target;

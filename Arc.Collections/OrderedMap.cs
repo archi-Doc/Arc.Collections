@@ -205,6 +205,8 @@ namespace Arc.Collections
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
+        // public bool UnsafePresearchForStructKey { get; set; } = false;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
         /// </summary>
@@ -927,9 +929,7 @@ namespace Arc.Collections
             return found;
         }
 
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
             if (key == null)
             {
@@ -983,25 +983,25 @@ namespace Arc.Collections
         }
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
+        /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
+        /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
@@ -1223,7 +1223,7 @@ namespace Arc.Collections
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        private (int cmp, Node? leaf) SearchNode(Node? target, TKey? key)
+        private (int Cmp, Node? Leaf) SearchNode(Node? target, TKey? key)
         {
             Node? x = target;
             Node? p = null;
@@ -1372,7 +1372,7 @@ namespace Arc.Collections
         public Node? FindNode(TKey? key)
         {
             var result = this.SearchNode(this.root, key);
-            return result.cmp == 0 ? result.leaf : null;
+            return result.Cmp == 0 ? result.Leaf : null;
         }
 
         /// <summary>
@@ -1454,9 +1454,9 @@ namespace Arc.Collections
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
+        /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.

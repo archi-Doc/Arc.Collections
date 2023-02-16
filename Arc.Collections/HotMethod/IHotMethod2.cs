@@ -24,7 +24,7 @@ namespace Arc.Collections.HotMethod
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key);
+        (int Cmp, OrderedMap<TKey, TValue>.Node? Leaf) SearchNode(OrderedMap<TKey, TValue>.Node? target, TKey key);
 
         /// <summary>
         /// Searches a tree for the node with the specific value.
@@ -33,11 +33,11 @@ namespace Arc.Collections.HotMethod
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
+        (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
 
-        (int cmp, OrderedMap<TKey, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<TKey, TValue>.Node? target, TKey key);
+        (int Cmp, OrderedMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<TKey, TValue>.Node? target, TKey key);
 
-        (int cmp, OrderedMultiMap<TKey, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
+        (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
 
         // UnorderedMap<TKey, TValue>.Node? SearchHashtable(UnorderedMap<TKey, TValue>.Node?[] hashtable, TKey key);
 

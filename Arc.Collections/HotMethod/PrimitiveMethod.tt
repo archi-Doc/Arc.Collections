@@ -67,7 +67,7 @@ namespace Arc.Collections.HotMethod
             return ~min;
         }
 
-        public (int cmp, OrderedSetObsolete<<#= t.Simple #>>.Node? leaf) SearchNode(OrderedSetObsolete<<#= t.Simple #>>.Node? target, <#= t.Simple #> value)
+        public (int Cmp, OrderedSetObsolete<<#= t.Simple #>>.Node? Leaf) SearchNode(OrderedSetObsolete<<#= t.Simple #>>.Node? target, <#= t.Simple #> value)
         {
             var x = target;
             var p = target;
@@ -98,7 +98,7 @@ namespace Arc.Collections.HotMethod
 
     public sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
     {
-        public (int cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -126,7 +126,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -154,7 +154,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -182,7 +182,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? leaf) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;

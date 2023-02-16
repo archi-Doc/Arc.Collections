@@ -8,7 +8,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Arc.Collections.HotMethod;
 
-#pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
 
@@ -239,6 +238,8 @@ namespace Arc.Collections
         public IComparer<TKey> Comparer { get; private set; }
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
+
+        // public bool UnsafePresearchForStructKey { get; set; } = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
@@ -942,9 +943,7 @@ namespace Arc.Collections
             return found;
         }
 
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
             if (key == null)
             {
@@ -1019,25 +1018,25 @@ namespace Arc.Collections
         }
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded:true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
+        /// <returns>Node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded:true if the new key is inserted.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="key">The key of the element to add.</param>
         /// <param name="value">The value of the element to add.</param>
         /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-        /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the new key is inserted.</returns>
-        public (Node node, bool newlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
+        /// <returns>Node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the new key is inserted.</returns>
+        public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
         /// <summary>
         /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
@@ -1301,6 +1300,66 @@ namespace Arc.Collections
             return;
         }
 
+        /*private (int Cmp, Node? P) UnsafePresearch(ref Node? x, TKey key)
+        {
+            Node? p = default;
+            int cmp = 0;
+
+            var k1 = Unsafe.As<TKey, int>(ref key);
+            while (x != null)
+            {
+                p = x;
+                var xkey = x.Key;
+                var k2 = Unsafe.As<TKey, int>(ref xkey);
+                if (k1 < k2)
+                {
+                    cmp = -1;
+                    x = x.Left;
+                }
+                else if (k1 > k2)
+                {
+                    cmp = 1;
+                    x = x.Right;
+                }
+                else
+                {
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }
+
+        private (int Cmp, Node? P) UnsafePresearch2(ref Node? x, TKey key)
+        {
+            Node? p = default;
+            int cmp = 0;
+
+            var k1 = Unsafe.As<TKey, int>(ref key);
+            while (x != null)
+            {
+                p = x;
+                var xkey = x.Key;
+                var k2 = Unsafe.As<TKey, int>(ref xkey);
+                if (k1 > k2)
+                {
+                    cmp = -1;
+                    x = x.Left;
+                }
+                else if (k1 < k2)
+                {
+                    cmp = 1;
+                    x = x.Right;
+                }
+                else
+                {
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }*/
+
         /// <summary>
         /// Searches a tree for the first node with the specific value.
         /// </summary>
@@ -1308,7 +1367,7 @@ namespace Arc.Collections
         /// <param name="key">The value to search for.</param>
         /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
         /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-        private (int cmp, Node? leaf) SearchFirstNode(Node? target, TKey? key)
+        private (int Cmp, Node? Leaf) SearchFirstNode(Node? target, TKey? key)
         {
             Node? x = target;
             Node? p = null;
@@ -1338,6 +1397,11 @@ namespace Arc.Collections
                 }
                 else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
                 {// IComparable<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -1358,6 +1422,11 @@ namespace Arc.Collections
                 }
                 else
                 {// IComparer<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -1401,6 +1470,11 @@ namespace Arc.Collections
                 }
                 else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
                 {// IComparable<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch2(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -1423,6 +1497,11 @@ namespace Arc.Collections
                 }
                 else
                 {// IComparer<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch2(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -1457,7 +1536,7 @@ namespace Arc.Collections
         public Node? FindFirstNode(TKey? key)
         {
             var result = this.SearchFirstNode(this.root, key);
-            return result.cmp == 0 ? result.leaf : null;
+            return result.Cmp == 0 ? result.Leaf : null;
         }
 
         /// <summary>
@@ -1469,12 +1548,12 @@ namespace Arc.Collections
         public Node? FindNode(TKey? key, TValue value)
         {
             var result = this.SearchFirstNode(this.root, key);
-            if (result.cmp != 0 || result.leaf == null)
+            if (result.Cmp != 0 || result.Leaf == null)
             {// Not found
                 return null;
             }
 
-            var node = result.leaf;
+            var node = result.Leaf;
             if (node.IsSingleNode)
             {// SingleNode
                 if (EqualityComparer<TValue>.Default.Equals(node.Value, value))
@@ -1593,12 +1672,12 @@ namespace Arc.Collections
         public IEnumerable<Node> EnumerateNode(TKey? key)
         {
             var result = this.SearchFirstNode(this.root, key);
-            if (result.cmp != 0 || result.leaf == null)
+            if (result.Cmp != 0 || result.Leaf == null)
             {// Not found
                 yield break;
             }
 
-            var node = result.leaf;
+            var node = result.Leaf;
             if (node.IsSingleNode)
             {// SingleNode
                 yield return node;
@@ -1626,12 +1705,12 @@ namespace Arc.Collections
         public IEnumerable<TValue> EnumerateValue(TKey? key)
         {
             var result = this.SearchFirstNode(this.root, key);
-            if (result.cmp != 0 || result.leaf == null)
+            if (result.Cmp != 0 || result.Leaf == null)
             {// Not found
                 yield break;
             }
 
-            var node = result.leaf;
+            var node = result.Leaf;
             if (node.IsSingleNode)
             {// SingleNode
                 yield return node.Value;
@@ -1657,8 +1736,8 @@ namespace Arc.Collections
         /// </summary>
         /// <param name="key">The element to add to the set.</param>
         /// <returns>node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the new key is inserted.</returns>
-        private (Node node, bool newlyAdded) Probe(TKey key, TValue value, Node? reuse)
+        /// NewlyAdded: true if the new key is inserted.</returns>
+        private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
         {
             Node? x = this.root; // Traverses tree looking for insertion point.
             Node? p = null; // Parent of x; node at which we are rebalancing.

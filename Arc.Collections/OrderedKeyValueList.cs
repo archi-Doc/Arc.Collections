@@ -289,7 +289,7 @@ namespace Arc.Collections
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> keyValuePair)
         {
             var range = this.RangeOfKey(keyValuePair.Key);
-            for (var n = range.start; n < range.end; n++)
+            for (var n = range.Start; n < range.End; n++)
             {
                 if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
                 {
@@ -303,7 +303,7 @@ namespace Arc.Collections
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> keyValuePair)
         {
             var range = this.RangeOfKey(keyValuePair.Key);
-            for (var n = range.start; n < range.end; n++)
+            for (var n = range.Start; n < range.End; n++)
             {
                 if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
                 {
@@ -650,7 +650,7 @@ namespace Arc.Collections
         /// </summary>
         /// <param name="key">The key to locate in the list.</param>
         /// <returns>The zero-based index of the key parameter, if key is found in the list; otherwise, -1.</returns>
-        public (int start, int end) RangeOfKey(TKey key)
+        public (int Start, int End) RangeOfKey(TKey key)
         {
             if (key == null)
             {
@@ -772,7 +772,7 @@ namespace Arc.Collections
         public bool Remove(TKey key, TValue value)
         {
             var range = this.RangeOfKey(key);
-            for (var n = range.start; n < range.end; n++)
+            for (var n = range.Start; n < range.End; n++)
             {
                 if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], value))
                 {
