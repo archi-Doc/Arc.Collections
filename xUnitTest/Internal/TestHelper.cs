@@ -48,7 +48,7 @@ public static class TestHelper
     {
         var result = os.Add(value);
         os.Validate().IsTrue();
-        return result.node;
+        return result.Node;
     }
 
     public static bool RemoveAndValidate<T>(this OrderedSet<T> os, T value)
@@ -62,7 +62,7 @@ public static class TestHelper
     {
         var result = os.Add(value);
         os.Validate().IsTrue();
-        return result.node;
+        return result.Node;
     }
 
     public static bool RemoveAndValidate<T>(this OrderedSetObsolete<T> os, T value)
@@ -76,7 +76,7 @@ public static class TestHelper
     {
         var result = om.Add(key, value);
         om.Validate().IsTrue();
-        return result.node;
+        return result.Node;
     }
 
     public static bool RemoveAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key)

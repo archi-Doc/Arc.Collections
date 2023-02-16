@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Arc.Collections;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace xUnitTest;
@@ -178,5 +175,47 @@ public class OrderedMultiMapTest
         map.GetUpperBound(5)!.Value.Is(6);
         map.GetUpperBound(6)!.Value.Is(7);
         map.GetUpperBound(7)!.Value.Is(7);
+    }
+
+    [Fact]
+    public void UnsafePresearchTest()
+    {
+        var r = new Random(12);
+        var n = 1000;
+
+        var array = new int[n];
+        var mm = new OrderedMultiMap<Identifier, int>();
+        mm.UnsafePresearchForStructKey = true;
+        var mm2 = new OrderedMultiMap<Identifier, int>(true);
+        mm2.UnsafePresearchForStructKey = true;
+
+        var i = 0;
+        for (i = 0; i < n; i++)
+        {
+            var v = r.Next();
+            array[i] = v;
+            mm.Add(new(v), v);
+            mm2.Add(new(v), v);
+        }
+
+        Array.Sort(array);
+
+        i = 0;
+        foreach (var x in mm)
+        {
+            x.Value.Equals(array[i]).IsTrue();
+            x.Key.IsStructuralEqual(new Identifier(array[i]));
+            i++;
+        }
+
+        Array.Reverse(array);
+
+        /*i = 0;
+        foreach (var x in mm2)
+        {
+            x.Value.Equals(array[i]).IsTrue();
+            x.Key.IsStructuralEqual(new Identifier(array[i]));
+            i++;
+        }*/
     }
 }

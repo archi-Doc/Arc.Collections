@@ -12,7 +12,8 @@ namespace Benchmark
     {
         public const int Size = 1000;
 
-        [Params(100, 500, 1000)]
+        [Params(100_000)]
+        // [Params(100, 500, 1000)]
         public int Count;
 
         public int[] IntArray = default!;
@@ -77,7 +78,7 @@ namespace Benchmark
             return accum;
         }
 
-        [Benchmark]
+        // [Benchmark]
         public int Bench_OrderedKeyValueList()
         {
             var m = new OrderedKeyValueList<int, int>();

@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Arc.Collections.HotMethod;
 
-#pragma warning disable SA1009 // Closing parenthesis should be spaced correctly
-#pragma warning disable SA1602 // Enumeration items should be documented
 #pragma warning disable SA1124 // Do not use regions
 
 namespace Arc.Collections
@@ -96,14 +94,20 @@ namespace Arc.Collections
         /// </summary>
         public OrderedMultiMap<T, int>.Node? Last => this.map.Last;
 
+        public bool UnsafePresearchForStructKey
+        {
+            get => this.map.UnsafePresearchForStructKey;
+            set => this.map.UnsafePresearchForStructKey = value;
+        }
+
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(log n) operation.
         /// </summary>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (OrderedMultiMap<T, int>.Node node, bool newlyAdded) Add(T value)
+        /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (OrderedMultiMap<T, int>.Node Node, bool NewlyAdded) Add(T value)
         {
             var result = this.map.Add(value, 0);
             return result;

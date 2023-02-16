@@ -97,9 +97,9 @@ namespace Benchmark
                 this.IntUnorderedSet.Add(x);
 
                 var result = om.Add(x, x * 2);
-                if (result.newlyAdded)
+                if (result.NewlyAdded)
                 {
-                    total += result.node.Value;
+                    total += result.Node.Value;
                 }
             }
 

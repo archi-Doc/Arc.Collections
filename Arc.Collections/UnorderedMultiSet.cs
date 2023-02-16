@@ -66,13 +66,13 @@ namespace Arc.Collections
         public int Count => this.map.Count;
 
         /// <summary>
-        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets newlyAdded to false.
+        /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
         /// <br/>O(1) operation.
         /// </summary>
         /// <param name="value">The value of the element to add.</param>
-        /// <returns>nodeIndex: the added node index.<br/>
-        /// newlyAdded: true if the node is created.</returns>
-        public (int nodeIndex, bool newlyAdded) Add(T value)
+        /// <returns>NodeIndex: the added node index.<br/>
+        /// NewlyAdded: true if the node is created.</returns>
+        public (int NodeIndex, bool NewlyAdded) Add(T value)
         {
             var result = this.map.Add(value, 0);
             return result;
