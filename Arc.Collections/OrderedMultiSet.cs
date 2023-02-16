@@ -94,11 +94,11 @@ namespace Arc.Collections
         /// </summary>
         public OrderedMultiMap<T, int>.Node? Last => this.map.Last;
 
-        public bool UnsafePresearchForStructKey
+        /*public bool UnsafePresearchForStructKey
         {
             get => this.map.UnsafePresearchForStructKey;
             set => this.map.UnsafePresearchForStructKey = value;
-        }
+        }*/
 
         /// <summary>
         /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.

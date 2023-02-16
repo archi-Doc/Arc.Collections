@@ -205,7 +205,7 @@ namespace Arc.Collections
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
-        public bool UnsafePresearchForStructKey { get; set; } = false;
+        // public bool UnsafePresearchForStructKey { get; set; } = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.

@@ -239,7 +239,7 @@ namespace Arc.Collections
 
         public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
 
-        public bool UnsafePresearchForStructKey { get; set; } = false;
+        // public bool UnsafePresearchForStructKey { get; set; } = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
@@ -1300,7 +1300,7 @@ namespace Arc.Collections
             return;
         }
 
-        private (int Cmp, Node? P) UnsafePresearch(ref Node? x, TKey key)
+        /*private (int Cmp, Node? P) UnsafePresearch(ref Node? x, TKey key)
         {
             Node? p = default;
             int cmp = 0;
@@ -1323,13 +1323,42 @@ namespace Arc.Collections
                 }
                 else
                 {
-                    cmp = 0;
                     return (0, x);
                 }
             }
 
             return (cmp, p);
         }
+
+        private (int Cmp, Node? P) UnsafePresearch2(ref Node? x, TKey key)
+        {
+            Node? p = default;
+            int cmp = 0;
+
+            var k1 = Unsafe.As<TKey, int>(ref key);
+            while (x != null)
+            {
+                p = x;
+                var xkey = x.Key;
+                var k2 = Unsafe.As<TKey, int>(ref xkey);
+                if (k1 > k2)
+                {
+                    cmp = -1;
+                    x = x.Left;
+                }
+                else if (k1 < k2)
+                {
+                    cmp = 1;
+                    x = x.Right;
+                }
+                else
+                {
+                    return (0, x);
+                }
+            }
+
+            return (cmp, p);
+        }*/
 
         /// <summary>
         /// Searches a tree for the first node with the specific value.
@@ -1368,10 +1397,10 @@ namespace Arc.Collections
                 }
                 else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
                 {// IComparable<TKey>
-                    if (this.UnsafePresearchForStructKey)
+                    /*if (this.UnsafePresearchForStructKey)
                     {
                         (cmp, p) = this.UnsafePresearch(ref x, key!);
-                    }
+                    }*/
 
                     while (x != null)
                     {
@@ -1393,10 +1422,10 @@ namespace Arc.Collections
                 }
                 else
                 {// IComparer<TKey>
-                    if (this.UnsafePresearchForStructKey)
+                    /*if (this.UnsafePresearchForStructKey)
                     {
                         (cmp, p) = this.UnsafePresearch(ref x, key!);
-                    }
+                    }*/
 
                     while (x != null)
                     {
@@ -1441,6 +1470,11 @@ namespace Arc.Collections
                 }
                 else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
                 {// IComparable<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch2(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
@@ -1463,6 +1497,11 @@ namespace Arc.Collections
                 }
                 else
                 {// IComparer<TKey>
+                    /*if (this.UnsafePresearchForStructKey)
+                    {
+                        (cmp, p) = this.UnsafePresearch2(ref x, key!);
+                    }*/
+
                     while (x != null)
                     {
                         cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd

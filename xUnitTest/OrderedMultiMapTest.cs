@@ -185,9 +185,9 @@ public class OrderedMultiMapTest
 
         var array = new int[n];
         var mm = new OrderedMultiMap<Identifier, int>();
-        mm.UnsafePresearchForStructKey = true;
+        // mm.UnsafePresearchForStructKey = true;
         var mm2 = new OrderedMultiMap<Identifier, int>(true);
-        mm2.UnsafePresearchForStructKey = true;
+        // mm2.UnsafePresearchForStructKey = true;
 
         var i = 0;
         for (i = 0; i < n; i++)
@@ -210,12 +210,12 @@ public class OrderedMultiMapTest
 
         Array.Reverse(array);
 
-        /*i = 0;
+        i = 0;
         foreach (var x in mm2)
         {
             x.Value.Equals(array[i]).IsTrue();
             x.Key.IsStructuralEqual(new Identifier(array[i]));
             i++;
-        }*/
+        }
     }
 }
