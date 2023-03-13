@@ -38,7 +38,7 @@ namespace Arc.Collections
             /// <summary>
             /// Gets the next node.
             /// </summary>
-            public Node? Next => this.next == null || this == this.List.head ? null : this.next;
+            public Node? Next => this.next == null || this.next == this.List.head ? null : this.next;
 
             /// <summary>
             /// Gets the value contained in the node.
