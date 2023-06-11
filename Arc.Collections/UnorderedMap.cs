@@ -1192,6 +1192,16 @@ namespace Arc.Collections
             this.version++;
         }
 
+        public void UnsafeChangeValue(int nodeIndex, TValue value)
+        {
+            if (this.nodes[nodeIndex].IsInvalid())
+            {
+                return;
+            }
+
+            this.nodes[nodeIndex].Value = value;
+        }
+
         protected (TKey? Key, int Count) TryGetMostDuplicateKeyInternal()
         {
             TKey? key = default;

@@ -47,6 +47,8 @@ namespace Arc.Collections
 
             public ref T ValueRef => ref this.value;
 
+            public void UnsafeChangeValue(T value) => this.value = value;
+
             internal Node(UnorderedLinkedList<T> list, T value)
             {
                 this.list = list;

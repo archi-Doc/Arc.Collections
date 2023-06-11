@@ -174,6 +174,8 @@ namespace Arc.Collections
                 }
             }
 
+            public void UnsafeChangeValue(TValue value) => this.Value = value;
+
             internal static bool IsNonNullBlack(Node? node) => node != null && node.IsBlack;
 
             internal static bool IsNonNullRed(Node? node) => node != null && node.IsRed;
