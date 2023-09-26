@@ -18,15 +18,45 @@ namespace Arc.Collections;
 public sealed class ObjectCache<TKey, TObject> : IDisposable
     where TKey : IEquatable<TKey>
 {
+    /// <summary>
+    /// A helper interface for acquiring and returning objects.
+    /// </summary>
+    public readonly struct Interface : IDisposable
+    {
+        public readonly ObjectCache<TKey, TObject> ObjectCache;
+        public readonly TKey Key;
+        public readonly TObject? Object;
+
+        internal Interface(ObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
+        {
+            this.ObjectCache = objectCache;
+            this.Key = key;
+            this.Object = obj;
+        }
+
+        /// <summary>
+        /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).
+        /// </summary>
+        /// <returns>An tnterface object with the object set to its default value.</returns>
+        public Interface Return()
+        {
+            if (this.Object is not null)
+            {
+                this.ObjectCache.Cache(this.Key, this.Object);
+            }
+
+            return new(this.ObjectCache, this.Key, default);
+        }
+
+        /// <summary>
+        /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).
+        /// </summary>
+        public void Dispose()
+            => this.Return();
+    }
+
     private class Item
     {
-        /*public Item()
-        {
-            this.Object = default!;
-            this.MapIndex = -1;
-            this.LinkedListNode = null;
-        }*/
-
         public Item(TObject obj)
         {
             this.Object = obj;
@@ -49,6 +79,9 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     {
         this.CacheSize = cacheSize;
     }
+
+    public Interface CreateInterface(TKey key, TObject? obj)
+        => new(this, key, obj);
 
     /// <summary>
     /// Gets an instance from the cache by specifying the key.
