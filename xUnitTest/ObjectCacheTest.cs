@@ -27,6 +27,21 @@ namespace xUnitTest
             c1 = cache.TryGet(1)!;
             c1.Equals(new(1, "1")).IsTrue();
 
+            cache.Count.Is(0);
+            cache.Cache(1, c1);
+            c1 = cache.TryGet(1);
+            var v = cache.CreateInterface(1, c1);
+            v = v.Return();
+            cache.Count.Is(1);
+
+            c1 = cache.TryGet(1);
+            using (var v2 = cache.CreateInterface(1, c1))
+            {
+                cache.Count.Is(0);
+            }
+
+            cache.Count.Is(1);
+
             cache.Cache(1, new(1, "1"));
             cache.Cache(2, new(2, "2"));
             cache.Cache(3, new(3, "3"));
