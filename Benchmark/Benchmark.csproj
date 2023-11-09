@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Arc.Crypto" Version="1.18.0" />
-    <PackageReference Include="BenchmarkDotNet" Version="0.13.8" />
+    <PackageReference Include="Arc.Crypto" Version="1.19.2" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.10" />
   </ItemGroup>
 
   <ItemGroup>
