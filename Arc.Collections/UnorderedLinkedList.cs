@@ -541,57 +541,34 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         this.InternalRemoveNode(node);
     }
 
-    public void AddLast2(T value)
+    public void MoveToFirst(Node node)
     {
-        var node = this.NewNode(this, value);
-        if (this.head == null)
-        {
-            node.next = node;
-            node.previous = node;
-            this.head = node;
-        }
-        else
-        {
-            node.next = this.head;
-            node.previous = this.head.previous;
-            this.head.previous!.next = node;
-            this.head.previous = node;
+        if (node.next == node)
+        {// Single node
+            return;
         }
 
-        node.list = this;
+        node.next!.previous = node.previous;
+        node.previous!.next = node.next;
+        if (this.head == node)
+        {
+            this.head = node.next;
+        }
+
+        node.next = this.head;
+        node.previous = this.head!.previous;
+        this.head.previous!.next = node;
+        this.head.previous = node;
+        this.head = node;
+
         this.version++;
         this.size++;
     }
 
-    public void Remove2(Node node)
+    public void MoveToLast(Node node)
     {
         if (node.next == node)
-        {
-            this.head = null;
-        }
-        else
-        {
-            node.next!.previous = node.previous;
-            node.previous!.next = node.next;
-            if (this.head == node)
-            {
-                this.head = node.next;
-            }
-        }
-
-        node.list = null!;
-        node.previous = null;
-        node.next = this.removed;
-        this.removed = node;
-
-        this.size--;
-        this.version++;
-    }
-
-    public void RemoveAndAddLast2(Node node)
-    {
-        if (node.next == node)
-        {
+        {// Single node
             return;
         }
 
