@@ -34,6 +34,23 @@ public class UnorderedLinkedListTest
         }
         l.SequenceEqual(array).IsTrue();
         l.Clear();
+
+        foreach (var x in array)
+        {
+            l.AddLast(x);
+        }
+
+        var node = l.Find(0)!;
+        node.IsNotNull();
+        l.Remove(node);
+        l.AddFirst(0);
+
+        node = l.Find(5)!;
+        node.IsNotNull();
+        l.Remove(node);
+        l.AddLast(5);
+
+        l.SequenceEqual([0, 1, 3, 2, -10, 0, 5,]).IsTrue();
     }
 
     [Fact]
