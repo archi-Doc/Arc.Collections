@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
-public class SerialList<T>
+/*public class SerialList<T>
 {
     public SerialList(int size)
     {
@@ -278,4 +278,4 @@ public class SerialList<T>
     }
 
     #endregion
-}
+}*/

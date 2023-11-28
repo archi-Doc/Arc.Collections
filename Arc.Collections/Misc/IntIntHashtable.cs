@@ -1,65 +1,44 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
-namespace Tinyhand;
+#pragma warning disable SA1401
 
-/// <summary>
-/// Represents a collection of uint and value pairs.
-/// </summary>
-/// <typeparam name="TValue">The type of value.</typeparam>
-public class UInt32Hashtable<TValue>
-{ // HashTable for uint
-    private static uint CalculateCapacity(uint collectionSize)
+namespace Arc.Collections;
+
+public class IntIntHashtable
+{ // HashTable for int/int
+    public IntIntHashtable(uint capacity = CollectionHelper.MinimumCapacity)
     {
-        collectionSize *= 2;
-        uint capacity = 1;
-        while (capacity < collectionSize)
-        {
-            capacity <<= 1;
-        }
-
-        if (capacity < 8)
-        {
-            return 8;
-        }
-
-        return capacity;
+        var size = CollectionHelper.CalculatePowerOfTwoCapacity(capacity);
+        this.table = new Item[size];
     }
 
-    public UInt32Hashtable(uint capacity = 4)
+    public bool TryAdd(int key, int value)
     {
-        var size = CalculateCapacity(capacity);
-        this.hashTable = new Item[size];
-    }
+        bool successAdd;
 
-    public bool TryAdd(uint key, TValue value)
-    {
-        lock (this.cs)
-        {
-            bool successAdd;
-
-            if ((this.numberOfItems * 2) > this.hashTable.Length)
-            {// rehash
-                this.RebuildTable();
-            }
-
-            // add entry(insert last is thread safe for read)
-            successAdd = this.AddKeyValue(key, value);
-
-            if (successAdd)
-            {
-                this.numberOfItems++;
-            }
-
-            return successAdd;
+        if ((this.count * 2) > this.table.Length)
+        {// rehash
+            this.RebuildTable();
         }
+
+        // add entry(insert last is thread safe for read)
+        successAdd = this.AddKeyValue(key, value);
+
+        if (successAdd)
+        {
+            this.count++;
+        }
+
+        return successAdd;
     }
 
-    public bool TryGetValue(uint key, [MaybeNullWhen(false)] out TValue value)
+    public bool TryGetValue(uint key, [MaybeNullWhen(false)] out int value)
     {
-        var table = this.hashTable;
+        var table = this.table;
         var hash = unchecked((int)key);
         var item = table[hash & (table.Length - 1)];
 
@@ -80,22 +59,16 @@ public class UInt32Hashtable<TValue>
 
     public void Clear()
     {
-        lock (this.cs)
-        {
-            for (var n = 0; n < this.hashTable.Length; n++)
-            {
-                Volatile.Write(ref this.hashTable[n], null);
-            }
-        }
+        Array.Clear(this.table);
     }
 
     private void RebuildTable()
     {
-        var nextCapacity = this.hashTable.Length * 2;
+        var nextCapacity = this.table.Length * 2;
         var nextTable = new Item[nextCapacity];
-        for (var i = 0; i < this.hashTable.Length; i++)
+        for (var i = 0; i < this.table.Length; i++)
         {
-            var e = this.hashTable[i];
+            var e = this.table[i];
             while (e != null)
             {
                 var newItem = new Item(e.Key, e.Value, e.Hash);
@@ -105,11 +78,11 @@ public class UInt32Hashtable<TValue>
         }
 
         // replace field(threadsafe for read)
-        Volatile.Write(ref this.hashTable, nextTable);
+        Volatile.Write(ref this.table, nextTable);
     }
 
     private bool AddItem(Item[] table, Item item)
-    { // lock(cs) required.
+    {
         var h = item.Hash & (table.Length - 1);
 
         if (table[h] == null)
@@ -140,9 +113,9 @@ public class UInt32Hashtable<TValue>
         return true;
     }
 
-    private bool AddKeyValue(uint key, TValue value)
-    { // lock(cs) required.
-        var table = this.hashTable;
+    private bool AddKeyValue(int key, int value)
+    {
+        var table = this.table;
         var hash = unchecked((int)key);
         var h = hash & (table.Length - 1);
 
@@ -176,20 +149,17 @@ public class UInt32Hashtable<TValue>
         return true;
     }
 
-    private readonly object cs = new object();
-    private Item?[] hashTable;
-    private uint numberOfItems;
+    private Item?[] table;
+    private int count;
 
     private class Item
     {
-#pragma warning disable SA1401
-        public uint Key;
-        public TValue Value;
+        public int Key;
+        public int Value;
         public int Hash;
         public Item? Next;
-#pragma warning restore SA1401
 
-        public Item(uint key, TValue value, int hash)
+        public Item(int key, int value, int hash)
         {
             this.Key = key;
             this.Value = value;

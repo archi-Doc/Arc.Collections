@@ -2,12 +2,30 @@
 
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 
 namespace Arc.Collections;
 
-public static class PrimeHelper
+public static class CollectionHelper
 {
+    public const uint MinimumCapacity = 8;
+    public const uint MaximumCapacity = 0x80000000;
+
+    public static uint CalculatePowerOfTwoCapacity(uint minimumSize)
+    {
+        if (minimumSize < MinimumCapacity)
+        {
+            return MinimumCapacity;
+        }
+        else if (minimumSize >= MaximumCapacity)
+        {
+            return MaximumCapacity;
+        }
+
+        return 1u << (32 - BitOperations.LeadingZeroCount(minimumSize - 1));
+    }
+
     public const int MaxPrimeArrayLength = 0x7FEFFFFD;
     public static readonly int[] Primes =
     {
