@@ -93,7 +93,7 @@ public class UnorderedMapPrime<TKey, TValue>
         }
         else
         {
-            var size = PrimeHelper.GetPrime(capacity);
+            var size = CollectionHelper.GetPrime(capacity);
             this.buckets = new int[size];
             for (var n = 0; n < size; n++)
             {
@@ -445,7 +445,7 @@ public class UnorderedMapPrime<TKey, TValue>
 
     internal void Resize()
     {
-        var newSize = PrimeHelper.ExpandPrime(this.nodeCount);
+        var newSize = CollectionHelper.ExpandPrime(this.nodeCount);
         var newBuckets = new int[newSize];
         for (var i = 0; i < newBuckets.Length; i++)
         {

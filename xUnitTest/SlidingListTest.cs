@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Arc.Collections;
+using Arc.Collections.Obsolete;
 using Xunit;
 
 namespace xUnitTest;

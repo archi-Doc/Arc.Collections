@@ -7,9 +7,9 @@ using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1202 // Elements should be ordered by access
 
-namespace Arc.Collections;
+namespace Arc.Collections.Obsolete;
 
-public class SlidingList<T> : IEnumerable<T>, IEnumerable
+public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     where T : class
 {
     private const int PositionMask = 0x7FFFFFFF;
@@ -199,6 +199,18 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
         return this.items[index];
     }
 
+    public bool UnsafeChangeValue(int position, T value)
+    {
+        var index = this.PositionToIndex(position);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        this.items[index] = value;
+        return true;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IndexToPosition(int index)
     {
@@ -250,6 +262,118 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int ClipIndex(int index) => index < this.items.Length ? index : index - this.items.Length;
+
+    #region ICollection
+
+    public bool IsReadOnly => false;
+
+    /// <summary>
+    /// Adds an object to the end of the list.
+    /// <br/>O(1) operation.
+    /// </summary>
+    /// <param name="value">The value to be added to the end of the list.</param>
+    public void Add(T value) => this.TryAdd(value);
+
+    /// <summary>
+    /// Removes all elements from the list.
+    /// </summary>
+    public void Clear()
+    {
+        Array.Clear(this.items, 0, this.items.Length);
+        this.itemsPosition = 0;
+        this.headIndex = 0;
+        this.headSize = 0;
+        this.version++;
+    }
+
+    /// <summary>
+    /// Determines whether an element is in the list.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="value">The value to locate in the list.</param>
+    /// <returns>true if value is found in the list.</returns>
+    public bool Contains(T value) => this.IndexOf(value) >= 0;
+
+    /// <summary>
+    /// Copies the list or a portion of it to an array.
+    /// </summary>
+    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
+    /// <param name="arrayIndex">The zero-based index in array at which copying begins.</param>
+    public void CopyTo(T[] array, int arrayIndex) => Array.Copy(this.ToArray(), 0, array, arrayIndex, this.items.Length);
+
+    /// <summary>
+    /// Copies the list or a portion of it to an array.
+    /// </summary>
+    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
+    public void CopyTo(T[] array) => this.CopyTo(array, 0);
+
+    /// <summary>
+    /// Removes the first occurrence of a specific object from the <see cref="UnorderedList{T}"/>.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="value">The object to remove from the <see cref="UnorderedList{T}"/>. </param>
+    /// <returns>true if item is successfully removed.</returns>
+    public bool Remove(T value)
+    {
+        var index = this.IndexOf(value);
+        if (index >= 0)
+        {
+            this.RemoveAt(index);
+            return true;
+        }
+
+        return false;
+    }
+
+    #endregion
+
+    #region IList
+
+    public T this[int position]
+    {
+        get => this.Get(position) ?? throw new ArgumentOutOfRangeException();
+
+        set => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Returns the zero-based index of the first occurrence of a value in the list.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="value">The value to locate in the list.</param>
+    /// <returns>The zero-based index of the first occurrence of item.</returns>
+    public int IndexOf(T value) => Array.IndexOf(this.items, value);
+
+    /// <summary>
+    /// Inserts an element into the <see cref="UnorderedList{T}"/> at the specified index.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="position">The zero-based index at which item should be inserted.</param>
+    /// <param name="item">The object to insert.</param>
+    public void Insert(int position, T item) => throw new NotSupportedException();
+
+    /// <summary>
+    /// Removes the element at the specified index of the list.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="index">The zero-based index of the element to remove.</param>
+    public void RemoveAt(int index)
+    {
+        if (index < 0 || index >= this.items.Length)
+        {
+            throw new ArgumentOutOfRangeException();
+        }
+
+        this.items[index] = default;
+        if (index == this.headIndex)
+        {
+            this.TrySlide();
+        }
+
+        this.version++;
+    }
+
+    #endregion
 
     #region Enumerator
 
