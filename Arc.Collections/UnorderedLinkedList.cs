@@ -561,8 +561,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         this.head.previous = node;
         this.head = node;
 
-        this.version++;
         this.size++;
+        this.version++;
     }
 
     public void MoveToLast(Node node)
@@ -584,8 +584,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         this.head.previous!.next = node;
         this.head.previous = node;
 
-        this.version++;
         this.size++;
+        this.version++;
     }
 
     /// <summary>
@@ -620,8 +620,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         newNode.next = newNode;
         newNode.previous = newNode;
         this.head = newNode;
-        this.version++;
+
         this.size++;
+        this.version++;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -631,8 +632,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         newNode.previous = node.previous;
         node.previous!.next = newNode;
         node.previous = newNode;
-        this.version++;
+
         this.size++;
+        this.version++;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
