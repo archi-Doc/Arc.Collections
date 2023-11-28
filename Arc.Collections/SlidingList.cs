@@ -199,6 +199,18 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
         return this.items[index];
     }
 
+    public bool UnsafeChangeValue(int position, T value)
+    {
+        var index = this.PositionToIndex(position);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        this.items[index] = value;
+        return true;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IndexToPosition(int index)
     {
