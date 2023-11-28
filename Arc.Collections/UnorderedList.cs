@@ -18,7 +18,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     protected int size;
     protected int version;
 
-    private const int MaxSize = 0X7FEFFFFF;
+    private const int MaxSize = 0X7FFFFFFF;
     private const int DefaultCapacity = 4;
 
     /// <summary>
