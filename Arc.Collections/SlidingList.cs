@@ -30,12 +30,12 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
     /// <summary>
     /// Gets the position of the first element contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int StartPosition => this.ClipPosition(this.itemsPosition + this.headIndex);
+    public int StartPosition => PositionMask & (this.itemsPosition + this.headIndex);
 
     /// <summary>
     /// Gets the position of the last element contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int EndPosition => this.ClipPosition(this.itemsPosition + this.headIndex + this.headSize);
+    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.headSize);
 
     /// <summary>
     /// Gets the maximum number of elements that <see cref="SlidingList{T}"/> can hold.
@@ -183,6 +183,11 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
         return true;
     }
 
+    /// <summary>
+    /// Gets the value of the element at the specified position.
+    /// </summary>
+    /// <param name="position">The position of the element.</param>
+    /// <returns>The value.</returns>
     public T? Get(int position)
     {
         var index = this.PositionToIndex(position);
@@ -232,7 +237,7 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
             }
             else if (position < end)
             {
-                index = position + this.headIndex;
+                index = PositionMask & (position - start + this.headIndex);
             }
             else
             {
@@ -242,9 +247,6 @@ public class SlidingList<T> : IEnumerable<T>, IEnumerable
 
         return index < this.items.Length ? index : index - this.items.Length;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int ClipPosition(int position) => PositionMask & position;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int ClipIndex(int index) => index < this.items.Length ? index : index - this.items.Length;

@@ -68,5 +68,25 @@ public class SlidingListTest
 
         s.StartPosition.Is(6);
         s.EndPosition.Is(10);
+
+        var prop = s.GetType().GetField("itemsPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        prop!.SetValue(s, int.MaxValue - 1);
+        s.StartPosition.Is(int.MaxValue - 1);
+        s.EndPosition.Is(2);
+
+        s.Get(int.MaxValue - 1)!.Id.Is(20);
+        s.Get(int.MaxValue)!.Id.Is(11);
+        s.Get(0)!.Id.Is(22);
+        s.Get(1)!.Id.Is(33);
+
+        s.Resize(5);
+        s.TryAdd(new(99)).Is(2);
+
+        s.Remove(int.MaxValue - 1).IsTrue();
+
+        s.Get(int.MaxValue)!.Id.Is(11);
+        s.Get(0)!.Id.Is(22);
+        s.Get(1)!.Id.Is(33);
+        s.Get(2)!.Id.Is(99);
     }
 }
