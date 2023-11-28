@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1202 // Elements should be ordered by access
 
-namespace Arc.Collections;
+namespace Arc.Collections.Obsolete;
 
 public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     where T : class

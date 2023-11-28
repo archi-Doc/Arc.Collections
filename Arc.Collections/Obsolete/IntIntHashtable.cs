@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Arc.Collections;
 
-public class IntIntHashtable
+/*public class IntIntHashtable
 { // HashTable for int/int
     public IntIntHashtable(uint capacity = CollectionHelper.MinimumCapacity)
     {
@@ -166,4 +166,4 @@ public class IntIntHashtable
             this.Hash = hash;
         }
     }
-}
+}*/
