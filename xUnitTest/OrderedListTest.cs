@@ -4,8 +4,6 @@ using Arc.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace xUnitTest;
 
 public class OrderedListClass : IComparable<OrderedListClass>
