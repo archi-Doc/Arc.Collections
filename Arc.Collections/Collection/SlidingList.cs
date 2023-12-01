@@ -3,28 +3,28 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1405 // Debug.Assert should provide message text
 
-namespace Arc.Collections.Obsolete;
+namespace Arc.Collections;
 
 public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     where T : class
 {
     private const int PositionMask = 0x7FFFFFFF;
 
-    public SlidingList(int size)
+    public SlidingList(int capacity)
     {
-        this.items = new T?[size];
+        this.items = new T?[capacity];
     }
 
     #region FieldAndProperty
 
     private T?[] items;
-    private int itemsPosition; // Position of the first element in items.
+    private int itemsPosition; // The position of the first element in items.
     private int headIndex; // The head index in items.
-    private int headSize; // The number of items in use, beginning from the head index.
     private int version;
 
     /// <summary>
@@ -32,10 +32,10 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     public int StartPosition => PositionMask & (this.itemsPosition + this.headIndex);
 
-    /// <summary>
+    /* /// <summary>
     /// Gets the position of the last element contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.headSize);
+    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.headSize);*/
 
     /// <summary>
     /// Gets the maximum number of elements that <see cref="SlidingList{T}"/> can hold.
@@ -45,17 +45,29 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets the number of elements contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int Count => this.headSize;
+    public int Count { get; private set; }
 
     /// <summary>
     /// Gets a value indicating whether there is space in the <see cref="SlidingList{T}"/> and if a new element can be added.
     /// </summary>
-    public bool CanAdd => this.headSize < this.items.Length;
+    public bool CanAdd => this.Count < this.items.Length;
 
     /// <summary>
     /// Gets the first element of the <see cref="SlidingList{T}"/>, or a default value if the <see cref="SlidingList{T}"/> contains no elements.
     /// </summary>
-    public T? FirstOrDefault => this.headSize == 0 ? null : this.items[this.headIndex];
+    public T? FirstOrDefault
+    {
+        get
+        {
+            if (this.Count == 0)
+            {
+                return default;
+            }
+
+            this.TrySlide();
+            return this.items[this.headIndex];
+        }
+    }
 
     #endregion
 
@@ -65,38 +77,55 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <returns>An array containing copies of the elements of the <see cref="SlidingList{T}"/>.</returns>
     public T?[] ToArray()
     {
-        var array = new T?[this.headSize];
-        for (var i = 0; i < this.headSize; i++)
+        var array = new T?[this.Count];
+        var j = 0;
+        for (var i = 0; i < this.items.Length; i++)
         {
-            array[i] = this.items[this.ClipIndex(this.headIndex + i)];
+            if (this.items[this.ClipIndex(this.headIndex + i)] is { } item)
+            {
+                array[j++] = item;
+                if (j == this.Count)
+                {
+                    break;
+                }
+            }
         }
 
+        Debug.Assert(j == this.Count);
         return array;
     }
 
     /// <summary>
     /// Changes the number of elements of the <see cref="SlidingList{T}"/> to the specified new size.
     /// </summary>
-    /// <param name="size">The size of the <see cref="SlidingList{T}"/>.</param>
+    /// <param name="capacity">The size of the <see cref="SlidingList{T}"/>.</param>
     /// <returns><see langword="true"/>; Success.</returns>
-    public bool Resize(int size)
+    public bool Resize(int capacity)
     {
-        if (this.items.Length == size)
+        if (this.items.Length == capacity)
         {// Identical
             return true;
         }
-        else if (this.headSize > size)
+        else if (this.Count > capacity)
         {
             return false;
         }
 
-        var newItems = new T?[size];
-        for (var i = 0; i < this.headSize; i++)
+        var array = new T?[capacity];
+        var j = 0;
+        for (var i = 0; i < this.items.Length; i++)
         {
-            newItems[i] = this.items[this.ClipIndex(this.headIndex + i)];
+            if (this.items[this.ClipIndex(this.headIndex + i)] is { } item)
+            {
+                array[j++] = item;
+                if (j == this.Count)
+                {
+                    break;
+                }
+            }
         }
 
-        this.items = newItems;
+        this.items = array;
         this.itemsPosition += this.headIndex;
         this.headIndex = 0;
         this.version++;
@@ -110,8 +139,13 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <returns>The number of slides made.</returns>
     public int TrySlide()
     {
+        if (this.items[this.headIndex] is not null)
+        {
+            return 0;
+        }
+
         var count = 0;
-        for (var i = this.headIndex; i < this.headIndex + this.headSize; i++)
+        for (var i = this.headIndex; i < this.headIndex + this.items.Length; i++)
         {
             if (this.items[this.ClipIndex(i)] is null)
             {
@@ -130,7 +164,6 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             this.itemsPosition += this.items.Length;
         }
 
-        this.headSize -= count;
         this.version++;
 
         return count;
