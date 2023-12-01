@@ -25,11 +25,11 @@ public class SlidingListTest
     public void Test1()
     {
         var s = new SlidingList<SlidingListClass>(4);
-        s.TryAdd(new(1));
-        s.TryAdd(new(2));
-        s.TryAdd(new(4));
-        s.TryAdd(new(3));
-        s.TryAdd(new(5));
+        s.Add(new(1));
+        s.Add(new(2));
+        s.Add(new(4));
+        s.Add(new(3));
+        s.Add(new(5));
 
         var array = s.ToArray().Select(x => x!.Id);
         array.SequenceEqual([1, 2, 4, 3]).IsTrue();
@@ -39,7 +39,7 @@ public class SlidingListTest
 
         s.Resize(2).IsFalse();
         s.Resize(5).IsTrue();
-        s.TryAdd(new(5));
+        s.Add(new(5));
         s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 3, 5]).IsTrue();
 
         s.Remove(0).IsTrue();
@@ -47,8 +47,8 @@ public class SlidingListTest
         s.Remove(1).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([4, 3, 5]).IsTrue();
 
-        s.TryAdd(new(10));
-        s.TryAdd(new(20));
+        s.Add(new(10));
+        s.Add(new(20));
         s.ToArray().Select(x => x!.Id).SequenceEqual([4, 3, 5, 10, 20]).IsTrue();
         array = ((IEnumerable<SlidingListClass>)s).ToArray().Select(x => x!.Id);
         array.SequenceEqual([4, 3, 5, 10, 20]).IsTrue();
@@ -58,9 +58,9 @@ public class SlidingListTest
         s.Remove(2).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([10, 20]).IsTrue();
 
-        s.TryAdd(new(11)).Is(7);
-        s.TryAdd(new(22)).Is(8);
-        s.TryAdd(new(33)).Is(9);
+        s.Add(new(11)).Is(7);
+        s.Add(new(22)).Is(8);
+        s.Add(new(33)).Is(9);
         s.Remove(5).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([20, 11, 22, 33]).IsTrue();
         s.Resize(4);
@@ -80,7 +80,7 @@ public class SlidingListTest
         s.Get(1)!.Id.Is(33);
 
         s.Resize(5);
-        s.TryAdd(new(99)).Is(2);
+        s.Add(new(99)).Is(2);
 
         s.Remove(int.MaxValue - 1).IsTrue();
 
@@ -88,5 +88,13 @@ public class SlidingListTest
         s.Get(0)!.Id.Is(22);
         s.Get(1)!.Id.Is(33);
         s.Get(2)!.Id.Is(99);
+
+        s.ToArray().Select(x => x!.Id).SequenceEqual([11, 22, 33, 99]).IsTrue();
+
+        s.Set(0, new(23)).IsTrue();
+        s.ToArray().Select(x => x!.Id).SequenceEqual([11, 23, 33, 99]).IsTrue();
+
+        s.Add(new(0));
+        s.ToArray().Select(x => x!.Id).SequenceEqual([11, 23, 33, 99, 0]).IsTrue();
     }
 }

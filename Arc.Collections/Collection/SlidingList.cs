@@ -173,11 +173,11 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Adds an element to the end of the List and returns its position. If addition is not possible, returns -1.
+    /// Inserts an element into an available space in the list. If insertion is not possible, returns -1.
     /// </summary>
     /// <param name="value">The value to be added.</param>
     /// <returns>The position of the new element.</returns>
-    public int TryAdd(T value)
+    public int Add(T value)
     {
         if (!this.CanAdd)
         {
@@ -271,18 +271,6 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         return true;
     }
 
-    public bool UnsafeChangeValue(int position, T value)
-    {
-        var index = this.PositionToIndex(position);
-        if (index < 0)
-        {
-            return false;
-        }
-
-        this.items[index] = value;
-        return true;
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int IndexToPosition(int index)
     {
@@ -340,13 +328,6 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     public bool IsReadOnly => false;
 
     /// <summary>
-    /// Adds an object to the end of the list.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="value">The value to be added to the end of the list.</param>
-    public void Add(T value) => this.TryAdd(value);
-
-    /// <summary>
     /// Removes all elements from the list.
     /// </summary>
     public void Clear()
@@ -396,6 +377,9 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
 
         return false;
     }
+
+    void ICollection<T>.Add(T item)
+        => this.Add(item);
 
     #endregion
 
