@@ -444,13 +444,14 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     {
         private SlidingList<T> list;
         private int index;
+        private int count;
         private int version;
         private T? current;
 
         internal Enumerator(SlidingList<T> list)
         {
             this.list = list;
-            this.index = 0;
+            this.index = list.headIndex;
             this.version = list.version;
             this.current = default(T);
         }
@@ -466,11 +467,18 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
                 throw ThrowVersionMismatch();
             }
 
-            if (this.index < this.list.items.Length)
+            if (this.count < this.list.Count)
             {
-                this.current = this.list.items[this.list.ClipIndex(this.list.headIndex + this.index)];
-                this.index++;
-                return true;
+                for (var i = this.index; i < this.index + this.list.items.Length; i++)
+                {
+                    if (this.list.items[this.list.ClipIndex(i)] is { } item)
+                    {
+                        this.current = item;
+                        this.index = this.list.ClipIndex(i + 1);
+                        this.count++;
+                        return true;
+                    }
+                }
             }
 
             this.index = this.list.items.Length + 1;
