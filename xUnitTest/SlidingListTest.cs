@@ -97,4 +97,23 @@ public class SlidingListTest
         s.Add(new(0));
         s.ToArray().Select(x => x!.Id).SequenceEqual([11, 23, 33, 99, 0]).IsTrue();
     }
+
+    [Fact]
+    public void Test2()
+    {
+        var s = new SlidingList<SlidingListClass>(4);
+
+        var array = s.ToArray().Select(x => x!.Id);
+        array.SequenceEqual([]).IsTrue();
+        foreach (var x in s)
+        {
+            var y = x.Id;
+        }
+
+        s.Add(new(1));
+        foreach (var x in s)
+        {
+            x.Id.Is(1);
+        }
+    }
 }
