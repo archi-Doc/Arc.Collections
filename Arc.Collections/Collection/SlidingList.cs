@@ -24,7 +24,8 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
 
     private T?[] items;
     private int itemsPosition; // The position of the first element in items.
-    private int headIndex; // The head index in items.
+    private int headIndex; // The head index in items (the first used item).
+    private int addHint;
     private int version;
 
     /// <summary>
@@ -32,10 +33,10 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     public int StartPosition => PositionMask & (this.itemsPosition + this.headIndex);
 
-    /* /// <summary>
+    /// <summary>
     /// Gets the position of the last element contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.headSize);*/
+    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.items.Length);
 
     /// <summary>
     /// Gets the maximum number of elements that <see cref="SlidingList{T}"/> can hold.
@@ -128,6 +129,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         this.items = array;
         this.itemsPosition += this.headIndex;
         this.headIndex = 0;
+        this.addHint = j;
         this.version++;
 
         return true;
@@ -164,6 +166,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             this.itemsPosition += this.items.Length;
         }
 
+        this.addHint = this.headIndex;
         this.version++;
 
         return count;
@@ -181,16 +184,21 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             return -1;
         }
 
-        var index = this.headIndex + this.headSize;
-        if (index >= this.items.Length)
+        for (var i = this.addHint; i < this.addHint + this.items.Length; i++)
         {
-            index -= this.items.Length;
+            var j = this.ClipIndex(i);
+            if (this.items[j] is null)
+            {
+                this.addHint = this.ClipIndex(i + 1);
+
+                this.items[j] = value;
+                this.Count++;
+                this.version++;
+                return this.IndexToPosition(j);
+            }
         }
 
-        this.headSize++;
-        this.items[index] = value;
-        this.version++;
-        return this.IndexToPosition(index);
+        return -1;
     }
 
     /// <summary>
@@ -206,12 +214,20 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             return false;
         }
 
+        if (this.items[index] is null)
+        {
+            return false;
+        }
+
         this.items[index] = default;
+        this.Count--;
+
         if (index == this.headIndex)
         {
             this.TrySlide();
         }
 
+        this.addHint = this.headIndex; // Reset
         this.version++;
         return true;
     }
@@ -230,6 +246,29 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         }
 
         return this.items[index];
+    }
+
+    /// <summary>
+    /// Sets the value of the element at the specified position.
+    /// </summary>
+    /// <param name="position">The position of the element.</param>
+    /// <param name="value">The value of the element.</param>
+    /// <returns><see langword="true"/>; Success.</returns>
+    public bool Set(int position, T value)
+    {
+        var index = this.PositionToIndex(position);
+        if (index < 0)
+        {
+            return default;
+        }
+
+        if (this.items[index] is null)
+        {// New
+            this.Count++;
+        }
+
+        this.items[index] = value;
+        return true;
     }
 
     public bool UnsafeChangeValue(int position, T value)
@@ -315,7 +354,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         Array.Clear(this.items, 0, this.items.Length);
         this.itemsPosition = 0;
         this.headIndex = 0;
-        this.headSize = 0;
+        this.addHint = 0;
         this.version++;
     }
 
@@ -366,7 +405,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     {
         get => this.Get(position) ?? throw new ArgumentOutOfRangeException();
 
-        set => throw new NotSupportedException();
+        set => this.Set(position, value);
     }
 
     /// <summary>
@@ -383,7 +422,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="position">The zero-based index at which item should be inserted.</param>
     /// <param name="item">The object to insert.</param>
-    public void Insert(int position, T item) => throw new NotSupportedException();
+    public void Insert(int position, T item) => this.Set(position, item);
 
     /// <summary>
     /// Removes the element at the specified index of the list.
@@ -403,6 +442,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             this.TrySlide();
         }
 
+        this.addHint = this.headIndex; // Reset
         this.version++;
     }
 
@@ -442,14 +482,14 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
                 throw ThrowVersionMismatch();
             }
 
-            if (this.index < this.list.headSize)
+            if (this.index < this.list.items.Length)
             {
                 this.current = this.list.items[this.list.ClipIndex(this.list.headIndex + this.index)];
                 this.index++;
                 return true;
             }
 
-            this.index = this.list.headSize + 1;
+            this.index = this.list.items.Length + 1;
             this.current = default(T);
             return false;
         }
@@ -460,7 +500,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         {
             get
             {
-                if (this.index == 0 || this.index == this.list.headSize + 1)
+                if (this.index == 0 || this.index == this.list.items.Length + 1)
                 {
                     throw new IndexOutOfRangeException();
                 }
