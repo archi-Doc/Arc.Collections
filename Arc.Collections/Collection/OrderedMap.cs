@@ -191,6 +191,7 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     #endregion
 
     private Node? root;
+    // private Node? free;
     private int version;
     private KeyCollection? keys;
     private ValueCollection? values;
@@ -1107,6 +1108,9 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         if (originalColor == NodeColor.Red || f == null)
         {
             node.Clear();
+            // node.Right = this.free; // FreeList
+            // this.free = node;
+
             if (this.root != null)
             {
                 this.root.ColorBlack();
@@ -1214,6 +1218,8 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         }
 
         node.Clear();
+        // node.Right = this.free; // FreeList
+        // this.free = node;
         return;
     }
 
@@ -1481,6 +1487,21 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         else
         {
             n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
+
+            /* if (this.free is null)
+            {
+                n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
+            }
+            else
+            {// FreeList
+                n = this.free;
+                this.free = this.free.Right;
+
+                n.Key = key;
+                n.Value = value;
+                n.Color = NodeColor.Red;
+                n.Right = default;
+            }*/
         }
 
         n.Parent = p;
