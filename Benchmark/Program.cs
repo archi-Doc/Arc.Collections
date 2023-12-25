@@ -17,7 +17,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<SortedSetBenchmark>();
+        DebugRun<ObjectPoolBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
