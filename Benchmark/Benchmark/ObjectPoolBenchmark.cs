@@ -1,13 +1,5 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Arc.Collections;
 using Arc.Crypto;
 using BenchmarkDotNet.Attributes;
@@ -19,6 +11,9 @@ public class ObjectPoolBenchmark
 {
     public ObjectPoolBenchmark()
     {
+        var provider = new Microsoft.Extensions.ObjectPool.DefaultObjectPoolProvider();
+        provider.MaximumRetained = 32;
+        this.objectPool = provider.Create<Sha3_256>();
     }
 
     [Params(10)]
@@ -40,6 +35,8 @@ public class ObjectPoolBenchmark
 
     public ObjectPool<Sha3_256> ObjectPoolPrepare { get; } = new(() => new Sha3_256(), 32, true);
 
+    private Microsoft.Extensions.ObjectPool.ObjectPool<Sha3_256> objectPool;
+
     [GlobalSetup]
     public void Setup()
     {
@@ -55,20 +52,22 @@ public class ObjectPoolBenchmark
     {
     }
 
-    /*[Benchmark]
-    public byte[] SHA3_NewAndGet()
+    [Benchmark]
+    public Sha3_256 SHA3_NewAndGet()
     {
-        var h = new SHA3_256();
-        return h.GetHash(this.ByteArray);
+        var h = new Sha3_256();
+        // return h.GetHash(this.ByteArray);
+        return h;
     }
 
     [Benchmark]
-    public byte[] SHA3_ObjectPool()
+    public Sha3_256 SHA3_ObjectPool()
     {
         var h = this.ObjectPool.Get();
         try
         {
-            return h.GetHash(this.ByteArray);
+            // return h.GetHash(this.ByteArray);
+            return h;
         }
         finally
         {
@@ -77,6 +76,21 @@ public class ObjectPoolBenchmark
     }
 
     [Benchmark]
+    public Sha3_256 SHA3_ObjectPoolMs()
+    {
+        var h = this.objectPool.Get();
+        try
+        {
+            // return h.GetHash(this.ByteArray);
+            return h;
+        }
+        finally
+        {
+            this.objectPool.Return(h);
+        }
+    }
+
+    /*[Benchmark]
     public byte[] SHA3_LooseObjectPool()
     {
         var h = this.LooseObjectPool.Rent();
@@ -110,7 +124,7 @@ public class ObjectPoolBenchmark
         return this.SHA3Instance.GetHash(this.ByteArray);
     }*/
 
-    [Benchmark]
+    /*[Benchmark]
     public Sha3 SHA3_NewInstance()
     {
         return new Sha3_256();
@@ -128,5 +142,5 @@ public class ObjectPoolBenchmark
         {
             this.ObjectPoolPrepare.Return(h);
         }
-    }
+    }*/
 }
