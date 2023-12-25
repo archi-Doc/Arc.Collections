@@ -3,17 +3,11 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arc.Collections;
-
-#pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
-#pragma warning disable SA1401 // Fields should be private
 
 /// <summary>
 /// A fast and thread-safe pool of objects (uses <see cref="ConcurrentQueue{T}"/>).<br/>
@@ -24,6 +18,7 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
 public class ObjectPool<T> : IDisposable
+    where T : class
 {
     public const uint MinimumPoolSize = 4;
     public const uint DefaultPoolSize = 32;
@@ -32,12 +27,12 @@ public class ObjectPool<T> : IDisposable
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.<br/>
     /// Set <paramref name="prepareInstances"/> to true to pre-create instances with high initialization cost (another thread).
     /// </summary>
-    /// <param name="objectGenerator">Delegate to create a new instance.</param>
+    /// <param name="createFunc">Delegate to create a new instance.</param>
     /// <param name="poolSize">The maximum number of objects in the pool.</param>
     /// <param name="prepareInstances"><see langword="true"/>: Pre-create instances in another thread.</param>
-    public ObjectPool(Func<T> objectGenerator, uint poolSize = DefaultPoolSize, bool prepareInstances = false)
+    public ObjectPool(Func<T> createFunc, uint poolSize = DefaultPoolSize, bool prepareInstances = false)
     {
-        this.objectGenerator = objectGenerator ?? throw new ArgumentNullException(nameof(objectGenerator));
+        this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
         if (poolSize < MinimumPoolSize)
         {
             poolSize = MinimumPoolSize;
@@ -50,21 +45,35 @@ public class ObjectPool<T> : IDisposable
 
         this.PoolSize = poolSize;
         this.objects = new ConcurrentQueue<T>();
-        this.objectsLimit = this.PoolSize;
+        this.fastItem = default;
+        this.numberOfObjects = 0;
         this.prepareInstances = prepareInstances;
         if (prepareInstances)
         {
             this.prepareThreshold = this.PoolSize / 4;
             this.prepareThreshold = this.prepareThreshold == 0 ? 1 : this.prepareThreshold;
-            this.objectsLimit += 4;
             this.PrepareInstanceInternal();
         }
     }
+
+    #region FieldAndProperty
 
     /// <summary>
     /// Gets the maximum number of objects in the pool.
     /// </summary>
     public uint PoolSize { get; }
+
+    private readonly Func<T> createFunc;
+    private readonly ConcurrentQueue<T> objects;
+    private readonly bool prepareInstances;
+    private T? fastItem;
+    private uint numberOfObjects;
+    private uint prepareCount;
+    private uint prepareThreshold;
+    private bool isTaskRunning = false;
+    private bool isDisposable = false;
+
+    #endregion
 
     /// <summary>
     /// Gets an instance from the pool or create a new instance if not available.<br/>
@@ -76,24 +85,31 @@ public class ObjectPool<T> : IDisposable
     {
         if (this.prepareInstances)
         {
-            /*var count = Interlocked.Increment(ref this.prepareCount);
-            if (count % this.prepareDivisor == 0 &&
-                this.objects.Count <= (this.PoolSize >> 1))
-            {
-                this.PrepareInstanceInternal();
-            }*/
-
             if (this.prepareCount++ >= this.prepareThreshold)
             {
                 this.prepareCount = 0;
-                if (this.objects.Count <= (this.PoolSize >> 1))
+                if (this.numberOfObjects <= (this.PoolSize >> 1))
                 {
                     this.PrepareInstanceInternal();
                 }
             }
         }
 
-        return this.objects.TryDequeue(out T? item) ? item : this.objectGenerator();
+        var item = this.fastItem;
+        if (item == null || Interlocked.CompareExchange(ref this.fastItem, null, item) != item)
+        {
+            if (this.objects.TryDequeue(out item))
+            {
+                Interlocked.Decrement(ref this.numberOfObjects);
+                return item;
+            }
+
+            return this.createFunc();
+        }
+
+        return item;
+
+        // return this.objects.TryDequeue(out T? item) ? item : this.createFunc();
     }
 
     /// <summary>
@@ -105,17 +121,31 @@ public class ObjectPool<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Return(T instance)
     {
-        if (this.objects.Count < this.objectsLimit)
+        if (this.fastItem != null || Interlocked.CompareExchange(ref this.fastItem, instance, null) != null)
+        {
+            if (this.numberOfObjects < this.PoolSize)
+            {
+                Interlocked.Increment(ref this.numberOfObjects);
+                this.objects.Enqueue(instance);
+            }
+            else
+            {// The pool is full.
+                if (this.isDisposable && instance is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+        }
+
+        /*if (this.objects.Count < this.PoolSize)
         {
             this.objects.Enqueue(instance);
         }
         else if (this.isDisposable && instance is IDisposable disposable)
         {// The queue is full.
             disposable.Dispose();
-        }
+        }*/
     }
-
-    // public Task PrepareInstance() => this.PrepareInstanceInternal();
 
     private Task PrepareInstanceInternal()
     {
@@ -129,9 +159,10 @@ public class ObjectPool<T> : IDisposable
         {
             try
             {
-                while (this.objects.Count < this.PoolSize)
+                while (this.numberOfObjects < this.PoolSize)
                 {
-                    this.objects.Enqueue(this.objectGenerator());
+                    Interlocked.Increment(ref this.numberOfObjects);
+                    this.objects.Enqueue(this.createFunc());
                 }
             }
             finally
@@ -141,18 +172,7 @@ public class ObjectPool<T> : IDisposable
         });
     }
 
-    private readonly Func<T> objectGenerator;
-    private readonly ConcurrentQueue<T> objects;
-    private readonly uint objectsLimit;
-    private readonly bool prepareInstances;
-    private uint prepareCount;
-    private uint prepareThreshold;
-    private bool isTaskRunning = false;
-    private bool isDisposable = false;
-
-#pragma warning disable SA1124 // Do not use regions
     #region IDisposable Support
-#pragma warning restore SA1124 // Do not use regions
 
     private bool disposed = false; // To detect redundant calls.
 
@@ -199,6 +219,7 @@ public class ObjectPool<T> : IDisposable
             }
 
             // free native resources here if there are any.
+            this.numberOfObjects = 0;
             this.disposed = true;
         }
     }
