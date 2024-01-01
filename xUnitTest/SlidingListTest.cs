@@ -116,4 +116,24 @@ public class SlidingListTest
             x.Id.Is(1);
         }
     }
+
+    [Fact]
+    public void Test3()
+    {
+        var s = new SlidingList<SlidingListClass>(4);
+        s.Add(new(1));
+        s.Add(new(2));
+        s.Add(new(3));
+        s.Add(new(4));
+
+        s.Remove(0).IsTrue();
+        s.StartPosition.Is(1);
+        s.Remove(1).IsTrue();
+        s.StartPosition.Is(2);
+        s.Remove(2).IsTrue();
+        s.StartPosition.Is(3);
+        s.Remove(3).IsTrue();
+        s.StartPosition.Is(3);
+        s.Count.Is(0);
+    }
 }

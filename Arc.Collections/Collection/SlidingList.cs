@@ -141,7 +141,8 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <returns>The number of slides made.</returns>
     public int TrySlide()
     {
-        if (this.items[this.headIndex] is not null)
+        if (this.items[this.headIndex] is not null ||
+            this.Count == 0)
         {
             return 0;
         }
