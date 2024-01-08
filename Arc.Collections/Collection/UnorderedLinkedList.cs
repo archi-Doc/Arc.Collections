@@ -4,7 +4,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
@@ -62,10 +61,15 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             this.previous = null;
             this.next = null;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ClearValue()
+        {
+            this.value = default!;
+        }
     }
 
     protected Node? head; // doubly-Linked circular list.
-    protected Node? removed;
     protected int size;
     protected int version;
 
@@ -123,11 +127,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         while (n != null)
         {
             var t = n.Next; // use Next the instead of "next", otherwise it will loop forever
-            // n.Clear();
-            n.list = null!;
-            n.previous = null;
-            n.next = this.removed;
-            this.removed = n;
+            n.Clear();
+            n.ClearValue();
             n = t;
         }
 
@@ -395,7 +396,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public Node AddAfter(Node node, T value)
     {
         this.ValidateNode(node);
-        var result = this.NewNode(node.List, value);
+        var result = new Node(this, value);
         this.InternalInsertNodeBefore(node.next!, result);
         return result;
     }
@@ -422,7 +423,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public Node AddBefore(Node node, T value)
     {
         this.ValidateNode(node);
-        var result = this.NewNode(node.list!, value);
+        var result = new Node(node.list!, value);
         this.InternalInsertNodeBefore(node, result);
         if (node == this.head)
         {
@@ -456,7 +457,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <returns>The new <see cref="Node"/> containing value.</returns>
     public Node AddFirst(T value)
     {
-        var result = this.NewNode(this, value);
+        var result = new Node(this, value);
         if (this.head == null)
         {
             this.InternalInsertNodeToEmptyList(result);
@@ -471,7 +472,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Adds a new node or value at the start of the list.
+    /// Adds a node at the start of the list.
     /// </summary>
     /// <param name="node">The new <see cref="Node"/> to add at the start of the list.</param>
     public void AddFirst(Node node)
@@ -498,7 +499,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <returns>The new <see cref="Node"/> containing value.</returns>
     public Node AddLast(T value)
     {
-        var result = this.NewNode(this, value);
+        var result = new Node(this, value);
         if (this.head == null)
         {
             this.InternalInsertNodeToEmptyList(result);
@@ -543,6 +544,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     public void MoveToFirst(Node node)
     {
+        this.ValidateNode(node);
+
         if (node.next == node)
         {// Single node
             return;
@@ -561,12 +564,13 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         this.head.previous = node;
         this.head = node;
 
-        this.size++;
         this.version++;
     }
 
     public void MoveToLast(Node node)
     {
+        this.ValidateNode(node);
+
         if (node.next == node)
         {// Single node
             return;
@@ -584,7 +588,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         this.head.previous!.next = node;
         this.head.previous = node;
 
-        this.size++;
         this.version++;
     }
 
@@ -658,11 +661,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             }
         }
 
-        // node.Clear();
-        node.list = null!;
-        node.previous = null;
-        node.next = this.removed;
-        this.removed = node;
+        node.Clear();
 
         this.size--;
         this.version++;
@@ -698,7 +697,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     #endregion
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /*[MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Node NewNode(UnorderedLinkedList<T> list, T value)
     {
         if (this.removed is not null)
@@ -713,5 +712,5 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         {
             return new Node(list, value);
         }
-    }
+    }*/
 }

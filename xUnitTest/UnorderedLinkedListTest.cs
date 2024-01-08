@@ -51,6 +51,25 @@ public class UnorderedLinkedListTest
         l.AddLast(5);
 
         l.SequenceEqual([0, 1, 3, 2, -10, 0, 5,]).IsTrue();
+
+        node = l.Find(5)!;
+        node.IsNotNull();
+        l.MoveToFirst(node);
+        l.SequenceEqual([5, 0, 1, 3, 2, -10, 0,]).IsTrue();
+
+        node = l.Find(1)!;
+        node.IsNotNull();
+        l.MoveToLast(node);
+        l.SequenceEqual([5, 0, 3, 2, -10, 0, 1,]).IsTrue();
+
+        l.Clear();
+        l.Count.Is(0);
+
+        l.AddFirst(1);
+        node = l.Find(1)!;
+        node.IsNotNull();
+        l.MoveToLast(node);
+        l.SequenceEqual([1,]).IsTrue();
     }
 
     [Fact]
