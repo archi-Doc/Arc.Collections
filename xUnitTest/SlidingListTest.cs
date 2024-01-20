@@ -133,14 +133,14 @@ public class SlidingListTest
         s.Remove(2).IsTrue();
         s.StartPosition.Is(3);
         s.Remove(3).IsTrue();
-        s.StartPosition.Is(3);
-        s.Count.Is(0);
+        s.StartPosition.Is(4);
+        s.Consumed.Is(0);
     }
 
     [Fact]
     public void Test4()
     {
-        var s = new SlidingList<SlidingListClass>(4);
+        var s = new SlidingList<SlidingListClass>(5);
         s.Add(new(1));
         s.Add(new(2));
         s.Add(new(3));
@@ -153,6 +153,6 @@ public class SlidingListTest
         s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4,]).IsTrue();
 
         s.Add(new(5));
-        // s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 5,]).IsTrue();
+        s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 5,]).IsTrue();
     }
 }

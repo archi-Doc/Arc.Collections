@@ -6,11 +6,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace Arc.Collections;
+#pragma warning disable SA1405 // Debug.Assert should provide message text
+
+namespace Arc.Collections.Obsolete;
 
 public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     where T : class
-{
+{// Reuse removed items.
     private const int PositionMask = 0x7FFFFFFF;
 
     public SlidingList(int capacity)
@@ -23,6 +25,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     private T?[] items;
     private int itemsPosition; // The position of the first element in items.
     private int headIndex; // The head index in items (the first used item).
+    private int addHint;
     private int version;
 
     /// <summary>
@@ -33,31 +36,22 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets the position of the last element contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.Consumed);
+    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.items.Length);
 
     /// <summary>
     /// Gets the maximum number of elements that <see cref="SlidingList{T}"/> can hold.
     /// </summary>
     public int Capacity => this.items.Length;
 
-    /* /// <summary>
+    /// <summary>
     /// Gets the number of elements contained in the <see cref="SlidingList{T}"/>.
     /// </summary>
-    // public int Count { get; private set; }*/
-
-    int ICollection<T>.Count => this.Consumed;
-
-    int IReadOnlyCollection<T>.Count => this.Consumed;
-
-    /// <summary>
-    /// Gets the number of consumed elements in the <see cref="SlidingList{T}"/>.
-    /// </summary>
-    public int Consumed { get; private set; }
+    public int Count { get; private set; }
 
     /// <summary>
     /// Gets a value indicating whether there is space in the <see cref="SlidingList{T}"/> and if a new element can be added.
     /// </summary>
-    public bool CanAdd => this.Consumed < this.items.Length;
+    public bool CanAdd => this.Count < this.items.Length;
 
     /// <summary>
     /// Gets the first element of the <see cref="SlidingList{T}"/>, or a default value if the <see cref="SlidingList{T}"/> contains no elements.
@@ -66,7 +60,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     {
         get
         {
-            if (this.Consumed == 0)
+            if (this.Count == 0)
             {
                 return default;
             }
@@ -84,25 +78,21 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <returns>An array containing copies of the elements of the <see cref="SlidingList{T}"/>.</returns>
     public T?[] ToArray()
     {
-        var array = new T?[this.Consumed];
+        var array = new T?[this.Count];
         var j = 0;
-        for (var i = 0; i < this.Consumed; i++)
+        for (var i = 0; i < this.items.Length; i++)
         {
             if (this.items[this.ClipIndex(this.headIndex + i)] is { } item)
             {
                 array[j++] = item;
-                if (j == this.Consumed)
+                if (j == this.Count)
                 {
                     break;
                 }
             }
         }
 
-        if (j != this.Consumed)
-        {
-            Array.Resize(ref array, j);
-        }
-
+        Debug.Assert(j == this.Count);
         return array;
     }
 
@@ -117,21 +107,29 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         {// Identical
             return true;
         }
-        else if (this.Consumed > capacity)
+        else if (this.Count > capacity)
         {
             return false;
         }
 
         var array = new T?[capacity];
         var j = 0;
-        for (var i = 0; i < this.Consumed; i++)
+        for (var i = 0; i < this.items.Length; i++)
         {
-            array[j++] = this.items[this.ClipIndex(this.headIndex + i)];
+            if (this.items[this.ClipIndex(this.headIndex + i)] is { } item)
+            {
+                array[j++] = item;
+                if (j == this.Count)
+                {
+                    break;
+                }
+            }
         }
 
         this.items = array;
         this.itemsPosition += this.headIndex;
         this.headIndex = 0;
+        this.addHint = j;
         this.version++;
 
         return true;
@@ -144,13 +142,13 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     public int TrySlide()
     {
         if (this.items[this.headIndex] is not null ||
-            this.Consumed == 0)
+            this.Count == 0)
         {
             return 0;
         }
 
         var count = 0;
-        for (var i = this.headIndex; i < this.headIndex + this.Consumed; i++)
+        for (var i = this.headIndex; i < this.headIndex + this.items.Length; i++)
         {
             if (this.items[this.ClipIndex(i)] is null)
             {
@@ -169,7 +167,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             this.itemsPosition += this.items.Length;
         }
 
-        this.Consumed -= count;
+        this.addHint = this.headIndex;
         this.version++;
 
         return count;
@@ -187,11 +185,21 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             return -1;
         }
 
-        var i = this.ClipIndex(this.headIndex + this.Consumed);
-        this.items[i] = value;
-        this.Consumed++;
-        this.version++;
-        return this.IndexToPosition(i);
+        for (var i = this.addHint; i < this.addHint + this.items.Length; i++)
+        {
+            var j = this.ClipIndex(i);
+            if (this.items[j] is null)
+            {
+                this.addHint = this.ClipIndex(i + 1);
+
+                this.items[j] = value;
+                this.Count++;
+                this.version++;
+                return this.IndexToPosition(j);
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -213,12 +221,14 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         }
 
         this.items[index] = default;
+        this.Count--;
 
         if (index == this.headIndex)
         {
             this.TrySlide();
         }
 
+        this.addHint = this.headIndex; // Reset
         this.version++;
         return true;
     }
@@ -253,19 +263,9 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             return default;
         }
 
-        int dif;
-        if (index >= this.headIndex)
-        {
-            dif = index - this.headIndex;
-        }
-        else
-        {
-            dif = this.headIndex - index;
-        }
-
-        if (dif > this.Consumed)
-        {
-            this.Consumed = dif;
+        if (this.items[index] is null)
+        {// New
+            this.Count++;
         }
 
         this.items[index] = value;
@@ -290,7 +290,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     {
         int index;
         var start = this.StartPosition;
-        var end = PositionMask & (this.itemsPosition + this.headIndex + this.items.Length);
+        var end = this.EndPosition;
         if (start < end)
         {
             if (start <= position && position < end)
@@ -336,7 +336,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         Array.Clear(this.items, 0, this.items.Length);
         this.itemsPosition = 0;
         this.headIndex = 0;
-        this.Consumed = 0;
+        this.addHint = 0;
         this.version++;
     }
 
@@ -427,6 +427,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             this.TrySlide();
         }
 
+        this.addHint = this.headIndex; // Reset
         this.version++;
     }
 
@@ -444,7 +445,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     {
         private SlidingList<T> list;
         private int index;
-        private int last;
+        private int count;
         private int version;
         private T? current;
 
@@ -452,7 +453,6 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         {
             this.list = list;
             this.index = list.headIndex;
-            this.last = list.ClipIndex(list.headIndex + this.list.Consumed);
             this.version = list.version;
             this.current = default(T);
         }
@@ -468,19 +468,21 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
                 throw ThrowVersionMismatch();
             }
 
-            while (this.index != this.last)
+            if (this.count < this.list.Count)
             {
-                if (this.list.items[this.list.ClipIndex(this.index)] is { } item)
+                for (var i = this.index; i < this.index + this.list.items.Length; i++)
                 {
-                    this.index = this.list.ClipIndex(this.index + 1);
-                    this.current = item;
-                    return true;
+                    if (this.list.items[this.list.ClipIndex(i)] is { } item)
+                    {
+                        this.current = item;
+                        this.index = this.list.ClipIndex(i + 1);
+                        this.count++;
+                        return true;
+                    }
                 }
-
-                this.index = this.list.ClipIndex(this.index + 1);
             }
 
-            this.index = this.last;
+            this.index = this.list.items.Length + 1;
             this.current = default(T);
             return false;
         }
@@ -491,7 +493,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         {
             get
             {
-                if (this.index == 0 || this.index == this.last)
+                if (this.index == 0 || this.index == this.list.items.Length + 1)
                 {
                     throw new IndexOutOfRangeException();
                 }
