@@ -136,4 +136,23 @@ public class SlidingListTest
         s.StartPosition.Is(3);
         s.Count.Is(0);
     }
+
+    [Fact]
+    public void Test4()
+    {
+        var s = new SlidingList<SlidingListClass>(4);
+        s.Add(new(1));
+        s.Add(new(2));
+        s.Add(new(3));
+        s.Add(new(4));
+
+        var array = s.ToArray().Select(x => x!.Id);
+        array.SequenceEqual([1, 2, 3, 4]).IsTrue();
+
+        s.Remove(2);
+        s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4,]).IsTrue();
+
+        s.Add(new(5));
+        // s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 5,]).IsTrue();
+    }
 }
