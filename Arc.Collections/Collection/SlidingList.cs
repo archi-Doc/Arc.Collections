@@ -452,7 +452,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         {
             this.list = list;
             this.index = list.headIndex;
-            this.last = list.ClipIndex(list.headIndex + this.list.Consumed);
+            this.last = list.headIndex + this.list.Consumed;
             this.version = list.version;
             this.current = default(T);
         }
@@ -472,15 +472,16 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             {
                 if (this.list.items[this.list.ClipIndex(this.index)] is { } item)
                 {
-                    this.index = this.list.ClipIndex(this.index + 1);
+                    this.index++;
                     this.current = item;
                     return true;
                 }
-
-                this.index = this.list.ClipIndex(this.index + 1);
+                else
+                {
+                    this.index++;
+                }
             }
 
-            this.index = this.last;
             this.current = default(T);
             return false;
         }
