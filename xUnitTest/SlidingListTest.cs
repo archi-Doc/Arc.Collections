@@ -155,4 +155,26 @@ public class SlidingListTest
         s.Add(new(5));
         s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 5,]).IsTrue();
     }
+
+    [Fact]
+    public void Test5()
+    {
+        var s = new SlidingList<SlidingListClass>(5);
+        s.Add(new(1));
+        s.Add(new(2));
+        s.Add(new(3));
+        s.Add(new(4));
+        s.Add(new(5));
+
+        var array = s.Select(x => x!.Id).ToArray();
+        array.SequenceEqual([1, 2, 3, 4, 5]).IsTrue();
+
+        var list = new List<int>();
+        foreach (var x in s)
+        {
+            list.Add(x.Id);
+        }
+
+        list.SequenceEqual([1, 2, 3, 4, 5]).IsTrue();
+    }
 }
