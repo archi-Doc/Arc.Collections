@@ -36,13 +36,13 @@ public class UnorderedMapValues
     {
     }
 
-    // [Benchmark]
+    [Benchmark]
     public HashSet<int> CreateHashSet()
     {
         return new(this.array);
     }
 
-    // [Benchmark]
+    [Benchmark]
     public Dictionary<int, int> CreateDictionary()
     {
         var dic = new Dictionary<int, int>();
@@ -54,7 +54,7 @@ public class UnorderedMapValues
         return dic;
     }
 
-    // [Benchmark]
+    [Benchmark]
     public UnorderedMap<int, int> CreateUnorderedMap()
     {
         var map = new UnorderedMap<int, int>();
@@ -78,8 +78,17 @@ public class UnorderedMapValues
         return sum;
     }
 
-    public int[] DictionaryToArray()
-        => this.dictionary.Values.ToArray();
+    [Benchmark]
+    public int EnumerateDictionary()
+    {
+        var sum = 0;
+        foreach (var x in this.dictionary.Values)
+        {
+            sum += x;
+        }
+
+        return sum;
+    }
 
     [Benchmark]
     public int EnumerateUnorderedMap()
@@ -100,6 +109,19 @@ public class UnorderedMapValues
         foreach (var x in this.map.UnsafeValues)
         {
             sum += x;
+        }
+
+        return sum;
+    }
+
+    [Benchmark]
+    public int EnumerateUnorderedMap3()
+    {
+        var r = this.map.GetUnsafeNodes();
+        var sum = 0;
+        for (var i = 0; i < r.Max; i++)
+        {
+            sum += r.Nodes[i].Value;
         }
 
         return sum;

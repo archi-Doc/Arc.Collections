@@ -18,7 +18,7 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
 {
-    private struct Node
+    public struct Node
     {
         public const int UnusedNode = -2;
 
@@ -1403,13 +1403,14 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
 
     #endregion
 
+    public (Node[] Nodes, int Max) GetUnsafeNodes()
+        => (this.nodes, this.nodeCount);
+
     #region UnsafeEnumerator
 
-    private UnsafeValueCollection? unsafeValues;
+    public IEnumerable<TValue> UnsafeValues => new UnsafeValueCollection(this);
 
-    public UnsafeValueCollection UnsafeValues => this.unsafeValues != null ? this.unsafeValues : (this.unsafeValues = new UnsafeValueCollection(this));
-
-    public class UnsafeValueCollection : IEnumerable<TValue>
+    private readonly struct UnsafeValueCollection : IEnumerable<TValue>
     {
         public UnsafeValueCollection(UnorderedMap<TKey, TValue> map)
         {
