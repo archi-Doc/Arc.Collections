@@ -1,7 +1,6 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System.Collections.Generic;
-using System.Linq;
 using Arc.Collections;
 using Arc.Crypto;
 using BenchmarkDotNet.Attributes;
@@ -102,22 +101,10 @@ public class UnorderedMapValues
         return sum;
     }
 
-    /*[Benchmark]
+    [Benchmark]
     public int EnumerateUnorderedMap2()
     {
-        var sum = 0;
-        foreach (var x in this.map.UnsafeValues)
-        {
-            sum += x;
-        }
-
-        return sum;
-    }*/
-
-    [Benchmark]
-    public int EnumerateUnorderedMap3()
-    {
-        var r = this.map.GetUnsafeNodes();
+        var r = this.map.UnsafeGetNodes();
         var sum = 0;
         for (var i = 0; i < r.Max; i++)
         {
