@@ -18,7 +18,7 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
 {
-    private struct Node
+    public struct Node
     {
         public const int UnusedNode = -2;
 
@@ -156,8 +156,8 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             }
 
             this.index = this.map.nodeCount + 1;
-            this.key = default(TKey)!;
-            this.value = default(TValue)!;
+            this.key = default;
+            this.value = default;
             return false;
         }
 
@@ -1402,4 +1402,73 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     }
 
     #endregion
+
+    public (Node[] Nodes, int Max) GetUnsafeNodes()
+        => (this.nodes, this.nodeCount);
+
+    /*#region UnsafeEnumerator
+
+    public IEnumerable<TValue> UnsafeValues => new UnsafeValueCollection(this);
+
+    private readonly struct UnsafeValueCollection : IEnumerable<TValue>
+    {
+        public UnsafeValueCollection(UnorderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+        }
+
+        private readonly UnorderedMap<TKey, TValue> map;
+
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new UnsafeValueEnumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new UnsafeValueEnumerator(this.map);
+    }
+
+    private struct UnsafeValueEnumerator : IEnumerator<TValue>
+    {
+        private readonly Node[] nodes;
+        private readonly int max;
+        private int index;
+        private TValue? value;
+
+        internal UnsafeValueEnumerator(UnorderedMap<TKey, TValue> map)
+        {
+            this.nodes = map.nodes;
+            this.max = map.nodeCount;
+            this.index = 0;
+        }
+
+        public TValue Current
+            => this.value!;
+
+        object IEnumerator.Current
+            => this.value!;
+
+        public void Dispose()
+            => this.Reset();
+
+        public bool MoveNext()
+        {
+            if (this.index < this.max)
+            {
+                this.value = this.nodes[this.index++].Value;
+                return true;
+            }
+            else
+            {
+                this.value = default;
+                return false;
+            }
+        }
+
+        public void Reset()
+        {
+            this.index = 0;
+            this.value = default;
+        }
+    }
+
+    #endregion*/
 }
