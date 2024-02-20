@@ -1405,10 +1405,11 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
 
     #region UnsafeEnumerator
 
-    public IEnumerable<TValue> UnsafeValues
-        => new UnsafeValueCollection(this);
+    private UnsafeValueCollection? unsafeValues;
 
-    private readonly struct UnsafeValueCollection : IEnumerable<TValue>
+    public UnsafeValueCollection UnsafeValues => this.unsafeValues != null ? this.unsafeValues : (this.unsafeValues = new UnsafeValueCollection(this));
+
+    public class UnsafeValueCollection : IEnumerable<TValue>
     {
         public UnsafeValueCollection(UnorderedMap<TKey, TValue> map)
         {
