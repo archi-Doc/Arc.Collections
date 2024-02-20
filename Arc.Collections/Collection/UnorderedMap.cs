@@ -1406,7 +1406,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     public (Node[] Nodes, int Max) GetUnsafeNodes()
         => (this.nodes, this.nodeCount);
 
-    #region UnsafeEnumerator
+    /*#region UnsafeEnumerator
 
     public IEnumerable<TValue> UnsafeValues => new UnsafeValueCollection(this);
 
@@ -1470,5 +1470,5 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         }
     }
 
-    #endregion
+    #endregion*/
 }

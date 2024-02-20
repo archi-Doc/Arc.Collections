@@ -102,7 +102,7 @@ public class UnorderedMapValues
         return sum;
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public int EnumerateUnorderedMap2()
     {
         var sum = 0;
@@ -112,7 +112,7 @@ public class UnorderedMapValues
         }
 
         return sum;
-    }
+    }*/
 
     [Benchmark]
     public int EnumerateUnorderedMap3()
