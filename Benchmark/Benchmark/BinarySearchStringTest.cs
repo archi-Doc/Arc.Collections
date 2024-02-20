@@ -1,8 +1,6 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
 using Arc.Collections;
-using System.Linq;
-using System.Diagnostics;
 
 namespace Benchmark;
 

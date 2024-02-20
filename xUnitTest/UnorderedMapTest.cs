@@ -106,7 +106,7 @@ public class UnorderedMapTest
         um.Add(new UnorderedMapTestClass(3), 3);
     }
 
-        [Fact]
+    [Fact]
     public void Random()
     {
         var r = new Random(12);
@@ -143,6 +143,8 @@ public class UnorderedMapTest
         }
 
         um.ValidateWithDictionary(dic);
+
+        um.UnsafeValues.SequenceEqual(um.Values).IsTrue();
 
         var branch = r.Next(3);
         if (branch == 1)
