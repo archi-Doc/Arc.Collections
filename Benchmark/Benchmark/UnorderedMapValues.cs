@@ -31,8 +31,6 @@ public class UnorderedMapValues
         this.map = this.CreateUnorderedMap();
     }
 
-    
-
     [GlobalSetup]
     public void Setup()
     {
@@ -68,18 +66,42 @@ public class UnorderedMapValues
         return map;
     }
 
-    // [Benchmark]
-    public int[] HashSetToArray()
-        => this.hashset.ToArray();
+    [Benchmark]
+    public int EnumerateHashSet()
+    {
+        var sum = 0;
+        foreach (var x in this.hashset)
+        {
+            sum += x;
+        }
+
+        return sum;
+    }
 
     public int[] DictionaryToArray()
         => this.dictionary.Values.ToArray();
 
     [Benchmark]
-    public int[] UnorderedMapToArray()
-        => this.map.Values.ToArray();
+    public int EnumerateUnorderedMap()
+    {
+        var sum = 0;
+        foreach (var x in this.map.Values)
+        {
+            sum += x;
+        }
+
+        return sum;
+    }
 
     [Benchmark]
-    public int[] UnorderedMapToArray2()
-        => this.map.UnsafeValues.ToArray();
+    public int EnumerateUnorderedMap2()
+    {
+        var sum = 0;
+        foreach (var x in this.map.UnsafeValues)
+        {
+            sum += x;
+        }
+
+        return sum;
+    }
 }
