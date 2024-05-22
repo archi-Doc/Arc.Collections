@@ -41,26 +41,27 @@ public class BytePool
         internal RentArray(byte[] array)
         {
             this.bucket = null;
-            this.Array = array;
+            this.byteArray = array;
             this.SetCount1();
         }
 
         internal RentArray(Bucket bucket)
         {
             this.bucket = bucket;
-            this.Array = new byte[bucket.ArrayLength];
+            this.byteArray = new byte[bucket.ArrayLength];
             this.SetCount1();
         }
 
         #region FieldAndProperty
 
+        private readonly byte[] byteArray;
+        private readonly Bucket? bucket;
+        private int count;
+
         /// <summary>
         /// Gets a rent byte array.
         /// </summary>
-        public byte[] Array { get; }
-
-        private Bucket? bucket;
-        private int count;
+        public byte[] Array => this.byteArray;
 
         /// <summary>
         /// Gets a value indicating whether the owner (byte array) is rent or not.
@@ -125,7 +126,7 @@ public class BytePool
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
         public RentMemory AsMemory(int start)
-            => new(this, this.Array, start, this.Array.Length - start);
+            => new(this, this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
         /// Create a <see cref="RentMemory"/> object by specifying the index and length.
@@ -134,7 +135,7 @@ public class BytePool
         /// <param name="length">The number of elements to include in the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
         public RentMemory AsMemory(int start, int length)
-            => new(this, this.Array, start, length);
+            => new(this, this.byteArray, start, length);
 
         /// <summary>
         /// Create a <see cref="RentReadOnlyMemory"/> object from <see cref="RentArray"/>.
@@ -149,7 +150,7 @@ public class BytePool
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
         public RentReadOnlyMemory AsReadOnly(int start)
-            => new(this, this.Array, start, this.Array.Length - start);
+            => new(this, this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
         /// Create a <see cref="RentReadOnlyMemory"/> object by specifying the index and length.
@@ -158,14 +159,14 @@ public class BytePool
         /// <param name="length">The number of elements to include in the slice.</param>
         /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
         public RentReadOnlyMemory AsReadOnly(int start, int length)
-            => new(this, this.Array, start, length);
+            => new(this, this.byteArray, start, length);
 
         /// <summary>
         /// Create a <see cref="Span{T}"/> object from <see cref="RentArray"/>.
         /// </summary>
         /// <returns><see cref="Span{T}"/>.</returns>
         public Span<byte> AsSpan()
-            => new(this.Array);
+            => new(this.byteArray);
 
         /// <summary>
         /// Create a <see cref="Span{T}"/> object by specifying the index and length.
@@ -173,7 +174,7 @@ public class BytePool
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="Span{T}"/>.</returns>
         public Span<byte> AsSpan(int start)
-            => new(this.Array, start, this.Array.Length - start);
+            => new(this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
         /// Create a <see cref="Span{T}"/> object by specifying the index and length.
@@ -182,7 +183,7 @@ public class BytePool
         /// <param name="length">The number of elements to include in the slice.</param>
         /// <returns><see cref="Span{T}"/>.</returns>
         public Span<byte> AsSpan(int start, int length)
-            => new(this.Array, start, length);
+            => new(this.byteArray, start, length);
 
         internal void SetCount1()
             => Volatile.Write(ref this.count, 1);
@@ -199,11 +200,7 @@ public class BytePool
             var count = Interlocked.Decrement(ref this.count);
             if (count == 0 && this.bucket != null)
             {
-                if (this.bucket.QueueCount < this.bucket.PoolLimit)
-                {
-                    this.bucket.Queue.Enqueue(this);
-                    Interlocked.Increment(ref this.bucket.QueueCount);
-                }
+                this.bucket.Queue.TryEnqueue(this);
             }
 
             return null;
@@ -564,27 +561,21 @@ public class BytePool
         {
             this.bytePool = bytePool;
             this.ArrayLength = arrayLength;
-            this.PoolLimit = poolLimit;
+            this.Queue = new(poolLimit);
         }
 
         public int ArrayLength { get; }
 
-        public int PoolLimit { get; private set; }
+        public int PoolLimit => this.Queue.Capacity;
 
 #pragma warning disable SA1401 // Fields should be private
-        internal ConcurrentQueue<RentArray> Queue = new();
-        internal int QueueCount; // Queue.Count is slow.
+        internal CircularQueue<RentArray> Queue;
 #pragma warning restore SA1401 // Fields should be private
 
         private BytePool bytePool;
 
-        public void SetPoolLimit(int poolLimit)
-        {
-            this.PoolLimit = poolLimit;
-        }
-
         public override string ToString()
-            => $"{this.ArrayLength} ({this.QueueCount}/{this.PoolLimit})";
+            => $"{this.ArrayLength} (?/{this.PoolLimit})";
     }
 
     /// <summary>
@@ -652,7 +643,6 @@ public class BytePool
         }
 
         // Rent a byte array from the pool.
-        Interlocked.Decrement(ref bucket.QueueCount);
         array.SetCount1();
         return array;
     }
