@@ -59,4 +59,12 @@ public class BytePoolTest
         rentArray.Return();
         return rentArray.Array;
     }
+
+    [Benchmark]
+    public byte[] SimpleBytePoolN()
+    {// SimpleBytePool
+        var rentArray = SimpleBytePool.Default.Rent(N);
+        rentArray.Return();
+        return rentArray.Array;
+    }
 }
