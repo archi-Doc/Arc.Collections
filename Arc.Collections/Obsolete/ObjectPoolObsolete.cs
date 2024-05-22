@@ -2,13 +2,16 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Arc.Collections;
 
+/*
 /// <summary>
-/// A fast and thread-safe pool of objects (uses <see cref="CircularQueue{T}"/>).<br/>
+/// A fast and thread-safe pool of objects (uses <see cref="ConcurrentQueue{T}"/>).<br/>
 /// Target: Classes that will be used/reused frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
 /// <br/>
 /// If <typeparamref name="T"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
@@ -18,24 +21,40 @@ namespace Arc.Collections;
 public class ObjectPool<T> : IDisposable
     where T : class
 {
-    public const int DefaultPoolSize = 32;
+    public const uint MinimumPoolSize = 4;
+    public const uint DefaultPoolSize = 32;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.<br/>
+    /// Set <paramref name="prepareInstances"/> to true to pre-create instances with high initialization cost (another thread).
     /// </summary>
     /// <param name="createFunc">Delegate to create a new instance.</param>
     /// <param name="poolSize">The maximum number of objects in the pool.</param>
-    public ObjectPool(Func<T> createFunc, int poolSize = DefaultPoolSize)
+    /// <param name="prepareInstances"><see langword="true"/>: Pre-create instances in another thread.</param>
+    public ObjectPool(Func<T> createFunc, uint poolSize = DefaultPoolSize, bool prepareInstances = false)
     {
         this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
+        if (poolSize < MinimumPoolSize)
+        {
+            poolSize = MinimumPoolSize;
+        }
 
         if (typeof(IDisposable).IsAssignableFrom(typeof(T)))
         {// T is disposable.
             this.isDisposable = true;
         }
 
-        this.queue = new(poolSize);
+        this.PoolSize = poolSize;
+        this.objects = new ConcurrentQueue<T>();
         this.fastItem = default;
+        this.numberOfObjects = 0;
+        this.prepareInstances = prepareInstances;
+        if (prepareInstances)
+        {
+            this.prepareThreshold = this.PoolSize / 4;
+            this.prepareThreshold = this.prepareThreshold == 0 ? 1 : this.prepareThreshold;
+            this.PrepareInstanceInternal();
+        }
     }
 
     #region FieldAndProperty
@@ -43,12 +62,16 @@ public class ObjectPool<T> : IDisposable
     /// <summary>
     /// Gets the maximum number of objects in the pool.
     /// </summary>
-    public int PoolSize
-        => this.queue.Capacity;
+    public uint PoolSize { get; }
 
     private readonly Func<T> createFunc;
-    private CircularQueue<T> queue;
+    private readonly ConcurrentQueue<T> objects;
+    private readonly bool prepareInstances;
     private T? fastItem;
+    private uint numberOfObjects;
+    private uint prepareCount;
+    private uint prepareThreshold;
+    private bool isTaskRunning = false;
     private bool isDisposable = false;
 
     #endregion
@@ -61,11 +84,24 @@ public class ObjectPool<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Get()
     {
+        if (this.prepareInstances)
+        {
+            if (this.prepareCount++ >= this.prepareThreshold)
+            {
+                this.prepareCount = 0;
+                if (this.numberOfObjects <= (this.PoolSize >> 1))
+                {
+                    this.PrepareInstanceInternal();
+                }
+            }
+        }
+
         var item = this.fastItem;
         if (item == null || Interlocked.CompareExchange(ref this.fastItem, null, item) != item)
         {
-            if (this.queue.TryDequeue(out item))
+            if (this.objects.TryDequeue(out item))
             {
+                Interlocked.Decrement(ref this.numberOfObjects);
                 return item;
             }
 
@@ -88,7 +124,12 @@ public class ObjectPool<T> : IDisposable
     {
         if (this.fastItem != null || Interlocked.CompareExchange(ref this.fastItem, instance, null) != null)
         {
-            if (!this.queue.TryEnqueue(instance))
+            if (this.numberOfObjects < this.PoolSize)
+            {
+                Interlocked.Increment(ref this.numberOfObjects);
+                this.objects.Enqueue(instance);
+            }
+            else
             {// The pool is full.
                 if (this.isDisposable && instance is IDisposable disposable)
                 {
@@ -96,6 +137,31 @@ public class ObjectPool<T> : IDisposable
                 }
             }
         }
+    }
+
+    private Task PrepareInstanceInternal()
+    {
+        if (this.isTaskRunning)
+        {
+            return Task.CompletedTask;
+        }
+
+        this.isTaskRunning = true;
+        return Task.Run(() =>
+        {
+            try
+            {
+                while (this.numberOfObjects < this.PoolSize)
+                {
+                    Interlocked.Increment(ref this.numberOfObjects);
+                    this.objects.Enqueue(this.createFunc());
+                }
+            }
+            finally
+            {
+                this.isTaskRunning = false;
+            }
+        });
     }
 
     #region IDisposable Support
@@ -130,7 +196,7 @@ public class ObjectPool<T> : IDisposable
                 // free managed resources.
                 if (this.isDisposable)
                 {// Disposable
-                    while (this.queue.TryDequeue(out var item))
+                    while (this.objects.TryDequeue(out var item))
                     {
                         if (item is IDisposable disposable)
                         {
@@ -140,13 +206,15 @@ public class ObjectPool<T> : IDisposable
                 }
                 else
                 {// Non-disposable
-                    this.queue = new(this.PoolSize);
+                    this.objects.Clear();
                 }
             }
 
             // free native resources here if there are any.
+            this.numberOfObjects = 0;
             this.disposed = true;
         }
     }
     #endregion
 }
+*/
