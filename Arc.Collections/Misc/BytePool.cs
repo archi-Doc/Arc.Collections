@@ -21,8 +21,9 @@ namespace Arc.Collections;
 /// </summary>
 public class BytePool
 {
+    public const int InvalidCount = -1;
     private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16MB
-    private const int DefaultPoolLimit = 100;
+    private const int DefaultPoolLimit = 64;
 
     public static readonly BytePool Default = BytePool.Create();
 
@@ -42,14 +43,14 @@ public class BytePool
         {
             this.bucket = null;
             this.byteArray = array;
-            this.SetCount1();
+            this.SetCount(InvalidCount);
         }
 
-        internal RentArray(Bucket bucket)
+        internal RentArray(Bucket bucket, int initialCount)
         {
             this.bucket = bucket;
             this.byteArray = new byte[bucket.ArrayLength];
-            this.SetCount1();
+            this.SetCount(initialCount);
         }
 
         #region FieldAndProperty
@@ -86,6 +87,11 @@ public class BytePool
         /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
         public RentArray IncrementAndShare()
         {
+            if (this.count < 0)
+            {//
+                throw new InvalidOperationException();
+            }
+
             Interlocked.Increment(ref this.count);
             return this;
         }
@@ -188,6 +194,9 @@ public class BytePool
         internal void SetCount1()
             => Volatile.Write(ref this.count, 1);
 
+        internal void SetCount(int count)
+            => this.count = count;
+
         /// <summary>
         /// Decrement the reference count.<br/>
         /// When it reaches zero, it returns the byte array to the pool.<br/>
@@ -197,8 +206,12 @@ public class BytePool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RentArray? Return()
         {
-            var count = Interlocked.Decrement(ref this.count);
-            if (count == 0 && this.bucket != null)
+            if (this.count > 0)
+            {
+                Interlocked.Decrement(ref this.count);
+            }
+
+            if (this.count <= 0 && this.bucket != null)
             {
                 this.bucket.Queue.TryEnqueue(this);
             }
@@ -629,7 +642,7 @@ public class BytePool
     /// <param name="minimumLength">The minimum length of the byte array.</param>
     /// <returns>A rent <see cref="RentArray"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RentArray Rent(int minimumLength)
+    public RentArray Rent(int minimumLength, int initialCount = InvalidCount)
     {
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
@@ -639,11 +652,11 @@ public class BytePool
 
         if (!bucket.Queue.TryDequeue(out var array))
         {// Allocate a new byte array.
-            return new RentArray(bucket);
+            return new RentArray(bucket, initialCount);
         }
 
         // Rent a byte array from the pool.
-        array.SetCount1();
+        array.SetCount(initialCount); // SetCount1
         return array;
     }
 

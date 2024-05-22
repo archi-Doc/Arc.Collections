@@ -1,5 +1,6 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -18,6 +19,8 @@ public class BytePoolTest
 
     public BytePoolTest()
     {
+        var total = BytePool.Default.CalculateMaxMemoryUsage();
+        Console.WriteLine(total / 1024 / 1024);
     }
 
     [Benchmark]
