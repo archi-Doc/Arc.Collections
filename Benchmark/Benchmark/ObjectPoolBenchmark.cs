@@ -33,7 +33,7 @@ public class ObjectPoolBenchmark
 
     public LooseObjectPool<Sha3_256> LooseObjectPool { get; } = new(() => new Sha3_256());
 
-    public ObjectPool<Sha3_256> ObjectPoolPrepare { get; } = new(() => new Sha3_256(), 32, true);
+    // public ObjectPool<Sha3_256> ObjectPoolPrepare { get; } = new(() => new Sha3_256(), 32, true);
 
     private Microsoft.Extensions.ObjectPool.ObjectPool<Sha3_256> objectPool;
 

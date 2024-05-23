@@ -29,7 +29,7 @@ internal class ObjectPoolSmall
 
 internal class ObjectPoolSlow
 {// Class that takes time to create an instance.
-    internal static ObjectPool<ObjectPoolSlow> ObjectPool { get; } = new(() => new ObjectPoolSlow(), 10, true);
+    internal static ObjectPool<ObjectPoolSlow> ObjectPool { get; } = new(() => new ObjectPoolSlow(), 10);
 
     internal static void Test()
     {
