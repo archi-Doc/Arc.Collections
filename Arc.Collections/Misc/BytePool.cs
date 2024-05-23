@@ -12,12 +12,13 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// A thread-safe pool of byte arrays (uses <see cref="ConcurrentQueue{T}"/>).<br/>
-/// <see cref="BytePool"/> is slightly slower than 'new byte[]' or <see cref="System.Buffers.ArrayPool{T}"/> (especially byte arrays of 1kbytes or less), but it has some advantages.<br/>
-/// 1. Can handle a rent byte array and a created ('new byte[]') byte array in the same way.<br/>
-/// 2. By using <see cref="BytePool.RentMemory"/>, you can handle a rent byte array in the same way as <see cref="Memory{T}"/>.<br/>
-/// 3. Can be used by multiple users by incrementing the reference count.<br/>
-/// ! It is recommended to use <see cref="BytePool"/> within a class, and not between classes, as the responsibility for returning the buffer becomes unclear.
+/// A fast thread-safe pool of byte arrays (uses <see cref="CircularQueue{T}"/>).<br/>
+/// <see cref="BytePool"/> is faster than <see cref="System.Buffers.ArrayPool{T}"/> and only slightly slower than creating a new byte array (particularly for arrays of 256 bytes or less).<br/>
+/// However, it offers several advantages.<br/>
+/// 1. <see cref="BytePool"/> can handle a rent byte array and a created ('new byte[]') byte array in the same way.<br/>
+/// 2. You can handle a rent byte array in the same way as <see cref="Memory{T}"/> by using <see cref="BytePool.RentMemory"/>.<br/>
+/// 3. <see cref="BytePool"/> can be used by multiple users by incrementing the reference count.<br/>
+/// ! It is recommended to use <see cref="BytePool"/> within a class, and not between classes, as the responsibility for returning the byte array becomes unclear.
 /// </summary>
 public class BytePool
 {
