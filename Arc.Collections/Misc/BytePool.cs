@@ -1,7 +1,6 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
-using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -16,17 +15,17 @@ namespace Arc.Collections;
 /// <see cref="BytePool"/> is faster than <see cref="System.Buffers.ArrayPool{T}"/> and only slightly slower than creating a new byte array (particularly for arrays of 256 bytes or less).<br/>
 /// However, it offers several advantages.<br/>
 /// 1. <see cref="BytePool"/> can handle a rent byte array and a created ('new byte[]') byte array in the same way.<br/>
-/// 2. You can handle a rent byte array in the same way as <see cref="Memory{T}"/> by using <see cref="BytePool.RentMemory"/>.<br/>
+/// 2. <see cref="BytePool"/> can handle a rent byte array in the same way as <see cref="Memory{T}"/> by using <see cref="BytePool.RentMemory"/>.<br/>
 /// 3. <see cref="BytePool"/> can be used by multiple users by incrementing the reference count.<br/>
 /// ! It is recommended to use <see cref="BytePool"/> within a class, and not between classes, as the responsibility for returning the byte array becomes unclear.
 /// </summary>
 public class BytePool
 {
-    public const int InvalidCount = -1;
+    public const int InvalidCount = int.MaxValue;
     private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16MB
-    private const int DefaultPoolLimit = 64;
+    private const int DefaultPoolLimit = 256;
 
-    public static readonly BytePool Default = BytePool.Create();
+    public static readonly BytePool Default = BytePool.CreateExponential();
 
     /// <summary>
     /// Represents an owner of a byte array (one owner instance for each byte array).<br/>
@@ -78,7 +77,21 @@ public class BytePool
         /// <summary>
         /// Gets the reference count of the owner.
         /// </summary>
-        public int Count => Volatile.Read(ref this.count);
+        public int Count
+        {
+            get
+            {
+                var c = Volatile.Read(ref this.count);
+                if (c == InvalidCount)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return c;
+                }
+            }
+        }
 
         #endregion
 
@@ -88,9 +101,13 @@ public class BytePool
         /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
         public RentArray IncrementAndShare()
         {
-            if (this.count < 0)
-            {//
-                throw new InvalidOperationException();
+            if (this.count == InvalidCount)
+            {
+                throw new InvalidOperationException("The counter feature is disabled. To enable it, set the value to true when borrowing a byte array.");
+            }
+            else if (this.count <= 0)
+            {
+                throw new InvalidOperationException("The reference counter is 0 or below.");
             }
 
             Interlocked.Increment(ref this.count);
@@ -108,7 +125,7 @@ public class BytePool
             do
             {
                 currentCount = this.count;
-                if (currentCount == 0)
+                if (this.count <= 0 || this.count == InvalidCount)
                 {
                     return false;
                 }
@@ -118,6 +135,34 @@ public class BytePool
             while (Interlocked.CompareExchange(ref this.count, newCount, currentCount) != currentCount);
 
             return true;
+        }
+
+        /// <summary>
+        /// Decrement the reference count.<br/>
+        /// When it reaches zero, it returns the byte array to the pool.<br/>
+        /// Failure to return a rented array is not a fatal error (eventually be garbage-collected).
+        /// </summary>
+        /// <returns><see langword="null"></see>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public RentArray? Return()
+        {
+            if (this.count == InvalidCount)
+            {
+                this.count = 0;
+                this.bucket?.Queue.TryEnqueue(this);
+                return null;
+            }
+            else if (this.count <= 0)
+            {
+                throw new InvalidOperationException("The reference counter is 0 or below.");
+            }
+
+            if (Interlocked.Decrement(ref this.count) <= 0 && this.bucket != null)
+            {
+                this.bucket.Queue.TryEnqueue(this);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -192,33 +237,9 @@ public class BytePool
         public Span<byte> AsSpan(int start, int length)
             => new(this.byteArray, start, length);
 
-        internal void SetCount1()
-            => Volatile.Write(ref this.count, 1);
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetCount(int count)
             => this.count = count;
-
-        /// <summary>
-        /// Decrement the reference count.<br/>
-        /// When it reaches zero, it returns the byte array to the pool.<br/>
-        /// Failure to return a rented array is not a fatal error (eventually be garbage-collected).
-        /// </summary>
-        /// <returns><see langword="null"></see>.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RentArray? Return()
-        {
-            if (this.count > 0)
-            {
-                Interlocked.Decrement(ref this.count);
-            }
-
-            if (this.count <= 0 && this.bucket != null)
-            {
-                this.bucket.Queue.TryEnqueue(this);
-            }
-
-            return null;
-        }
 
         public void Dispose()
             => this.Return();
@@ -592,44 +613,75 @@ public class BytePool
             => $"{this.ArrayLength} (?/{this.PoolLimit})";
     }
 
+    private BytePool()
+    {
+        this.buckets = new Bucket[33];
+    }
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="BytePool"/> class.<br/>
+    /// Creates a new instance of the <see cref="BytePool"/> class.<br/>
+    /// The pool limit starts with one array of <paramref name="maxArrayLength"/> and doubles each time it halves until it reaches <paramref name="poolLimit"/>.
     /// </summary>
     /// <param name="maxArrayLength">The maximum length of a byte array instance that may be stored in the pool.</param>
     /// <param name="poolLimit">The maximum number of array instances that may be stored in each bucket in the pool.</param>
-    private BytePool(int maxArrayLength, int poolLimit)
+    /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
+    public static BytePool CreateExponential(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
     {
+        var bytePool = new BytePool();
         if (maxArrayLength <= 0)
         {
             maxArrayLength = DefaultMaxArrayLength;
         }
 
         var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
-        this.buckets = new Bucket[33];
         var limit = 1;
         for (var i = 0; i <= 32; i++)
         {
             if (i < leadingZero)
             {
-                this.buckets[i] = null;
+                bytePool.buckets[i] = null;
             }
             else
             {
-                this.buckets[i] = new(this, 1 << (32 - i), limit);
+                bytePool.buckets[i] = new(bytePool, 1 << (32 - i), limit);
                 limit <<= 1;
                 limit = limit > poolLimit ? poolLimit : limit;
             }
         }
+
+        return bytePool;
     }
 
     /// <summary>
     /// Creates a new instance of the <see cref="BytePool"/> class.<br/>
+    /// The pool limit is set to the specified number of byte arrays, each with a length of <paramref name="maxArrayLength"/> or less.
     /// </summary>
     /// <param name="maxArrayLength">The maximum length of a byte array instance that may be stored in the pool.</param>
     /// <param name="poolLimit">The maximum number of array instances that may be stored in each bucket in the pool.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
-    public static BytePool Create(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
-        => new(maxArrayLength, poolLimit);
+    public static BytePool CreateFlat(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
+    {
+        var bytePool = new BytePool();
+        if (maxArrayLength <= 0)
+        {
+            maxArrayLength = DefaultMaxArrayLength;
+        }
+
+        var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
+        for (var i = 0; i <= 32; i++)
+        {
+            if (i < leadingZero)
+            {
+                bytePool.buckets[i] = null;
+            }
+            else
+            {
+                bytePool.buckets[i] = new(bytePool, 1 << (32 - i), poolLimit);
+            }
+        }
+
+        return bytePool;
+    }
 
     #region FieldAndProperty
 
@@ -637,13 +689,32 @@ public class BytePool
 
     #endregion
 
+    public void SetPoolLimit(int arrayLength, int poolLimit)
+    {
+        if (arrayLength < 1)
+        {
+            return;
+        }
+
+        var i = BitOperations.LeadingZeroCount((uint)arrayLength - 1);
+        if (this.buckets[i] is null)
+        {
+            this.buckets[i] = new(this, 1 << (32 - i), poolLimit);
+        }
+        else
+        {
+            this.buckets[i]!.Queue = new(poolLimit);
+        }
+    }
+
     /// <summary>
     /// Gets a <see cref="RentArray"/> from the pool or allocate a new byte array if not available.<br/>
     /// </summary>
     /// <param name="minimumLength">The minimum length of the byte array.</param>
+    /// <param name="enableCounter">Enable the reference counter feature.</param>
     /// <returns>A rent <see cref="RentArray"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RentArray Rent(int minimumLength, int initialCount = InvalidCount)
+    public RentArray Rent(int minimumLength, bool enableCounter = false)
     {
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
@@ -651,13 +722,14 @@ public class BytePool
             return new RentArray(new byte[minimumLength]);
         }
 
+        var initialCount = enableCounter ? 1 : InvalidCount;
         if (!bucket.Queue.TryDequeue(out var array))
         {// Allocate a new byte array.
             return new RentArray(bucket, initialCount);
         }
 
         // Rent a byte array from the pool.
-        array.SetCount(initialCount); // SetCount1
+        array.SetCount(initialCount);
         return array;
     }
 

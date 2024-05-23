@@ -18,7 +18,7 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of elements in the queue.</typeparam>
 public sealed class CircularQueue<T>
 {
-    private const int MinimumCapacity = 4;
+    private const int MinimumCapacity = 1;
     private readonly Slot[] slots;
     private readonly int slotsMask;
     private PaddedHeadAndTail headAndTail;

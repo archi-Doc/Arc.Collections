@@ -64,6 +64,14 @@ public class BytePoolTest
     }
 
     [Benchmark]
+    public byte[] BytePool1b()
+    {// BytePool
+        var rentArray = BytePool.Default.Rent(N, true);
+        rentArray.Return();
+        return rentArray.Array;
+    }
+
+    [Benchmark]
     public byte[] SimpleBytePool1()
     {// SimpleBytePool
         var rentArray = SimpleBytePool.Default.Rent(N);
@@ -134,6 +142,18 @@ public class BytePoolTest
         var rentArray = BytePool.Default.Rent(N);
         var rentArray2 = BytePool.Default.Rent(N);
         var rentArray3 = BytePool.Default.Rent(N);
+        rentArray.Return();
+        rentArray2.Return();
+        rentArray3.Return();
+        return (rentArray.Array, rentArray2.Array, rentArray3.Array);
+    }
+
+    [Benchmark]
+    public (byte[], byte[], byte[]) BytePool3b()
+    {// BytePool
+        var rentArray = BytePool.Default.Rent(N, true);
+        var rentArray2 = BytePool.Default.Rent(N, true);
+        var rentArray3 = BytePool.Default.Rent(N, true);
         rentArray.Return();
         rentArray2.Return();
         rentArray3.Return();
