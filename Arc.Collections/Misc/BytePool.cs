@@ -21,7 +21,7 @@ namespace Arc.Collections;
 /// </summary>
 public class BytePool
 {
-    public const int InvalidCount = int.MaxValue;
+    public const int SingleCount = int.MaxValue;
     private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16MB
     private const int DefaultPoolLimit = 256;
 
@@ -43,14 +43,14 @@ public class BytePool
         {
             this.bucket = null;
             this.byteArray = array;
-            this.SetCount(InvalidCount);
+            this.ResetCount();
         }
 
-        internal RentArray(Bucket bucket, int initialCount)
+        internal RentArray(Bucket bucket)
         {
             this.bucket = bucket;
             this.byteArray = new byte[bucket.ArrayLength];
-            this.SetCount(initialCount);
+            this.ResetCount();
         }
 
         #region FieldAndProperty
@@ -82,7 +82,7 @@ public class BytePool
             get
             {
                 var c = Volatile.Read(ref this.count);
-                if (c == InvalidCount)
+                if (c == SingleCount)
                 {
                     return 1;
                 }
@@ -101,13 +101,14 @@ public class BytePool
         /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
         public RentArray IncrementAndShare()
         {
-            if (this.count == InvalidCount)
+            if (this.count == SingleCount)
             {
-                throw new InvalidOperationException("The counter feature is disabled. To enable it, set the value to true when borrowing a byte array.");
+                this.count = 2;
+                return this;
             }
             else if (this.count <= 0)
             {
-                throw new InvalidOperationException("The reference counter is 0 or below.");
+                throw new InvalidOperationException("The reference counter cannot be less than or equal to 0.");
             }
 
             Interlocked.Increment(ref this.count);
@@ -125,12 +126,19 @@ public class BytePool
             do
             {
                 currentCount = this.count;
-                if (this.count <= 0 || this.count == InvalidCount)
+                if (this.count <= 0)
                 {
                     return false;
                 }
 
-                newCount = currentCount + 1;
+                if (this.count == SingleCount)
+                {
+                    newCount = 2;
+                }
+                else
+                {
+                    newCount = currentCount + 1;
+                }
             }
             while (Interlocked.CompareExchange(ref this.count, newCount, currentCount) != currentCount);
 
@@ -146,7 +154,7 @@ public class BytePool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RentArray? Return()
         {
-            if (this.count == InvalidCount)
+            if (this.count == SingleCount)
             {
                 this.count = 0;
                 this.bucket?.Queue.TryEnqueue(this);
@@ -154,7 +162,7 @@ public class BytePool
             }
             else if (this.count <= 0)
             {
-                throw new InvalidOperationException("The reference counter is 0 or below.");
+                throw new InvalidOperationException("The reference counter cannot be less than or equal to 0.");
             }
 
             if (Interlocked.Decrement(ref this.count) <= 0 && this.bucket != null)
@@ -238,8 +246,8 @@ public class BytePool
             => new(this.byteArray, start, length);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SetCount(int count)
-            => this.count = count;
+        internal void ResetCount()
+            => this.count = SingleCount;
 
         public void Dispose()
             => this.Return();
@@ -711,10 +719,9 @@ public class BytePool
     /// Gets a <see cref="RentArray"/> from the pool or allocate a new byte array if not available.<br/>
     /// </summary>
     /// <param name="minimumLength">The minimum length of the byte array.</param>
-    /// <param name="enableCounter">Enable the reference counter feature.</param>
     /// <returns>A rent <see cref="RentArray"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RentArray Rent(int minimumLength, bool enableCounter = false)
+    public RentArray Rent(int minimumLength)
     {
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
@@ -722,14 +729,13 @@ public class BytePool
             return new RentArray(new byte[minimumLength]);
         }
 
-        var initialCount = enableCounter ? 1 : InvalidCount;
         if (!bucket.Queue.TryDequeue(out var array))
         {// Allocate a new byte array.
-            return new RentArray(bucket, initialCount);
+            return new RentArray(bucket);
         }
 
         // Rent a byte array from the pool.
-        array.SetCount(initialCount);
+        array.ResetCount();
         return array;
     }
 

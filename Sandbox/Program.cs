@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Security.Cryptography;
 using Arc.Collections;
 
 namespace Sandbox;
@@ -11,5 +9,14 @@ class Program
     static void Main(string[] args)
     {
         Console.WriteLine("Hello World!");
+
+        var rentArray = BytePool.Default.Rent(10);
+        var rentMemory = rentArray.AsMemory();
+        rentArray.Return();
+
+        rentArray = BytePool.Default.Rent(10);
+        rentArray.IncrementAndShare();
+        rentArray.Return();
+        rentArray.Return();
     }
 }
