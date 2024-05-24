@@ -258,6 +258,8 @@ public class BytePool
     /// </summary>
     public readonly struct RentMemory : IDisposable
     {
+        public static readonly RentMemory Empty = default;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RentMemory"/> struct from a byte array.<br/>
         /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
@@ -333,6 +335,11 @@ public class BytePool
         /// Gets a value indicating whether the memory is empty.
         /// </summary>
         public bool IsEmpty => this.length == 0;
+
+        /// <summary>
+        /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
+        /// </summary>
+        public RentArray? RentArray => this.array;
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> from <see cref="RentMemory"/>.
@@ -445,6 +452,8 @@ public class BytePool
     /// </summary>
     public readonly struct RentReadOnlyMemory : IDisposable
     {
+        public static readonly RentReadOnlyMemory Empty = default;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RentReadOnlyMemory"/> struct from a byte array.<br/>
         /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
@@ -520,6 +529,11 @@ public class BytePool
         /// Gets a value indicating whether the memory is empty.
         /// </summary>
         public bool IsEmpty => this.length == 0;
+
+        /// <summary>
+        /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
+        /// </summary>
+        public RentArray? RentArray => this.array;
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> from <see cref="RentReadOnlyMemory"/>.
