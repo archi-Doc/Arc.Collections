@@ -358,8 +358,15 @@ public class BytePool
         public RentMemory IncrementAndShare()
         {
             if (this.array == null)
-            {
-                throw new InvalidOperationException();
+            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
+                if (this.byteArray is null)
+                {
+                    return default;
+                }
+                else
+                {
+                    return new(this.byteArray, this.start, this.length);
+                }
             }
 
             return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
@@ -372,8 +379,15 @@ public class BytePool
         public RentReadOnlyMemory IncrementAndShareReadOnly()
         {
             if (this.array == null)
-            {
-                throw new InvalidOperationException();
+            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
+                if (this.byteArray is null)
+                {
+                    return default;
+                }
+                else
+                {
+                    return new(this.byteArray, this.start, this.length);
+                }
             }
 
             return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
@@ -386,8 +400,8 @@ public class BytePool
         public bool TryIncrement()
         {
             if (this.array == null)
-            {
-                throw new InvalidOperationException();
+            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
+                return true;
             }
 
             return this.array.TryIncrement();
@@ -526,22 +540,15 @@ public class BytePool
         public RentReadOnlyMemory IncrementAndShare()
         {
             if (this.array == null)
-            {
-                throw new InvalidOperationException();
-            }
-
-            return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
-        }
-
-        /// <summary>
-        ///  Increment the reference count.
-        /// </summary>
-        /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
-        public RentReadOnlyMemory IncrementAndShareReadOnly()
-        {
-            if (this.array == null)
-            {
-                throw new InvalidOperationException();
+            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
+                if (this.byteArray is null)
+                {
+                    return default;
+                }
+                else
+                {
+                    return new(this.byteArray, this.start, this.length);
+                }
             }
 
             return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
@@ -554,8 +561,8 @@ public class BytePool
         public bool TryIncrement()
         {
             if (this.array == null)
-            {
-                throw new InvalidOperationException();
+            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
+                return true;
             }
 
             return this.array.TryIncrement();
