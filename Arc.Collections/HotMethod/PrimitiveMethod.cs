@@ -8,1962 +8,2319 @@ using Arc.Collections.Obsolete;
 
 #pragma warning disable SA1649 // File name should match first type name
 
-namespace Arc.Collections.HotMethod;
-
-public sealed class UInt8Method : IHotMethod<byte>
+namespace Arc.Collections.HotMethod
 {
-    public static readonly UInt8Method Instance = new ();
-
-    private UInt8Method()
+    public sealed class UInt8Method : IHotMethod<byte>
     {
-    }
+        public static readonly UInt8Method Instance = new ();
 
-    public int BinarySearch(byte[] array, int index, int length, byte value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        private UInt8Method()
+        {
+        }
+
+        public int BinarySearch(byte[] array, int index, int length, byte value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                max = mid - 1;
-                continue;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (value > array[mid])
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<byte>.Node? Leaf) SearchNode(OrderedSetObsolete<byte>.Node? target, byte value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<byte>.Node? Leaf) SearchNode(OrderedSetObsolete<byte>.Node? target, byte value)
+    public sealed class UInt8Method2<TValue> : IHotMethod2<byte, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<byte, TValue>.Node? Leaf) SearchNode(OrderedMap<byte, TValue>.Node? target, byte key)
         {
-            p = x;
-            if (value < x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (value > x.Value)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMap<byte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<byte, TValue>.Node? target, byte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class UInt8Method2<TValue> : IHotMethod2<byte, TValue>
-{
-    public (int Cmp, OrderedMap<byte, TValue>.Node? Leaf) SearchNode(OrderedMap<byte, TValue>.Node? target, byte key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<byte, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<byte, TValue>.Node? target, byte key)
         {
-            p = x;
-            if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key > x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<byte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<byte, TValue>.Node? target, byte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<byte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<byte, TValue>.Node? target, byte key)
+    public sealed class Int8Method : IHotMethod<sbyte>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly Int8Method Instance = new ();
+
+        private Int8Method()
+        {
+        }
 
-        while (x != null)
+        public int BinarySearch(sbyte[] array, int index, int length, sbyte value)
         {
-            p = x;
-            if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key < x.Key)
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<sbyte>.Node? Leaf) SearchNode(OrderedSetObsolete<sbyte>.Node? target, sbyte value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<byte, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<byte, TValue>.Node? target, byte key)
+    public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<sbyte, TValue>.Node? Leaf) SearchNode(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<byte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<byte, TValue>.Node? target, byte key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<sbyte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
         {
-            p = x;
-            if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key < x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<sbyte, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
+
+            return (cmp, p);
         }
 
-        return (cmp, p);
-    }
-}
+        public (int Cmp, OrderedMultiMap<sbyte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-public sealed class Int8Method : IHotMethod<sbyte>
-{
-    public static readonly Int8Method Instance = new ();
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
 
-    private Int8Method()
-    {
+            return (cmp, p);
+        }
     }
 
-    public int BinarySearch(sbyte[] array, int index, int length, sbyte value)
+    public sealed class UInt16Method : IHotMethod<ushort>
     {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public static readonly UInt16Method Instance = new ();
+
+        private UInt16Method()
+        {
+        }
+
+        public int BinarySearch(ushort[] array, int index, int length, ushort value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                max = mid - 1;
-                continue;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (value > array[mid])
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<ushort>.Node? Leaf) SearchNode(OrderedSetObsolete<ushort>.Node? target, ushort value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<sbyte>.Node? Leaf) SearchNode(OrderedSetObsolete<sbyte>.Node? target, sbyte value)
+    public sealed class UInt16Method2<TValue> : IHotMethod2<ushort, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<ushort, TValue>.Node? Leaf) SearchNode(OrderedMap<ushort, TValue>.Node? target, ushort key)
         {
-            p = x;
-            if (value < x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (value > x.Value)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMap<ushort, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<ushort, TValue>.Node? target, ushort key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
-{
-    public (int Cmp, OrderedMap<sbyte, TValue>.Node? Leaf) SearchNode(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<ushort, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
         {
-            p = x;
-            if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key > x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<ushort, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<sbyte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
+    public sealed class Int16Method : IHotMethod<short>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly Int16Method Instance = new ();
+
+        private Int16Method()
+        {
+        }
 
-        while (x != null)
+        public int BinarySearch(short[] array, int index, int length, short value)
         {
-            p = x;
-            if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key < x.Key)
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<short>.Node? Leaf) SearchNode(OrderedSetObsolete<short>.Node? target, short value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<sbyte, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
+    public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<short, TValue>.Node? Leaf) SearchNode(OrderedMap<short, TValue>.Node? target, short key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<sbyte, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<sbyte, TValue>.Node? target, sbyte key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<short, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<short, TValue>.Node? target, short key)
         {
-            p = x;
-            if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key < x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<short, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<short, TValue>.Node? target, short key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
+
+            return (cmp, p);
         }
 
-        return (cmp, p);
-    }
-}
+        public (int Cmp, OrderedMultiMap<short, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<short, TValue>.Node? target, short key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-public sealed class UInt16Method : IHotMethod<ushort>
-{
-    public static readonly UInt16Method Instance = new ();
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
 
-    private UInt16Method()
-    {
+            return (cmp, p);
+        }
     }
 
-    public int BinarySearch(ushort[] array, int index, int length, ushort value)
+    public sealed class UInt32Method : IHotMethod<uint>
     {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public static readonly UInt32Method Instance = new ();
+
+        private UInt32Method()
+        {
+        }
+
+        public int BinarySearch(uint[] array, int index, int length, uint value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                max = mid - 1;
-                continue;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (value > array[mid])
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<uint>.Node? Leaf) SearchNode(OrderedSetObsolete<uint>.Node? target, uint value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<ushort>.Node? Leaf) SearchNode(OrderedSetObsolete<ushort>.Node? target, ushort value)
+    public sealed class UInt32Method2<TValue> : IHotMethod2<uint, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<uint, TValue>.Node? Leaf) SearchNode(OrderedMap<uint, TValue>.Node? target, uint key)
         {
-            p = x;
-            if (value < x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (value > x.Value)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMap<uint, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<uint, TValue>.Node? target, uint key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class UInt16Method2<TValue> : IHotMethod2<ushort, TValue>
-{
-    public (int Cmp, OrderedMap<ushort, TValue>.Node? Leaf) SearchNode(OrderedMap<ushort, TValue>.Node? target, ushort key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<uint, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<uint, TValue>.Node? target, uint key)
         {
-            p = x;
-            if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key > x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<uint, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<uint, TValue>.Node? target, uint key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<ushort, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<ushort, TValue>.Node? target, ushort key)
+    public sealed class Int32Method : IHotMethod<int>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly Int32Method Instance = new ();
+
+        private Int32Method()
+        {
+        }
 
-        while (x != null)
+        public int BinarySearch(int[] array, int index, int length, int value)
         {
-            p = x;
-            if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key < x.Key)
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<int>.Node? Leaf) SearchNode(OrderedSetObsolete<int>.Node? target, int value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<ushort, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
+    public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<int, TValue>.Node? Leaf) SearchNode(OrderedMap<int, TValue>.Node? target, int key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<ushort, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<ushort, TValue>.Node? target, ushort key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<int, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<int, TValue>.Node? target, int key)
         {
-            p = x;
-            if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key < x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<int, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<int, TValue>.Node? target, int key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
+
+            return (cmp, p);
         }
 
-        return (cmp, p);
-    }
-}
+        public (int Cmp, OrderedMultiMap<int, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<int, TValue>.Node? target, int key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-public sealed class Int16Method : IHotMethod<short>
-{
-    public static readonly Int16Method Instance = new ();
+            while (x != null)
+            {
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
+            }
 
-    private Int16Method()
-    {
+            return (cmp, p);
+        }
     }
 
-    public int BinarySearch(short[] array, int index, int length, short value)
+    public sealed class UInt64Method : IHotMethod<ulong>
     {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public static readonly UInt64Method Instance = new ();
+
+        private UInt64Method()
+        {
+        }
+
+        public int BinarySearch(ulong[] array, int index, int length, ulong value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                max = mid - 1;
-                continue;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (value > array[mid])
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<ulong>.Node? Leaf) SearchNode(OrderedSetObsolete<ulong>.Node? target, ulong value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<short>.Node? Leaf) SearchNode(OrderedSetObsolete<short>.Node? target, short value)
+    public sealed class UInt64Method2<TValue> : IHotMethod2<ulong, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<ulong, TValue>.Node? Leaf) SearchNode(OrderedMap<ulong, TValue>.Node? target, ulong key)
         {
-            p = x;
-            if (value < x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (value > x.Value)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMap<ulong, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<ulong, TValue>.Node? target, ulong key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
-{
-    public (int Cmp, OrderedMap<short, TValue>.Node? Leaf) SearchNode(OrderedMap<short, TValue>.Node? target, short key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<ulong, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
         {
-            p = x;
-            if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Left;
-                cmp = -1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (key > x.Key)
+
+            return (cmp, p);
+        }
+
+        public (int Cmp, OrderedMultiMap<ulong, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<short, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<short, TValue>.Node? target, short key)
+    public sealed class Int64Method : IHotMethod<long>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly Int64Method Instance = new ();
+
+        private Int64Method()
+        {
+        }
 
-        while (x != null)
+        public int BinarySearch(long[] array, int index, int length, long value)
         {
-            p = x;
-            if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key < x.Key)
+
+            return ~min;
+        }
+
+        public (int Cmp, OrderedSetObsolete<long>.Node? Leaf) SearchNode(OrderedSetObsolete<long>.Node? target, long value)
+        {
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<short, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<short, TValue>.Node? target, short key)
+    public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<long, TValue>.Node? Leaf) SearchNode(OrderedMap<long, TValue>.Node? target, long key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
+
+            return (cmp, p);
         }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<short, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<short, TValue>.Node? target, short key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<long, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<long, TValue>.Node? target, long key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
-}
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-public sealed class UInt32Method : IHotMethod<uint>
-{
-    public static readonly UInt32Method Instance = new ();
-
-    private UInt32Method()
-    {
-    }
-
-    public int BinarySearch(uint[] array, int index, int length, uint value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
-        {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
+            while (x != null)
             {
-                max = mid - 1;
-                continue;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else if (value > array[mid])
-            {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
-            }
-        }
-
-        return ~min;
-    }
 
-    public (int Cmp, OrderedSetObsolete<uint>.Node? Leaf) SearchNode(OrderedSetObsolete<uint>.Node? target, uint value)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
-        {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
+            return (cmp, p);
         }
-
-        return (cmp, p);
-    }
-}
-
-public sealed class UInt32Method2<TValue> : IHotMethod2<uint, TValue>
-{
-    public (int Cmp, OrderedMap<uint, TValue>.Node? Leaf) SearchNode(OrderedMap<uint, TValue>.Node? target, uint key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<long, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<long, TValue>.Node? target, long key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMap<uint, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<uint, TValue>.Node? target, uint key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<long, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<long, TValue>.Node? target, long key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<uint, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<uint, TValue>.Node? target, uint key)
+    public sealed class UInt128Method : IHotMethod<UInt128>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly UInt128Method Instance = new ();
 
-        while (x != null)
+        private UInt128Method()
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
         }
-
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<uint, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<uint, TValue>.Node? target, uint key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
+        public int BinarySearch(UInt128[] array, int index, int length, UInt128 value)
         {
-            p = x;
-            if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key < x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
-}
 
-public sealed class Int32Method : IHotMethod<int>
-{
-    public static readonly Int32Method Instance = new ();
-
-    private Int32Method()
-    {
-    }
+            return ~min;
+        }
 
-    public int BinarySearch(int[] array, int index, int length, int value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public (int Cmp, OrderedSetObsolete<UInt128>.Node? Leaf) SearchNode(OrderedSetObsolete<UInt128>.Node? target, UInt128 value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<int>.Node? Leaf) SearchNode(OrderedSetObsolete<int>.Node? target, int value)
+    public sealed class UInt128Method2<TValue> : IHotMethod2<UInt128, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<UInt128, TValue>.Node? Leaf) SearchNode(OrderedMap<UInt128, TValue>.Node? target, UInt128 key)
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-        return (cmp, p);
-    }
-}
-
-public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
-{
-    public (int Cmp, OrderedMap<int, TValue>.Node? Leaf) SearchNode(OrderedMap<int, TValue>.Node? target, int key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
-        {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMap<int, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<int, TValue>.Node? target, int key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<UInt128, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<UInt128, TValue>.Node? target, UInt128 key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<int, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<int, TValue>.Node? target, int key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<UInt128, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<UInt128, TValue>.Node? target, UInt128 key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<int, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<int, TValue>.Node? target, int key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<UInt128, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<UInt128, TValue>.Node? target, UInt128 key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
-}
 
-public sealed class UInt64Method : IHotMethod<ulong>
-{
-    public static readonly UInt64Method Instance = new ();
-
-    private UInt64Method()
+    public sealed class Int128Method : IHotMethod<Int128>
     {
-    }
+        public static readonly Int128Method Instance = new ();
 
-    public int BinarySearch(ulong[] array, int index, int length, ulong value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        private Int128Method()
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
-            {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
-            }
         }
-
-        return ~min;
-    }
-
-    public (int Cmp, OrderedSetObsolete<ulong>.Node? Leaf) SearchNode(OrderedSetObsolete<ulong>.Node? target, ulong value)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
+        public int BinarySearch(Int128[] array, int index, int length, Int128 value)
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Right;
-                cmp = 1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class UInt64Method2<TValue> : IHotMethod2<ulong, TValue>
-{
-    public (int Cmp, OrderedMap<ulong, TValue>.Node? Leaf) SearchNode(OrderedMap<ulong, TValue>.Node? target, ulong key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return ~min;
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedSetObsolete<Int128>.Node? Leaf) SearchNode(OrderedSetObsolete<Int128>.Node? target, Int128 value)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<ulong, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<ulong, TValue>.Node? target, ulong key)
+    public sealed class Int128Method2<TValue> : IHotMethod2<Int128, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<Int128, TValue>.Node? Leaf) SearchNode(OrderedMap<Int128, TValue>.Node? target, Int128 key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<ulong, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<Int128, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<Int128, TValue>.Node? target, Int128 key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<ulong, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<ulong, TValue>.Node? target, ulong key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<Int128, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<Int128, TValue>.Node? target, Int128 key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
-}
-
-public sealed class Int64Method : IHotMethod<long>
-{
-    public static readonly Int64Method Instance = new ();
 
-    private Int64Method()
-    {
-    }
+            return (cmp, p);
+        }
 
-    public int BinarySearch(long[] array, int index, int length, long value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public (int Cmp, OrderedMultiMap<Int128, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<Int128, TValue>.Node? target, Int128 key)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return mid;
-            }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<long>.Node? Leaf) SearchNode(OrderedSetObsolete<long>.Node? target, long value)
+    public sealed class SingleMethod : IHotMethod<float>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly SingleMethod Instance = new ();
 
-        while (x != null)
+        private SingleMethod()
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
         }
-
-        return (cmp, p);
-    }
-}
-
-public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
-{
-    public (int Cmp, OrderedMap<long, TValue>.Node? Leaf) SearchNode(OrderedMap<long, TValue>.Node? target, long key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
+        public int BinarySearch(float[] array, int index, int length, float value)
         {
-            p = x;
-            if (key < x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Left;
-                cmp = -1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else if (key > x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMap<long, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<long, TValue>.Node? target, long key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
-        {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
+            return ~min;
         }
-
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<long, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<long, TValue>.Node? target, long key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
 
-        while (x != null)
+        public (int Cmp, OrderedSetObsolete<float>.Node? Leaf) SearchNode(OrderedSetObsolete<float>.Node? target, float value)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<long, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<long, TValue>.Node? target, long key)
+    public sealed class SingleMethod2<TValue> : IHotMethod2<float, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<float, TValue>.Node? Leaf) SearchNode(OrderedMap<float, TValue>.Node? target, float key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
-
-        return (cmp, p);
-    }
-}
 
-public sealed class SingleMethod : IHotMethod<float>
-{
-    public static readonly SingleMethod Instance = new ();
-
-    private SingleMethod()
-    {
-    }
+            return (cmp, p);
+        }
 
-    public int BinarySearch(float[] array, int index, int length, float value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public (int Cmp, OrderedMap<float, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<float, TValue>.Node? target, float key)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
-
-        return ~min;
-    }
 
-    public (int Cmp, OrderedSetObsolete<float>.Node? Leaf) SearchNode(OrderedSetObsolete<float>.Node? target, float value)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<float, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<float, TValue>.Node? target, float key)
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class SingleMethod2<TValue> : IHotMethod2<float, TValue>
-{
-    public (int Cmp, OrderedMap<float, TValue>.Node? Leaf) SearchNode(OrderedMap<float, TValue>.Node? target, float key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<float, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<float, TValue>.Node? target, float key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMap<float, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<float, TValue>.Node? target, float key)
+    public sealed class DoubleMethod : IHotMethod<double>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly DoubleMethod Instance = new ();
 
-        while (x != null)
+        private DoubleMethod()
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
         }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMultiMap<float, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<float, TValue>.Node? target, float key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public int BinarySearch(double[] array, int index, int length, double value)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Right;
-                cmp = 1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-
-    public (int Cmp, OrderedMultiMap<float, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<float, TValue>.Node? target, float key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return ~min;
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedSetObsolete<double>.Node? Leaf) SearchNode(OrderedSetObsolete<double>.Node? target, double value)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class DoubleMethod : IHotMethod<double>
-{
-    public static readonly DoubleMethod Instance = new ();
-
-    private DoubleMethod()
-    {
+            return (cmp, p);
+        }
     }
 
-    public int BinarySearch(double[] array, int index, int length, double value)
+    public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
     {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public (int Cmp, OrderedMap<double, TValue>.Node? Leaf) SearchNode(OrderedMap<double, TValue>.Node? target, double key)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
-
-        return ~min;
-    }
 
-    public (int Cmp, OrderedSetObsolete<double>.Node? Leaf) SearchNode(OrderedSetObsolete<double>.Node? target, double value)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<double, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<double, TValue>.Node? target, double key)
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
-    }
-}
-
-public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
-{
-    public (int Cmp, OrderedMap<double, TValue>.Node? Leaf) SearchNode(OrderedMap<double, TValue>.Node? target, double key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<double, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<double, TValue>.Node? target, double key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMap<double, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<double, TValue>.Node? target, double key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<double, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<double, TValue>.Node? target, double key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedMultiMap<double, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<double, TValue>.Node? target, double key)
+    public sealed class DateTimeMethod : IHotMethod<DateTime>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+        public static readonly DateTimeMethod Instance = new ();
 
-        while (x != null)
+        private DateTimeMethod()
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
         }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMultiMap<double, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<double, TValue>.Node? target, double key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public int BinarySearch(DateTime[] array, int index, int length, DateTime value)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var min = index;
+            var max = length - 1;
+            while (min <= max)
             {
-                x = x.Right;
-                cmp = 1;
+                var mid = min + ((max - min) / 2);
+                if (value < array[mid])
+                {
+                    max = mid - 1;
+                    continue;
+                }
+                else if (value > array[mid])
+                {
+                    min = mid + 1;
+                    continue;
+                }
+                else
+                {// Found
+                    return mid;
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
-}
-
-public sealed class DateTimeMethod : IHotMethod<DateTime>
-{
-    public static readonly DateTimeMethod Instance = new ();
 
-    private DateTimeMethod()
-    {
-    }
+            return ~min;
+        }
 
-    public int BinarySearch(DateTime[] array, int index, int length, DateTime value)
-    {
-        var min = index;
-        var max = length - 1;
-        while (min <= max)
+        public (int Cmp, OrderedSetObsolete<DateTime>.Node? Leaf) SearchNode(OrderedSetObsolete<DateTime>.Node? target, DateTime value)
         {
-            var mid = min + ((max - min) / 2);
-            if (value < array[mid])
-            {
-                max = mid - 1;
-                continue;
-            }
-            else if (value > array[mid])
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                min = mid + 1;
-                continue;
-            }
-            else
-            {// Found
-                return mid;
+                p = x;
+                if (value < x.Value)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (value > x.Value)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-        }
 
-        return ~min;
+            return (cmp, p);
+        }
     }
 
-    public (int Cmp, OrderedSetObsolete<DateTime>.Node? Leaf) SearchNode(OrderedSetObsolete<DateTime>.Node? target, DateTime value)
+    public sealed class DateTimeMethod2<TValue> : IHotMethod2<DateTime, TValue>
     {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
+        public (int Cmp, OrderedMap<DateTime, TValue>.Node? Leaf) SearchNode(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
         {
-            p = x;
-            if (value < x.Value)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (value > x.Value)
-            {
-                x = x.Right;
-                cmp = 1;
-            }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
+            var x = target;
+            var p = target;
+            int cmp = 0;
 
-        return (cmp, p);
-    }
-}
-
-public sealed class DateTimeMethod2<TValue> : IHotMethod2<DateTime, TValue>
-{
-    public (int Cmp, OrderedMap<DateTime, TValue>.Node? Leaf) SearchNode(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
-
-        while (x != null)
-        {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMap<DateTime, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMap<DateTime, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMultiMap<DateTime, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<DateTime, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
         {
-            p = x;
-            if (key < x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key > x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key < x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key > x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
-
-        return (cmp, p);
-    }
 
-    public (int Cmp, OrderedMultiMap<DateTime, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
-    {
-        var x = target;
-        var p = target;
-        int cmp = 0;
+            return (cmp, p);
+        }
 
-        while (x != null)
+        public (int Cmp, OrderedMultiMap<DateTime, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<DateTime, TValue>.Node? target, DateTime key)
         {
-            p = x;
-            if (key > x.Key)
-            {
-                x = x.Left;
-                cmp = -1;
-            }
-            else if (key < x.Key)
+            var x = target;
+            var p = target;
+            int cmp = 0;
+
+            while (x != null)
             {
-                x = x.Right;
-                cmp = 1;
+                p = x;
+                if (key > x.Key)
+                {
+                    x = x.Left;
+                    cmp = -1;
+                }
+                else if (key < x.Key)
+                {
+                    x = x.Right;
+                    cmp = 1;
+                }
+                else
+                {// Found
+                    return (0, x);
+                }
             }
-            else
-            {// Found
-                return (0, x);
-            }
-        }
 
-        return (cmp, p);
+            return (cmp, p);
+        }
     }
 }
