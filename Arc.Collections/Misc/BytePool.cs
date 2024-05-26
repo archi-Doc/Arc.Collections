@@ -545,6 +545,11 @@ public class BytePool
         /// </summary>
         public ReadOnlyMemory<byte> Memory => new(this.byteArray, this.start, this.length);
 
+        /// <summary>
+        /// Gets a <see cref="RentMemory"/> from <see cref="RentReadOnlyMemory"/>.
+        /// </summary>
+        public RentMemory UnsafeMemory => new(this.array, this.byteArray, this.start, this.length);
+
         #endregion
 
         /// <summary>
