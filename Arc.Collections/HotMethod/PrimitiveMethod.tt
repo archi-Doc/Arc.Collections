@@ -15,6 +15,8 @@ var allTypes = new (string Simple, string Name)[]
     ("int", "Int32"),
     ("ulong", "UInt64"),
     ("long", "Int64"),
+    ("UInt128", "UInt128"),
+    ("Int128", "Int128"),
     ("float", "Single"),
     ("double", "Double"),
     ("DateTime", "DateTime"),

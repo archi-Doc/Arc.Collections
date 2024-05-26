@@ -30,6 +30,8 @@ public sealed class PrimitiveResolver : IHotMethodResolver
         { typeof(int), Int32Method.Instance },
         { typeof(ulong), UInt64Method.Instance },
         { typeof(long), Int64Method.Instance },
+        { typeof(UInt128), UInt128Method.Instance },
+        { typeof(Int128), Int128Method.Instance },
         { typeof(float), SingleMethod.Instance },
         { typeof(double), DoubleMethod.Instance },
         // { typeof(string), StringMethod.Instance }, // Slow
@@ -47,6 +49,8 @@ public sealed class PrimitiveResolver : IHotMethodResolver
         { typeof(int), typeof(Int32Method2<>) },
         { typeof(ulong), typeof(UInt64Method2<>) },
         { typeof(long), typeof(Int64Method2<>) },
+        { typeof(UInt128), typeof(UInt128Method2<>) },
+        { typeof(Int128), typeof(Int128Method2<>) },
         { typeof(float), typeof(SingleMethod2<>) },
         { typeof(double), typeof(DoubleMethod2<>) },
         // { typeof(string), typeof(StringMethod2<>) }, // Slow
