@@ -345,6 +345,11 @@ public class BytePool
         public bool IsEmpty => this.length == 0;
 
         /// <summary>
+        /// Gets the number of bytes in the memory.
+        /// </summary>
+        public int Length => this.length;
+
+        /// <summary>
         /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
         /// </summary>
         public RentArray? RentArray => this.array;
@@ -537,6 +542,11 @@ public class BytePool
         /// Gets a value indicating whether the memory is empty.
         /// </summary>
         public bool IsEmpty => this.length == 0;
+
+        /// <summary>
+        /// Gets the number of bytes in the memory.
+        /// </summary>
+        public int Length => this.length;
 
         /// <summary>
         /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
