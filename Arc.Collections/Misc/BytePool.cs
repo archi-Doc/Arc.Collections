@@ -22,10 +22,18 @@ namespace Arc.Collections;
 public class BytePool
 {
     public const int SingleCount = int.MaxValue;
-    private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16MB
+    private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16 MB
     private const int DefaultPoolLimit = 256;
+    private const int StandardArrayLength = 1024 * 32; // 32 KB (TinyhandSerializer.InitialBufferSize, ByteSequence.DefaultVaultSize)
+    private const int StandardPoolLimit = 1024;
 
-    public static readonly BytePool Default = BytePool.CreateExponential();
+    public static readonly BytePool Default;
+
+    static BytePool()
+    {
+        Default = BytePool.CreateExponential();
+        Default.SetPoolLimit(StandardArrayLength, StandardPoolLimit);
+    }
 
     /// <summary>
     /// Represents an owner of a byte array (one owner instance for each byte array).<br/>
