@@ -2,7 +2,6 @@
 using BenchmarkDotNet.Attributes;
 using Arc.Collections;
 using System.Linq;
-using System.Diagnostics;
 using Arc.Collections.Obsolete;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;

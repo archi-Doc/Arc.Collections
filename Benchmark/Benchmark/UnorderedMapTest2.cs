@@ -1,10 +1,7 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
-using System.Linq;
-using System.Diagnostics;
 using System.Collections.Generic;
 using Arc.Collections;
-using Arc.Collections.Obsolete;
 
 namespace Benchmark;
 
