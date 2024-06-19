@@ -25,7 +25,8 @@ internal enum NodeColor : byte
 }
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+/// Represents a collection of objects that is maintained in sorted order (ascending by default).<br/>
+/// <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
@@ -1014,9 +1015,26 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     /// <returns>true if the key is changed.</returns>
     public bool SetNodeKey(Node node, TKey key)
     {
-        if (this.Comparer.Compare(node.Key, key) == 0)
+        var cmp = this.Comparer.Compare(node.Key, key);
+        if (cmp == 0)
         {// Identical
             return false;
+        }
+        else if (cmp < 0)
+        {// node.Key < key
+            if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) > 0)
+            {// node.Next.Key > key
+                node.Key = key;
+                return true;
+            }
+        }
+        else
+        {// node.Key > key
+            if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) < 0)
+            {// node.Previous.Key < key
+                node.Key = key;
+                return true;
+            }
         }
 
         var value = node.Value;

@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using Arc.Collections.Obsolete;
 
 namespace Arc.Collections.HotMethod;
 
@@ -10,7 +9,7 @@ public sealed class StandardMethod<T> : IHotMethod<T>
 {
     public int BinarySearch(T[] array, int index, int length, T value) => Array.BinarySearch<T>(array, index, length, value);
 
-    public (int Cmp, OrderedSetObsolete<T>.Node? Leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value)
+    /*public (int Cmp, OrderedSetObsolete<T>.Node? Leaf) SearchNode(OrderedSetObsolete<T>.Node? target, T value)
     {
         var x = target;
         var p = target;
@@ -36,7 +35,7 @@ public sealed class StandardMethod<T> : IHotMethod<T>
         }
 
         return (cmp, p);
-    }
+    }*/
 }
 
 public sealed class StandardMethod2<TKey, TValue> : IHotMethod2<TKey, TValue>

@@ -2,8 +2,6 @@
 using BenchmarkDotNet.Attributes;
 using Arc.Collections;
 using System.Linq;
-using System.Diagnostics;
-using Arc.Collections.Obsolete;
 
 namespace Benchmark;
 
@@ -85,18 +83,6 @@ public class ReverseOrderTest
     }
 
     [Benchmark]
-    public int NewAndAdd_OrderedSetObsolete()
-    {
-        var ss = new OrderedSetObsolete<int>();
-        foreach (var x in this.IntArray)
-        {
-            ss.Add(x);
-        }
-
-        return ss.Count;
-    }
-
-    [Benchmark]
     public int NewAndAdd2_SortedSet()
     {
         var ss = new System.Collections.Generic.SortedSet<OrderedSetClass>();
@@ -122,17 +108,6 @@ public class ReverseOrderTest
     public int NewAndAdd2_OrderedSetRev()
     {
         var ss = new OrderedSet<OrderedSetClass>(true);
-        foreach (var x in this.IntArray)
-        {
-            ss.Add(new OrderedSetClass(x));
-        }
-        return ss.Count;
-    }
-
-    [Benchmark]
-    public int NewAndAdd2_OrderedSetObsolete()
-    {
-        var ss = new OrderedSetObsolete<OrderedSetClass>();
         foreach (var x in this.IntArray)
         {
             ss.Add(new OrderedSetClass(x));

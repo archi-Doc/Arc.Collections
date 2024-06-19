@@ -4,7 +4,6 @@ using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
 using Arc.Collections;
-using Arc.Collections.Obsolete;
 
 namespace Benchmark;
 
@@ -112,18 +111,6 @@ public class OrderedListTest2
         foreach (var x in this.IntArray)
         {
             list.Add(x, new OrderedListClass2(x));
-        }
-
-        return list.Count;
-    }
-
-    [Benchmark]
-    public int Add_OrderedSet()
-    {
-        var list = new OrderedSetObsolete<OrderedListClass2>(OrderedListClass2.InternalComparer.Instance);
-        foreach (var x in this.IntArray)
-        {
-            list.Add(new OrderedListClass2(x));
         }
 
         return list.Count;

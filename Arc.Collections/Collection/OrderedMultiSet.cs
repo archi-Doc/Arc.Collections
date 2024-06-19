@@ -11,7 +11,7 @@ using Arc.Collections.HotMethod;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order.
+/// Represents a collection of objects that is maintained in sorted order (ascending by default).
 /// <br/><see cref="OrderedMultiSet{T}"/> uses Red-Black Tree + Linked List structure to store objects.
 /// <br/><see cref="OrderedMultiSet{T}"/> can store duplicate keys.
 /// </summary>

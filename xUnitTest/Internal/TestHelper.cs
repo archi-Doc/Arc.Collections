@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Arc.Collections;
-using Arc.Collections.Obsolete;
 using Xunit;
 
 namespace xUnitTest;
@@ -52,19 +51,6 @@ public static class TestHelper
         os.Validate().IsTrue();
         return result;
 
-    }
-    public static OrderedSetObsolete<T>.Node AddAndValidate<T>(this OrderedSetObsolete<T> os, T value)
-    {
-        var result = os.Add(value);
-        os.Validate().IsTrue();
-        return result.Node;
-    }
-
-    public static bool RemoveAndValidate<T>(this OrderedSetObsolete<T> os, T value)
-    {
-        var result = os.Remove(value);
-        os.Validate().IsTrue();
-        return result;
     }
 
     public static OrderedMap<TKey, TValue>.Node AddAndValidate<TKey, TValue>(this OrderedMap<TKey, TValue> om, TKey key, TValue value)

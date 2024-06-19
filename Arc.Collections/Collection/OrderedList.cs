@@ -9,7 +9,7 @@ using Arc.Collections.HotMethod;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a list of objects that can be accessed by index and maintained in sorted order.
+/// Represents a list of objects that can be accessed by index and maintained in sorted order (ascending by default).
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 public class OrderedList<T> : UnorderedList<T>

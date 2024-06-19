@@ -1,19 +1,15 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
 #pragma warning disable SA1401 // Fields should be private
 
 namespace Arc.Collections.Obsolete;
 
-/// <summary>
+/*/// <summary>
 /// A fast and thread-safe pool of objects.<br/>
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
@@ -106,16 +102,5 @@ public class LooseObjectPool<T>
         }
 
         Volatile.Write(ref this.current.value, instance);
-
-        // Alternative
-        /*if (Interlocked.CompareExchange(ref this.current.value, instance, null) == null)
-        {// Set instance
-            return;
-        }
-        else
-        {
-            this.current = this.current.next;
-            Volatile.Write(ref this.current.value, instance);
-        }*/
     }
-}
+}*/

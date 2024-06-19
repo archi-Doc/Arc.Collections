@@ -9,7 +9,7 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order.
+/// Represents a collection of objects that is maintained in sorted order (ascending by default).
 /// <br/><see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
