@@ -1,7 +1,5 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
-using Arc.Collections.Obsolete;
-
 namespace Arc.Collections.HotMethod;
 
 /*public sealed class StringMethod : IHotMethod<string>

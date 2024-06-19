@@ -171,27 +171,6 @@ public class OrderedSetTest
     }
 
     [Benchmark]
-    public int NewAndAdd_OrderedSetObsolete()
-    {
-        var ss = new OrderedSetObsolete<int>();
-        ss.Add(1);
-        ss.Add(10);
-        ss.Add(4);
-        ss.Add(34);
-        ss.Add(-4);
-        ss.Add(43);
-        ss.Add(5);
-        ss.Add(0);
-        ss.Add(9);
-        ss.Add(20);
-        foreach (var x in this.IntArray)
-        {
-            ss.Add(x);
-        }
-        return ss.Count;
-    }
-
-    [Benchmark]
     public int NewAndAdd2_SortedSet()
     {
         var ss = new System.Collections.Generic.SortedSet<OrderedSetClass>();
@@ -250,27 +229,6 @@ public class OrderedSetTest
         foreach (var x in this.IntArray)
         {
             ss.Add(new OrderedSetClass(x), 0);
-        }
-        return ss.Count;
-    }
-
-    [Benchmark]
-    public int NewAndAdd2_OrderedSetObsolete()
-    {
-        var ss = new OrderedSetObsolete<OrderedSetClass>();
-        ss.Add(new OrderedSetClass(1));
-        ss.Add(new OrderedSetClass(10));
-        ss.Add(new OrderedSetClass(4));
-        ss.Add(new OrderedSetClass(34));
-        ss.Add(new OrderedSetClass(-4));
-        ss.Add(new OrderedSetClass(43));
-        ss.Add(new OrderedSetClass(5));
-        ss.Add(new OrderedSetClass(0));
-        ss.Add(new OrderedSetClass(9));
-        ss.Add(new OrderedSetClass(20));
-        foreach (var x in this.IntArray)
-        {
-            ss.Add(new OrderedSetClass(x));
         }
         return ss.Count;
     }

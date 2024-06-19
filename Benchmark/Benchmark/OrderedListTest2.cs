@@ -116,16 +116,4 @@ public class OrderedListTest2
 
         return list.Count;
     }
-
-    [Benchmark]
-    public int Add_OrderedSet()
-    {
-        var list = new OrderedSetObsolete<OrderedListClass2>(OrderedListClass2.InternalComparer.Instance);
-        foreach (var x in this.IntArray)
-        {
-            list.Add(new OrderedListClass2(x));
-        }
-
-        return list.Count;
-    }
 }

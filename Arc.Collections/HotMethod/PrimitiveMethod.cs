@@ -4,7 +4,6 @@
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
-using Arc.Collections.Obsolete;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -42,34 +41,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<byte>.Node? Leaf) SearchNode(OrderedSetObsolete<byte>.Node? target, byte value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -221,34 +192,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<sbyte>.Node? Leaf) SearchNode(OrderedSetObsolete<sbyte>.Node? target, sbyte value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
@@ -398,34 +341,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<ushort>.Node? Leaf) SearchNode(OrderedSetObsolete<ushort>.Node? target, ushort value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -577,34 +492,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<short>.Node? Leaf) SearchNode(OrderedSetObsolete<short>.Node? target, short value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
@@ -754,34 +641,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<uint>.Node? Leaf) SearchNode(OrderedSetObsolete<uint>.Node? target, uint value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -933,34 +792,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<int>.Node? Leaf) SearchNode(OrderedSetObsolete<int>.Node? target, int value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
@@ -1110,34 +941,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<ulong>.Node? Leaf) SearchNode(OrderedSetObsolete<ulong>.Node? target, ulong value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -1289,34 +1092,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<long>.Node? Leaf) SearchNode(OrderedSetObsolete<long>.Node? target, long value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
@@ -1466,34 +1241,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<UInt128>.Node? Leaf) SearchNode(OrderedSetObsolete<UInt128>.Node? target, UInt128 value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -1645,34 +1392,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<Int128>.Node? Leaf) SearchNode(OrderedSetObsolete<Int128>.Node? target, Int128 value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class Int128Method2<TValue> : IHotMethod2<Int128, TValue>
@@ -1822,34 +1541,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<float>.Node? Leaf) SearchNode(OrderedSetObsolete<float>.Node? target, float value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 
@@ -2001,34 +1692,6 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
-
-        public (int Cmp, OrderedSetObsolete<double>.Node? Leaf) SearchNode(OrderedSetObsolete<double>.Node? target, double value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
-        }
     }
 
     public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
@@ -2178,34 +1841,6 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
-        }
-
-        public (int Cmp, OrderedSetObsolete<DateTime>.Node? Leaf) SearchNode(OrderedSetObsolete<DateTime>.Node? target, DateTime value)
-        {
-            var x = target;
-            var p = target;
-            int cmp = 0;
-
-            while (x != null)
-            {
-                p = x;
-                if (value < x.Value)
-                {
-                    x = x.Left;
-                    cmp = -1;
-                }
-                else if (value > x.Value)
-                {
-                    x = x.Right;
-                    cmp = 1;
-                }
-                else
-                {// Found
-                    return (0, x);
-                }
-            }
-
-            return (cmp, p);
         }
     }
 

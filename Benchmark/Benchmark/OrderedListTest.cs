@@ -67,16 +67,4 @@ public class OrderedListTest
 
         return list.Count;
     }
-
-    [Benchmark]
-    public int Add_OrderedSet()
-    {
-        var list = new OrderedSetObsolete<int>();
-        foreach (var x in this.IntArray)
-        {
-            list.Add(x);
-        }
-
-        return list.Count;
-    }
 }
