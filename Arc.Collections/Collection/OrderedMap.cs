@@ -25,7 +25,8 @@ internal enum NodeColor : byte
 }
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order. <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+/// Represents a collection of objects that is maintained in sorted order (ascending by default).<br/>
+/// <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>

@@ -14,7 +14,8 @@ using Arc.Collections.HotMethod;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order (Red-Black Tree + Linked List structure).<br/>
+/// Represents a collection of objects that is maintained in sorted order (ascending by default).<br/>
+/// <see cref="OrderedMultiMap{TKey, TValue}"/> uses Red-Black Tree + Linked List structure to store objects.<br/>
 /// <see cref="OrderedMultiMap{TKey, TValue}"/> can store duplicate keys.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>

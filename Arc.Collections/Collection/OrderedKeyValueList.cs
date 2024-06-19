@@ -16,7 +16,7 @@ using Arc.Collections.HotMethod;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a list of key-value pairs that can be accessed by index and maintained in sorted order.
+/// Represents a list of key-value pairs that can be accessed by index and maintained in sorted order (ascending by default).
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>

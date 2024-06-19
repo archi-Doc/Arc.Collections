@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Arc.Crypto" Version="1.24.1" />
     <PackageReference Include="BenchmarkDotNet" Version="0.13.12" />
-    <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.6" />
   </ItemGroup>
 
   <ItemGroup>
