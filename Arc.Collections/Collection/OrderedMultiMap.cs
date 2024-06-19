@@ -1050,9 +1050,26 @@ public class OrderedMultiMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnl
     /// <returns>true if the key is changed.</returns>
     public bool SetNodeKey(Node node, TKey key)
     {
-        if (this.Comparer.Compare(node.Key, key) == 0)
+        var cmp = this.Comparer.Compare(node.Key, key);
+        if (cmp == 0)
         {// Identical
             return false;
+        }
+        else if (cmp < 0)
+        {// node.Key < key
+            if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) > 0)
+            {// node.Next.Key > key
+                node.Key = key;
+                return true;
+            }
+        }
+        else
+        {// node.Key > key
+            if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) < 0)
+            {// node.Previous.Key < key
+                node.Key = key;
+                return true;
+            }
         }
 
         var value = node.Value;
