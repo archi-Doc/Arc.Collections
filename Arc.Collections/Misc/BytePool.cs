@@ -36,11 +36,19 @@ public class BytePool
     }
 
     /// <summary>
-    /// Represents an owner of a byte array (one owner instance for each byte array).<br/>
-    /// <see cref="RentArray"/> has a reference count, and when it reaches zero, it returns the byte array to the pool.
+    /// Represents a rented byte array.
     /// </summary>
     public class RentArray : IDisposable
     {
+        /// <summary>
+        /// Creates a new <see cref="RentArray"/> instance with the specified byte array.<br/>
+        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// </summary>
+        /// <param name="array">The byte array.</param>
+        /// <returns>A new <see cref="RentArray"/> instance.</returns>
+        public static RentArray CreateStatic(byte[] array)
+            => new(array);
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RentArray"/> class from a byte array.<br/>
         /// This is a feature for compatibility with conventional memory management (e.g new byte[]), <br/>
@@ -68,17 +76,17 @@ public class BytePool
         private int count;
 
         /// <summary>
-        /// Gets a rent byte array.
+        /// Gets the rented byte array.
         /// </summary>
         public byte[] Array => this.byteArray;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is rent or not.
+        /// Gets a value indicating whether the owner (byte array) is currently rented.
         /// </summary>
         public bool IsRent => Volatile.Read(ref this.count) > 0;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is returned or not.
+        /// Gets a value indicating whether the owner (byte array) has been returned.
         /// </summary>
         public bool IsReturned => Volatile.Read(ref this.count) <= 0;
 
@@ -104,9 +112,9 @@ public class BytePool
         #endregion
 
         /// <summary>
-        ///  Increment the reference count and get an <see cref="RentArray"/> instance.
+        /// Increments the reference count and returns the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
+        /// <returns>The current <see cref="RentArray"/> instance.</returns>
         public RentArray IncrementAndShare()
         {
             if (this.count == SingleCount)
@@ -124,9 +132,9 @@ public class BytePool
         }
 
         /// <summary>
-        ///  Increment the counter and attempt to share the byte array.
+        /// Increments the reference count and attempts to share the byte array.
         /// </summary>
-        /// <returns><see langword="true"/>; Success.</returns>
+        /// <returns><see langword="true"/> if the increment and sharing were successful; otherwise, <see langword="false"/>.</returns>
         public bool TryIncrement()
         {
             int currentCount;
@@ -154,11 +162,9 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrement the reference count.<br/>
-        /// When it reaches zero, it returns the byte array to the pool.<br/>
-        /// Failure to return a rented array is not a fatal error (eventually be garbage-collected).
+        /// Decrements the reference count. When the count reaches zero, the byte array is returned to the pool.
         /// </summary>
-        /// <returns><see langword="null"></see>.</returns>
+        /// <returns><see langword="null"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RentArray? Return()
         {
@@ -182,74 +188,74 @@ public class BytePool
         }
 
         /// <summary>
-        /// Create a <see cref="RentMemory"/> object from <see cref="RentArray"/>.
+        /// Creates a <see cref="RentMemory"/> object from the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns><see cref="RentMemory"/>.</returns>
+        /// <returns>A <see cref="RentMemory"/> object.</returns>
         public RentMemory AsMemory()
             => new(this);
 
         /// <summary>
-        /// Create a <see cref="RentMemory"/> object by specifying the index and length.
+        /// Creates a <see cref="RentMemory"/> object by specifying the start index.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <returns><see cref="RentMemory"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <returns>A <see cref="RentMemory"/> object.</returns>
         public RentMemory AsMemory(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
-        /// Create a <see cref="RentMemory"/> object by specifying the index and length.
+        /// Creates a <see cref="RentMemory"/> object by specifying the start index and length.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <param name="length">The number of elements to include in the slice.</param>
-        /// <returns><see cref="RentMemory"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <param name="length">The length of the slice.</param>
+        /// <returns>A <see cref="RentMemory"/> object.</returns>
         public RentMemory AsMemory(int start, int length)
             => new(this, this.byteArray, start, length);
 
         /// <summary>
-        /// Create a <see cref="RentReadOnlyMemory"/> object from <see cref="RentArray"/>.
+        /// Creates a <see cref="RentReadOnlyMemory"/> object from the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
+        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
         public RentReadOnlyMemory AsReadOnly()
             => new(this);
 
         /// <summary>
-        /// Create a <see cref="RentMemory"/> object by specifying the index and length.
+        /// Creates a <see cref="RentReadOnlyMemory"/> object by specifying the start index.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <returns><see cref="RentMemory"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
         public RentReadOnlyMemory AsReadOnly(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
-        /// Create a <see cref="RentReadOnlyMemory"/> object by specifying the index and length.
+        /// Creates a <see cref="RentReadOnlyMemory"/> object by specifying the start index and length.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <param name="length">The number of elements to include in the slice.</param>
-        /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <param name="length">The length of the slice.</param>
+        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
         public RentReadOnlyMemory AsReadOnly(int start, int length)
             => new(this, this.byteArray, start, length);
 
         /// <summary>
-        /// Create a <see cref="Span{T}"/> object from <see cref="RentArray"/>.
+        /// Creates a <see cref="Span{T}"/> object from the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns><see cref="Span{T}"/>.</returns>
+        /// <returns>A <see cref="Span{T}"/> object.</returns>
         public Span<byte> AsSpan()
             => new(this.byteArray);
 
         /// <summary>
-        /// Create a <see cref="Span{T}"/> object by specifying the index and length.
+        /// Creates a <see cref="Span{T}"/> object by specifying the start index.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <returns><see cref="Span{T}"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <returns>A <see cref="Span{T}"/> object.</returns>
         public Span<byte> AsSpan(int start)
             => new(this.byteArray, start, this.byteArray.Length - start);
 
         /// <summary>
-        /// Create a <see cref="Span{T}"/> object by specifying the index and length.
+        /// Creates a <see cref="Span{T}"/> object by specifying the start index and length.
         /// </summary>
-        /// <param name="start">The index at which to begin the slice.</param>
-        /// <param name="length">The number of elements to include in the slice.</param>
-        /// <returns><see cref="Span{T}"/>.</returns>
+        /// <param name="start">The start index of the slice.</param>
+        /// <param name="length">The length of the slice.</param>
+        /// <returns>A <see cref="Span{T}"/> object.</returns>
         public Span<byte> AsSpan(int start, int length)
             => new(this.byteArray, start, length);
 
@@ -257,6 +263,9 @@ public class BytePool
         internal void ResetCount()
             => this.count = SingleCount;
 
+        /// <summary>
+        /// Disposes the current <see cref="RentArray"/> instance and returns the byte array to the pool.
+        /// </summary>
         public void Dispose()
             => this.Return();
     }
