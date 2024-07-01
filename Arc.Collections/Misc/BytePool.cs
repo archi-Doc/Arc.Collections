@@ -3,6 +3,7 @@
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 #pragma warning disable SA1124
@@ -46,8 +47,10 @@ public class BytePool
         /// </summary>
         /// <param name="array">The byte array.</param>
         /// <returns>A new <see cref="RentArray"/> instance.</returns>
-        public static RentArray CreateStatic(byte[] array)
-            => new(array);
+        public static RentArray CreateFrom(byte[] array)
+        {
+            return new(array);
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RentArray"/> class from a byte array.<br/>
@@ -278,14 +281,31 @@ public class BytePool
         public static readonly RentMemory Empty = default;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RentMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
+        /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
+        /// The byte array will not be returned when <see cref="Return"/> is called.
         /// </summary>
-        /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
-        public RentMemory(byte[] byteArray)
+        /// <param name="source">The source byte array.</param>
+        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        public static RentMemory CreateFrom(byte[] source)
         {
-            this.byteArray = byteArray;
-            this.length = byteArray.Length;
+            return new RentArray(source).AsMemory();
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="RentMemory"/> instance from the specified <see cref="ReadOnlyMemory{T}"/>.<br/>
+        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// </summary>
+        /// <param name="source">The source <see cref="ReadOnlyMemory{T}"/>.</param>
+        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        public static RentMemory CreateFrom(ReadOnlyMemory<byte> source)
+        {
+            if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
+                segment.Array is not null)
+            {
+                return new(segment.Array, segment.Offset, segment.Count);
+            }
+
+            return default;
         }
 
         /// <summary>
@@ -295,7 +315,7 @@ public class BytePool
         /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
         /// <param name="start">The index at which to begin the memory.</param>
         /// <param name="length">The number of items in the memory.</param>
-        public RentMemory(byte[] byteArray, int start, int length)
+        internal RentMemory(byte[] byteArray, int start, int length)
         {
             if ((ulong)(uint)start + (ulong)(uint)length > (ulong)(uint)byteArray.Length)
             {
@@ -477,14 +497,31 @@ public class BytePool
         public static readonly RentReadOnlyMemory Empty = default;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RentReadOnlyMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
+        /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
+        /// The byte array will not be returned when <see cref="Return"/> is called.
         /// </summary>
-        /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
-        public RentReadOnlyMemory(byte[] byteArray)
+        /// <param name="source">The source byte array.</param>
+        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        public static RentReadOnlyMemory CreateFrom(byte[] source)
         {
-            this.byteArray = byteArray;
-            this.length = byteArray.Length;
+            return new RentArray(source).AsReadOnly();
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="RentMemory"/> instance from the specified <see cref="ReadOnlyMemory{T}"/>.<br/>
+        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// </summary>
+        /// <param name="source">The source <see cref="ReadOnlyMemory{T}"/>.</param>
+        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        public static RentReadOnlyMemory CreateFrom(ReadOnlyMemory<byte> source)
+        {
+            if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
+                segment.Array is not null)
+            {
+                return new(segment.Array, segment.Offset, segment.Count);
+            }
+
+            return default;
         }
 
         /// <summary>
@@ -494,7 +531,7 @@ public class BytePool
         /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
         /// <param name="start">The index at which to begin the memory.</param>
         /// <param name="length">The number of items in the memory.</param>
-        public RentReadOnlyMemory(byte[] byteArray, int start, int length)
+        internal RentReadOnlyMemory(byte[] byteArray, int start, int length)
         {
             if ((ulong)(uint)start + (ulong)(uint)length > (ulong)(uint)byteArray.Length)
             {
