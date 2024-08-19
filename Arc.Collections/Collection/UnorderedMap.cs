@@ -12,11 +12,28 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
+/// Represents an interface specific to unordered map.
+/// </summary>
+public interface IUnorderedMap
+{
+    /// <summary>
+    /// Clears the map.
+    /// </summary>
+    void Clear();
+
+    /// <summary>
+    /// Removes the node at the specified index.
+    /// </summary>
+    /// <param name="nodeIndex">The index of the node to remove.</param>
+    void RemoveNode(int nodeIndex);
+}
+
+/// <summary>
 /// Represents a collection of objects. <see cref="UnorderedMap{TKey, TValue}"/> uses a hash table structure to store objects.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+public class UnorderedMap<TKey, TValue> : IUnorderedMap, IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
 {
     public struct Node
     {
