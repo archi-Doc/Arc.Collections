@@ -16,7 +16,7 @@ internal class ObjectPoolSmall
 
     internal static void Test()
     {
-        var c = ObjectPool.Get();
+        var c = ObjectPool.Rent();
         c.Process();
         ObjectPool.Return(c);
     }
@@ -38,14 +38,14 @@ internal class ObjectPoolSlow
         var c = new ObjectPoolSlow(); // Slow
         c.Process("new()");
 
-        c = pool.Get(); // Fast
+        c = pool.Rent(); // Fast
         c.Process("ObjectPool");
         pool.Return(c);
 
         c = new ObjectPoolSlow(); // Slow
         c.Process("new()");
 
-        c = pool.Get(); // Fast
+        c = pool.Rent(); // Fast
         c.Process("ObjectPool");
         pool.Return(c);
     }

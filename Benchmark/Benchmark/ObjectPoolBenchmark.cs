@@ -63,7 +63,7 @@ public class ObjectPoolBenchmark
     [Benchmark]
     public Sha3_256 SHA3_ObjectPool()
     {
-        var h = this.ObjectPool.Get();
+        var h = this.ObjectPool.Rent();
         try
         {
             // return h.GetHash(this.ByteArray);

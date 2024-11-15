@@ -59,7 +59,7 @@ public class ObjectPool<T> : IDisposable
     /// </summary>
     /// <returns>An instance of type <typeparamref name="T"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T Get()
+    public T Rent()
     {
         var item = this.fastItem;
         if (item == null || Interlocked.CompareExchange(ref this.fastItem, null, item) != item)
