@@ -22,6 +22,7 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(NewInstanceBenchmark),
             typeof(OrderedMapSetKeyBenchmark),
             typeof(Int128Benchmark),
             typeof(BytePoolTest),
