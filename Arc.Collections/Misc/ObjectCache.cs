@@ -2,6 +2,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Arc.Collections;
 
@@ -91,7 +92,7 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     public TObject? TryGet(TKey key)
     {
         Item? item;
-        lock (this.syncObject)
+        using (this.lockObject.EnterScope())
         {
             if (this.map.TryGetValue(key, out item))
             {// Remove
@@ -114,7 +115,7 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     /// <see langword="false"/>; An object with the same key already exists.</returns>
     public bool Cache(TKey key, TObject obj)
     {
-        lock (this.syncObject)
+        using (this.lockObject.EnterScope())
         {
             while (this.linkedList.Count >= this.CacheSize)
             {
@@ -165,7 +166,7 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
         }
     }
 
-    private object syncObject = new();
+    private Lock lockObject = new();
     private UnorderedMap<TKey, Item> map = new();
     private UnorderedLinkedList<Item> linkedList = new();
 
@@ -201,7 +202,7 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
             if (disposing)
             {
                 // free managed resources.
-                lock (this.syncObject)
+                using (this.lockObject.EnterScope())
                 {
                     while (this.linkedList.First is { } first)
                     {
