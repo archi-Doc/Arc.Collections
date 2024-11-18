@@ -17,11 +17,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<OrderedMapSetKeyBenchmark>();
+        DebugRun<FactoryBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(FactoryBenchmark),
             typeof(NewInstanceBenchmark),
             typeof(OrderedMapSetKeyBenchmark),
             typeof(Int128Benchmark),

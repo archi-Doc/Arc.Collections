@@ -1028,6 +1028,8 @@ public class OrderedMultiMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnl
     /// <param name="value">The value of the element to add.</param>
     /// <returns>Node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
     /// NewlyAdded:true if the new key is inserted.</returns>
+    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
+    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
     /// <summary>
@@ -1039,6 +1041,8 @@ public class OrderedMultiMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnl
     /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
     /// <returns>Node: the added <see cref="OrderedMultiMap{TKey, TValue}.Node"/>.<br/>
     /// NewlyAdded: true if the new key is inserted.</returns>
+    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
+    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
     /// <summary>
