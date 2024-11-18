@@ -1085,6 +1085,8 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     /// <param name="value">The value of the element to add.</param>
     /// <returns>NodeIndex: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
     /// NewlyAdded:true if the new key is inserted.</returns>
+    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
+    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
     public (int NodeIndex, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
 
     /// <summary>

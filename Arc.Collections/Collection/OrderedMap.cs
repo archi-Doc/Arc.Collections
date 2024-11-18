@@ -993,6 +993,8 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     /// <param name="value">The value of the element to add.</param>
     /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
     /// NewlyAdded: true if the node is created.</returns>
+    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
+    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
 
     /// <summary>
@@ -1004,6 +1006,8 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
     /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
     /// NewlyAdded: true if the node is created.</returns>
+    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
+    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
 
     /// <summary>
