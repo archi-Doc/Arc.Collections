@@ -13,14 +13,124 @@ namespace Benchmark;
 public class BytePoolTest
 {
     private const int N = 256;
+    private const int StackallocThreshold = 1024;
+    private const int StackallocThreshold2 = 100;
 
     private ConcurrentQueue<byte[]> concurrentQueue = new();
     private int count;
+    private int n;
 
     public BytePoolTest()
     {
         var total = BytePool.Default.CalculateMaxMemoryUsage();
         Console.WriteLine(total / 1024 / 1024);
+        this.n = 256;
+    }
+
+    public void StackallocGist()
+    {
+        var length = 100;
+
+        byte[]? rentArray = null;
+        Span<byte> span = length <= Arc.BaseConstants.StackallocThreshold ? // 1024
+            stackalloc byte[length] : (rentArray = ArrayPool<byte>.Shared.Rent(length));
+
+        try
+        {
+        }
+        finally
+        {
+            if (rentArray != null)
+            {
+                ArrayPool<byte>.Shared.Return(rentArray);
+            }
+        }
+    }
+
+    [Benchmark]
+    public byte TemporarySpan_ArrayPool_Stackalloc()
+    {
+        byte[]? rent = null;
+        Span<byte> span = this.n <= StackallocThreshold ?
+            stackalloc byte[this.n] : (rent = ArrayPool<byte>.Shared.Rent(this.n));
+
+        byte result;
+        try
+        {
+            result = span[1];
+        }
+        finally
+        {
+            if (rent != null)
+            {
+                ArrayPool<byte>.Shared.Return(rent);
+            }
+        }
+
+        return result;
+    }
+
+    [Benchmark]
+    public byte TemporarySpan_ArrayPool_ArrayPool()
+    {
+        byte[]? rent = null;
+        Span<byte> span = this.n <= StackallocThreshold2 ?
+            stackalloc byte[this.n] : (rent = ArrayPool<byte>.Shared.Rent(this.n));
+
+        byte result;
+        try
+        {
+            result = span[1];
+        }
+        finally
+        {
+            if (rent != null)
+            {
+                ArrayPool<byte>.Shared.Return(rent);
+            }
+        }
+
+        return result;
+    }
+
+    [Benchmark]
+    public byte TemporarySpan_BytePool_Stackalloc()
+    {
+        BytePool.RentMemory rent = default;
+        Span<byte> span = this.n <= StackallocThreshold ?
+            stackalloc byte[this.n] : (rent = BytePool.Default.Rent(this.n).AsMemory()).Span;
+
+        byte result;
+        try
+        {
+            result = span[1];
+        }
+        finally
+        {
+            rent.Return();
+        }
+
+        return result;
+    }
+
+    [Benchmark]
+    public byte TemporarySpan_BytePool_BytePool()
+    {
+        BytePool.RentMemory rent = default;
+        Span<byte> span = this.n <= StackallocThreshold2 ?
+            stackalloc byte[this.n] : (rent = BytePool.Default.Rent(this.n).AsMemory()).Span;
+
+        byte result;
+        try
+        {
+            result = span[1];
+        }
+        finally
+        {
+            rent.Return();
+        }
+
+        return result;
     }
 
     [Benchmark]
@@ -71,7 +181,7 @@ public class BytePoolTest
         return rentArray.Array;
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public (byte[], byte[], byte[]) NewByte3()
     {
         return (new byte[N], new byte[N], new byte[N]);
@@ -150,5 +260,5 @@ public class BytePoolTest
         rentArray2.Return();
         rentArray3.Return();
         return (rentArray.Array, rentArray2.Array, rentArray3.Array);
-    }
+    }*/
 }
