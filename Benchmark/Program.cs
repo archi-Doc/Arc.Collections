@@ -17,7 +17,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<FactoryBenchmark>();
+        DebugRun<BytePoolTest>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
