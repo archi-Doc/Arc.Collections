@@ -25,7 +25,7 @@ public sealed class CircularQueue<T>
 
     /// <summary>Initializes a new instance of the <see cref="CircularQueue{T}"/> class.</summary>
     /// <param name="capacity">The maximum number of elements the queue can contain (rounded up to the power of 2).</param>
-    internal CircularQueue(int capacity)
+    public CircularQueue(int capacity)
     {
         if (capacity < MinimumCapacity)
         {
