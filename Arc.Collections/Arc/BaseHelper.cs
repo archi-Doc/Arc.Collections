@@ -4,8 +4,11 @@ using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Xml.Linq;
 
 #pragma warning disable SA1405
 
@@ -34,6 +37,38 @@ public static class BaseHelper
     private const long P16 = 10000000000000000;
     private const long P17 = 100000000000000000;
     private const long P18 = 1000000000000000000;
+
+    /// <summary>
+    /// Tries to load a resource from the specified assembly and returns it as a byte array.
+    /// </summary>
+    /// <param name="assembly">The assembly to load the resource from. If null, the executing assembly is used.</param>
+    /// <param name="resourceName">The name of the resource to load.<br/>
+    /// e.g. 'Resources.Name.tinyhand'.</param>
+    /// <param name="data">When this method returns, contains the loaded resource data if successful; otherwise, null.</param>
+    /// <returns><c>true</c> if the resource was successfully loaded; otherwise, <c>false</c>.</returns>
+    public static bool TryLoadResource(Assembly? assembly, string resourceName, [MaybeNullWhen(false)] out byte[] data)
+    {
+        try
+        {
+            assembly ??= Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream(assembly.GetName().Name + "." + resourceName);
+            if (stream is null)
+            {
+                data = default;
+                return false;
+            }
+
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            data = ms.ToArray();
+            return true;
+        }
+        catch
+        {
+            data = default;
+            return false;
+        }
+    }
 
     /// <summary>
     /// Throws an <see cref="ArgumentOutOfRangeException"/> indicating a size mismatch.
