@@ -47,7 +47,14 @@ public ref struct TemporaryQueue<TObject>
             }
             else
             {
-                return StackSize + this.list?.Count ?? 0;
+                if (this.list is null)
+                {
+                    return StackSize;
+                }
+                else
+                {
+                    return StackSize + this.list.Count;
+                }
             }
         }
     }
