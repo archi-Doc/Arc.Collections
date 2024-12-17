@@ -6,15 +6,15 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// A queue of temporary objects created using a ref struct.<br/>
+/// A list of temporary objects created using a ref struct.<br/>
 /// If the count is 4 or fewer, it avoids creating a <see cref="List{T}"/> and keeps the objects on the stack.<br/>
 /// It is primarily used when you need to manipulate a collection after exiting a for or foreach loop.
 /// </summary>
 /// <typeparam name="TObject">The type of the objects.</typeparam>
-public ref struct TemporaryQueue<TObject>
+public ref struct TemporaryList<TObject>
     where TObject : class
 {
-    private const int StackSize = 4;
+    private const int FieldSize = 4;
 
     private TObject? obj0;
     private TObject? obj1;
@@ -49,21 +49,21 @@ public ref struct TemporaryQueue<TObject>
             {
                 if (this.list is null)
                 {
-                    return StackSize;
+                    return FieldSize;
                 }
                 else
                 {
-                    return StackSize + this.list.Count;
+                    return FieldSize + this.list.Count;
                 }
             }
         }
     }
 
     /// <summary>
-    /// Adds an object to the end of the queue.
+    /// Adds an object to the list.
     /// </summary>
     /// <param name="obj">The object to add to the queue.</param>
-    public void Enqueue(TObject obj)
+    public void Add(TObject obj)
     {
         if (this.obj0 is null)
         {
@@ -115,11 +115,11 @@ public ref struct TemporaryQueue<TObject>
 
     public ref struct Enumerator : IEnumerator<TObject>
     {
-        private readonly TemporaryQueue<TObject> queue;
+        private readonly TemporaryList<TObject> queue;
         private int index;
         private TObject? current;
 
-        public Enumerator(TemporaryQueue<TObject> queue)
+        public Enumerator(TemporaryList<TObject> queue)
         {
             this.queue = queue;
             this.index = -1;
@@ -137,7 +137,19 @@ public ref struct TemporaryQueue<TObject>
         public bool MoveNext()
         {
             this.index++;
-            if (this.index == 0)
+            if (this.index >= FieldSize)
+            {
+                if (this.queue.list is { } list)
+                {
+                    var i = this.index - FieldSize;
+                    if (i < list.Count)
+                    {
+                        this.current = list[i];
+                        return true;
+                    }
+                }
+            }
+            else if (this.index == 0)
             {
                 this.current = this.queue.obj0;
                 return this.queue.obj0 is not null;
@@ -156,15 +168,6 @@ public ref struct TemporaryQueue<TObject>
             {
                 this.current = this.queue.obj3;
                 return this.queue.obj3 is not null;
-            }
-
-            if (this.queue.list is { } list)
-            {
-                if (this.index < StackSize + list.Count)
-                {
-                    this.current = list[this.index - StackSize];
-                    return true;
-                }
             }
 
             return false;
