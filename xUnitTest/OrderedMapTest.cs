@@ -278,4 +278,42 @@ public class OrderedMapTest
         map.GetUpperBound("Authority\\X")!.Key.Is("Authority\\abc");
         map.GetUpperBound("Authority\\" + char.MaxValue)!.Key.Is("Authority\\‚ ");
     }
+
+    [Fact]
+    public void SetNodeTest()
+    {
+        var map = new OrderedMap<int, int>();
+        (var x1, _) = map.Add(1, 1);
+        (var x4, _) = map.Add(4, 4);
+        (var x3, _) = map.Add(3, 3);
+        (var x2, _) = map.Add(2, 2);
+        map.Values.SequenceEqual([1, 2, 3, 4, ]).IsTrue();
+        map.SetNodeKey(x2, 20);
+        map.Values.SequenceEqual([1, 3, 4, 2, ]).IsTrue();
+        map.SetNodeKey(x1, 100);
+        map.Values.SequenceEqual([3, 4, 2, 1, ]).IsTrue();
+        map.SetNodeKey(x1, 0);
+        map.Values.SequenceEqual([1, 3, 4, 2, ]).IsTrue();
+    }
+
+    [Fact]
+    public void SetNodeTest2()
+    {
+        var map = new OrderedMap<int, int>(true);
+        (var x1, _) = map.Add(1, 1);
+        (var x4, _) = map.Add(4, 4);
+        (var x3, _) = map.Add(3, 3);
+        (var x2, _) = map.Add(2, 2);
+        map.Values.SequenceEqual([4, 3, 2, 1, ]).IsTrue();
+        map.SetNodeKey(x3, 30);
+        map.Values.SequenceEqual([3, 4, 2, 1, ]).IsTrue();
+        map.SetNodeKey(x1, 0);
+        map.Values.SequenceEqual([3, 4, 2, 1, ]).IsTrue();
+        map.SetNodeKey(x1, 100);
+        map.Values.SequenceEqual([1, 3, 4, 2, ]).IsTrue();
+        map.SetNodeKey(x1, 1000);
+        map.Values.SequenceEqual([1, 3, 4, 2, ]).IsTrue();
+        map.SetNodeKey(x1, 0);
+        map.Values.SequenceEqual([3, 4, 2, 1, ]).IsTrue();
+    }
 }
