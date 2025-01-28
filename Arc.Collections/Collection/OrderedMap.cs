@@ -1024,20 +1024,42 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         {// Identical
             return false;
         }
-        else if (cmp < 0)
-        {// node.Key < key
-            if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) > 0)
-            {// node.Next.Key > key
-                node.Key = key;
-                return true;
+        else if (this.CompareFactor > 0)
+        {
+            if (cmp < 0)
+            {// node.Key < key
+                if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) > 0)
+                {// node.Next.Key > key
+                    node.Key = key;
+                    return true;
+                }
+            }
+            else
+            {// node.Key > key
+                if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) < 0)
+                {// node.Previous.Key < key
+                    node.Key = key;
+                    return true;
+                }
             }
         }
         else
-        {// node.Key > key
-            if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) < 0)
-            {// node.Previous.Key < key
-                node.Key = key;
-                return true;
+        {
+             if (cmp < 0)
+            {// node.Key < key
+                if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) > 0)
+                {// node.Previous.Key > key
+                    node.Key = key;
+                    return true;
+                }
+            }
+            else
+            {// node.Key > key
+                if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) < 0)
+                {// node.Next.Key < key
+                    node.Key = key;
+                    return true;
+                }
             }
         }
 
