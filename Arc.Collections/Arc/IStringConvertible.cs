@@ -15,7 +15,8 @@ public interface IStringConvertible<T>
     where T : IStringConvertible<T>
 {
     /// <summary>
-    /// Convert a <see cref="char"/> (utf-16) span to an object.
+    /// Convert a <see cref="char"/> (utf-16) span to an object.<br/>
+    /// Depending on the application, the source can be longer than the default string length.
     /// </summary>
     /// <param name="source">The source utf-16 span.</param>
     /// <param name="object">An object converted from the utf-16 span.</param>
