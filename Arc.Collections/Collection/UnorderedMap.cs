@@ -830,13 +830,14 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var i = this.buckets[index];
             while (i >= 0)
             {
-                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
+                ref Node node = ref this.nodes[i];
+                if (node.hashCode == hashCode && this.Comparer.Equals(node.key, key!))
                 {// Identical
-                    value = this.nodes[i].value;
+                    value = node.value;
                     return true;
                 }
 
-                i = this.nodes[i].next;
+                i = node.next;
             }
         }
 
