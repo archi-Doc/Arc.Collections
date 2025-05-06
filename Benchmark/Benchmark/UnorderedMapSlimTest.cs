@@ -59,17 +59,17 @@ public class UnorderedMapSlimTest
         return c.Count;
     }
 
-    /*[Benchmark]
+    [Benchmark]
     public int AddSerialInt_UnorderedMapSlim()
     {
-        var c = new UnorderedMapSlim<int, int>();
+        var c = new UnorderedMapSlim<int, int>(9);
         for (var n = 0; n < this.Count; n++)
         {
             c.Add(n, n);
         }
 
         return c.Count;
-    }*/
+    }
 
     [Benchmark]
     public int AddRandomInt_Dictionary()
