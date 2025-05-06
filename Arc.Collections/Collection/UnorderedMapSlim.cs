@@ -30,18 +30,13 @@ public class UnorderedMapSlim<TKey, TValue>
         public TValue Value => this.value;
     }
 
-    private readonly struct Table
-    {
-    }
-
     #region FieldAndProperty
 
-    private int[] buckets = [];
-    private Node[] nodes = [];
+    private int[] buckets;
+    private Node[] nodes;
     private int nodeCount;
     private int freeList;
     private int freeCount;
-    // private int nullList;
 
     /// <summary>
     /// Gets or sets a value indicating whether the collection allows duplicate keys.
@@ -60,23 +55,137 @@ public class UnorderedMapSlim<TKey, TValue>
         this.Initialize(minimumSize);
     }
 
-    public (int NodeIndex, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, _ => value);
+    public (int NodeIndex, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
+
+    public ref Node FindNode(TKey key)
+    {
+        var hash = key.GetHashCode(); // GetHashCodeCode
+        var i = this.buckets[hash & (this.buckets.Length - 1)];
+        while (i >= 0)
+        {
+            ref Node node = ref this.nodes[i];
+            if (node.hash == hash && node.key.Equals(key))
+            {// Identical
+                return ref node;
+            }
+
+            i = node.next;
+        }
+
+        return ref Unsafe.NullRef<Node>();
+    }
 
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
-        (var nodeIndex, var newlyAdded) = this.Probe(key, default);
-        if (nodeIndex == UnusedIndex)
-        {
+        var node = this.FindNode(key);
+        if (Unsafe.IsNullRef(ref node))
+        {// Not found
             value = default;
             return false;
         }
         else
+        {// Found
+            value = node.value;
+            return true;
+        }
+
+        /*var hash = key.GetHashCode();
+        var i = this.buckets[hash & (this.buckets.Length - 1)];
+        while (i >= 0)
         {
-            value = this.nodes[nodeIndex].Value;
+            ref Node node = ref this.nodes[i];
+            if (node.hash == hash && node.key.Equals(key))
+            {// Identical
+                value = node.value;
+                return true;
+            }
+
+            i = node.next;
+        }
+
+        value = default;
+        return false;*/
+    }
+
+    public bool Remove(TKey key)
+    {
+        var node = this.FindNode(key);
+        if (Unsafe.IsNullRef(ref node))
+        {// Not found
+            return false;
+        }
+        else
+        {// Found
             return true;
         }
     }
 
+    /// <summary>
+    /// Removes a specified node from the collection.
+    /// <br/>O(1) operation.
+    /// </summary>
+    /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to remove.</param>
+    public void RemoveNode(int nodeIndex)
+    {
+        if (this.nodes[nodeIndex].IsInvalid())
+        {
+            return;
+        }
+
+        var nodePrevious = this.nodes[nodeIndex].previous;
+        var nodeNext = this.nodes[nodeIndex].next;
+        if (this.nodes[nodeIndex].key == null)
+        {// Null list
+            if (nodeIndex >= this.nodeCount)
+            {// check node index.
+                return;
+            }
+
+            if (nodePrevious == -1)
+            {
+                this.nullList = nodeNext;
+            }
+            else
+            {
+                this.nodes[nodePrevious].next = nodeNext;
+            }
+
+            if (nodeNext != -1)
+            {
+                this.nodes[nodeNext].previous = nodePrevious;
+            }
+        }
+        else
+        {
+            // node index <= this.nodeCount
+            var index = this.nodes[nodeIndex].hashCode & this.hashMask;
+            if (nodePrevious == -1)
+            {
+                this.buckets[index] = nodeNext;
+            }
+            else
+            {
+                this.nodes[nodePrevious].next = nodeNext;
+            }
+
+            if (nodeNext != -1)
+            {
+                this.nodes[nodeNext].previous = nodePrevious;
+            }
+        }
+
+        this.nodes[nodeIndex].hashCode = 0;
+        this.nodes[nodeIndex].previous = Node.UnusedNode;
+        this.nodes[nodeIndex].next = this.freeList;
+        this.nodes[nodeIndex].key = default!;
+        this.nodes[nodeIndex].value = default!;
+        this.freeList = nodeIndex;
+        this.freeCount++;
+
+        this.version++;
+    }
+
+    [MemberNotNull(nameof(this.buckets), nameof(this.nodes))]
     private void Initialize(uint minimumSize)
     {
         var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
@@ -88,48 +197,19 @@ public class UnorderedMapSlim<TKey, TValue>
         }
 
         this.nodes = new Node[capacity];
-        // this.nullList = UnusedIndex;
         this.freeList = UnusedIndex;
     }
 
-    private (int NodeIndex, bool NewlyAdded) Probe(TKey key, Func<TKey, TValue>? valueFactory)
+    private (int NodeIndex, bool NewlyAdded) Probe(TKey key, TValue value)
     {
         if (this.nodeCount == this.nodes.Length)
         {
-            // this.Resize();
+            this.Resize();
         }
-
-        /*if (key == null)
-        {// Null key
-            if (this.AllowDuplicate == false && this.nullList != UnusedIndex)
-            {
-                return (this.nullList, false);
-            }
-
-            newIndex = this.NewNode();
-            this.nodes[newIndex].hash = 0;
-            this.nodes[newIndex].key = key!;
-            this.nodes[newIndex].value = value;
-
-            if (this.nullList == UnusedIndex)
-            {
-                this.nodes[newIndex].next = UnusedIndex;
-                this.nullList = newIndex;
-            }
-            else
-            {
-                this.nodes[newIndex].next = this.nullList;
-                this.nullList = newIndex;
-            }
-
-            return (newIndex, true);
-        }
-        else*/
 
         var hash = key.GetHashCode();
         var index = hash & (this.buckets.Length - 1);
-        if (valueFactory is null ||
-            !this.AllowDuplicate)
+        if (!this.AllowDuplicate)
         {
             var i = this.buckets[index];
             while (i >= 0)
@@ -142,17 +222,12 @@ public class UnorderedMapSlim<TKey, TValue>
 
                 i = node.next;
             }
-
-            if (valueFactory is null)
-            {
-                return (UnusedIndex, false);
-            }
         }
 
         var newIndex = this.NewNode();
         this.nodes[newIndex].hash = hash;
         this.nodes[newIndex].key = key;
-        this.nodes[newIndex].value = valueFactory(key);
+        this.nodes[newIndex].value = value;
 
         if (this.buckets[index] == UnusedIndex)
         {
@@ -186,4 +261,43 @@ public class UnorderedMapSlim<TKey, TValue>
 
         return nodeIndex;
     }
+
+    private void Resize()
+    {
+        var newSize = this.nodes.Length << 1;
+        var newMask = newSize - 1;
+        var newBuckets = new int[newSize];
+        for (var i = 0; i < newBuckets.Length; i++)
+        {
+            newBuckets[i] = UnusedIndex;
+        }
+
+        var newNodes = new Node[newSize];
+        this.nodes.AsSpan(0, this.nodeCount).CopyTo(newNodes); // Array.Copy(this.nodes, 0, newNodes, 0, this.nodeCount);
+
+        for (var i = 0; i < this.nodeCount; i++)
+        {
+            ref Node newNode = ref newNodes[i];
+            if (newNode.IsValid())
+            {
+                var index = newNode.hash & newMask;
+                if (newBuckets[index] == UnusedIndex)
+                {
+                    newNode.next = UnusedIndex;
+                    newBuckets[index] = i;
+                }
+                else
+                {
+                    var newBucket = newBuckets[index];
+                    newNode.next = newBucket;
+                    newBuckets[index] = i;
+                }
+            }
+        }
+
+        // Update
+        this.buckets = newBuckets;
+        this.nodes = newNodes;
+    }
+
 }

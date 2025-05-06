@@ -17,6 +17,7 @@ public class UnorderedMapSlimTest
     public int[] IntArray = default!;
     public Dictionary<int, int> IntDictionary = new();
     public UnorderedMap<int, int> IntUnorderedMap = new();
+    public UnorderedMapSlim<int, int> IntUnorderedMapSlim = new();
 
     public UnorderedMapSlimTest()
     {
@@ -32,6 +33,7 @@ public class UnorderedMapSlimTest
         {
             this.IntDictionary.TryAdd(x, x * 2);
             this.IntUnorderedMap.Add(x, x * 2);
+            this.IntUnorderedMapSlim.Add(x, x * 2);
         }
     }
 
