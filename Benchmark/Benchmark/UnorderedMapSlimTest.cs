@@ -15,8 +15,8 @@ public class UnorderedMapSlimTest
     public int TargetInt = 90;
 
     public int[] IntArray = default!;
-    public Dictionary<int, int> IntDictionary = default!;
-    public UnorderedMap<int, int> IntUnorderedMap = default!;
+    public Dictionary<int, int> IntDictionary = new();
+    public UnorderedMap<int, int> IntUnorderedMap = new();
 
     public UnorderedMapSlimTest()
     {
@@ -28,19 +28,10 @@ public class UnorderedMapSlimTest
         var r = new Random(12);
         this.IntArray = BenchmarkHelper.GetRandomNumbers(r, 0, this.Count, this.Count).ToArray();
 
-        this.IntDictionary = new();
-        var om = new OrderedMap<int, int>();
-        var total = 0;
         foreach (var x in this.IntArray)
         {
             this.IntDictionary.TryAdd(x, x * 2);
             this.IntUnorderedMap.Add(x, x * 2);
-
-            var result = om.Add(x, x * 2);
-            if (result.NewlyAdded)
-            {
-                total += result.Node.Value;
-            }
         }
     }
 
