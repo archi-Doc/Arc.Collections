@@ -124,7 +124,7 @@ public class UnorderedMapTest
     }
 
     [Benchmark]
-    public int AddSerialInt_Dictionary__()
+    public int AddSerialInt_Dictionary()
     {
         var c = new Dictionary<int, int>();
         for (var n = 0; n < this.Count; n++)
@@ -136,21 +136,9 @@ public class UnorderedMapTest
     }
 
     [Benchmark]
-    public int AddSerialInt_DictionaryB_()
+    public int AddSerialInt_DictionaryB()
     {
         var c = new Dictionary<int, int>(1000);
-        for (var n = 0; n < this.Count; n++)
-        {
-            c.Add(n, n);
-        }
-
-        return c.Count;
-    }
-
-    [Benchmark]
-    public int AddSerialInt_UnorderedMapClass()
-    {
-        var c = new UnorderedMapClass<int, int>();
         for (var n = 0; n < this.Count; n++)
         {
             c.Add(n, n);
@@ -183,7 +171,7 @@ public class UnorderedMapTest
         return c.Count;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int AddSerialInt_UnorderedMap2()
     {
         var c = new UnorderedMap2<int, int>();
@@ -195,7 +183,7 @@ public class UnorderedMapTest
         return c.Count;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int AddSerialInt_UnorderedMap4()
     {
         var c = new UnorderedMapPrime<int, int>();
@@ -220,24 +208,12 @@ public class UnorderedMapTest
     }
 
     [Benchmark]
-    public int AddRandomInt_Dictionary__()
+    public int AddRandomInt_Dictionary()
     {
-        var c = new Dictionary<int, int>(2);
+        var c = new Dictionary<int, int>();
         for (var n = 0; n < this.Count; n++)
         {
             c.TryAdd(this.IntArray[n], this.IntArray[n]);
-        }
-
-        return c.Count;
-    }
-
-    [Benchmark]
-    public int AddRandomInt_UnorderedMapClass()
-    {
-        var c = new UnorderedMapClass<int, int>();
-        for (var n = 0; n < this.Count; n++)
-        {
-            c.Add(this.IntArray[n], this.IntArray[n]);
         }
 
         return c.Count;
@@ -255,7 +231,7 @@ public class UnorderedMapTest
         return c.Count;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int AddRandomInt_UnorderedMap2()
     {
         var c = new UnorderedMap2<int, int>();
@@ -267,7 +243,7 @@ public class UnorderedMapTest
         return c.Count;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int AddRandomInt_UnorderedMap4()
     {
         var c = new UnorderedMapPrime<int, int>();
@@ -337,7 +313,7 @@ public class UnorderedMapTest
     }*/
 
     [Benchmark]
-    public int GetRandomInt_Dictionary__()
+    public int GetRandomInt_Dictionary()
     {
         var total = 0;
         for (var n = 0; n < this.Count; n++)
@@ -351,7 +327,7 @@ public class UnorderedMapTest
         return total;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int GetRandomInt_UnorderedMapClass()
     {
         var total = 0;
