@@ -17,11 +17,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<BytePoolTest>();
+        DebugRun<UnorderedMapSlimTest>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(UnorderedMapSlimTest),
             typeof(FactoryBenchmark),
             typeof(NewInstanceBenchmark),
             typeof(OrderedMapSetKeyBenchmark),
