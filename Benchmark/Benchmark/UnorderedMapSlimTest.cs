@@ -37,7 +37,7 @@ public class UnorderedMapSlimTest
         }
     }
 
-    /*[Benchmark]
+    [Benchmark]
     public int AddSerialInt_Dictionary()
     {
         var c = new Dictionary<int, int>();
@@ -107,9 +107,9 @@ public class UnorderedMapSlimTest
         }
 
         return c.Count;
-    }*/
+    }
 
-    /*[Benchmark]
+    [Benchmark]
     public int GetRandomInt_Dictionary()
     {
         var total = 0;
@@ -152,7 +152,7 @@ public class UnorderedMapSlimTest
         }
 
         return total;
-    }*/
+    }
 
     [Benchmark]
     public void AddAndRemove_Dictionary()
