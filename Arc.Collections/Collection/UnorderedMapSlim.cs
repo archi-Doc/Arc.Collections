@@ -1,303 +1,459 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
-/// <summary>
-/// Represents a collection of objects. <see cref="UnorderedMapSlim{TKey, TValue}"/> uses a hash table structure to store objects.
-/// </summary>
-/// <typeparam name="TKey">The type of keys in the collection.</typeparam>
-/// <typeparam name="TValue">The type of values in the collection.</typeparam>
+#pragma warning disable SA1309 // Field names should not begin with underscore
+
 public class UnorderedMapSlim<TKey, TValue>
     where TKey : notnull
-{// GetHashCodeCode, CreateKeyCode
-    private const int UnusedIndex = -1;
+{
+    private const int StartOfFreeList = -3;
+    private int[] _buckets;
+    private Entry[] _entries;
+    private int _count;
+    private int _freeList;
+    private int _freeCount;
 
-    public struct Node
-    {
-#pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
-        internal int hash;
-        internal int next;
-        internal TKey key;
-        internal TValue value;
-#pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
-
-        public TKey Key => this.key;
-
-        public TValue Value => this.value;
-    }
-
-    #region FieldAndProperty
-
-    private int[] buckets;
-    private Node[] nodes;
-    private int nodeCount;
-    private int freeList;
-    private int freeCount;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the collection allows duplicate keys.
-    /// </summary>
-    public bool AllowDuplicate { get; protected set; }
-
-    /// <summary>
-    /// Gets the number of nodes actually contained in the <see cref="UnorderedMap{TKey, TValue}"/>.
-    /// </summary>
-    public int Count => this.nodeCount - this.freeCount;
-
-    #endregion
-
-    public UnorderedMapSlim(uint minimumSize = CollectionHelper.MinimumCapacity)
+    public UnorderedMapSlim(uint minimumSize = 0)
     {
         this.Initialize(minimumSize);
     }
 
-    public (int NodeIndex, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
+    public int Count => this._count - this._freeCount;
 
-    public ref Node FindNode(TKey key)
+    /// <summary>
+    /// Gets the total numbers of elements the internal data structure can hold without resizing.
+    /// </summary>
+    public int Capacity => this._entries?.Length ?? 0;
+
+    public TValue this[TKey key]
     {
-        var hash = key.GetHashCode(); // GetHashCodeCode
-        var i = this.buckets[hash & (this.buckets.Length - 1)];
-        while (i >= 0)
+        get
         {
-            ref Node node = ref this.nodes[i];
-            if (node.hash == hash && node.key.Equals(key))
-            {// Identical
-                return ref node;
+            ref TValue value = ref this.FindValue(key);
+            if (!Unsafe.IsNullRef(ref value))
+            {
+                return value;
             }
 
-            i = node.next;
+            throw new KeyNotFoundException($"The given key '{key}' was not present in the dictionary.");
         }
 
-        return ref Unsafe.NullRef<Node>();
+        set
+        {
+            bool modified = this.TryInsert(key, value, true);
+        }
     }
 
-    public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+    public void Add(TKey key, TValue value)
     {
-        var node = this.FindNode(key);
-        if (Unsafe.IsNullRef(ref node))
-        {// Not found
-            value = default;
-            return false;
+        bool modified = this.TryInsert(key, value, true);
+    }
+
+    public void Clear()
+    {
+        int count = this._count;
+        if (count > 0)
+        {
+            Debug.Assert(this._buckets != null, "_buckets should be non-null");
+            Debug.Assert(this._entries != null, "_entries should be non-null");
+
+            Array.Clear(this._buckets);
+
+            this._count = 0;
+            this._freeList = -1;
+            this._freeCount = 0;
+            Array.Clear(this._entries, 0, count);
+        }
+    }
+
+    public bool ContainsKey(TKey key) =>
+        !Unsafe.IsNullRef(ref this.FindValue(key));
+
+    public bool ContainsValue(TValue value)
+    {
+        Entry[]? entries = this._entries;
+        if (value == null)
+        {
+            for (int i = 0; i < this._count; i++)
+            {
+                if (entries![i].next >= -1 && entries[i].value == null)
+                {
+                    return true;
+                }
+            }
+        }
+        else if (typeof(TValue).IsValueType)
+        {
+            // ValueType: Devirtualize with EqualityComparer<TValue>.Default intrinsic
+            for (int i = 0; i < this._count; i++)
+            {
+                if (entries![i].next >= -1 && EqualityComparer<TValue>.Default.Equals(entries[i].value, value))
+                {
+                    return true;
+                }
+            }
         }
         else
-        {// Found
-            value = node.value;
-            return true;
-        }
-
-        /*var hash = key.GetHashCode();
-        var i = this.buckets[hash & (this.buckets.Length - 1)];
-        while (i >= 0)
         {
-            ref Node node = ref this.nodes[i];
-            if (node.hash == hash && node.key.Equals(key))
-            {// Identical
-                value = node.value;
-                return true;
+            // Object type: Shared Generic, EqualityComparer<TValue>.Default won't devirtualize
+            // https://github.com/dotnet/runtime/issues/10050
+            // So cache in a local rather than get EqualityComparer per loop iteration
+            EqualityComparer<TValue> defaultComparer = EqualityComparer<TValue>.Default;
+            for (int i = 0; i < this._count; i++)
+            {
+                if (entries![i].next >= -1 && defaultComparer.Equals(entries[i].value, value))
+                {
+                    return true;
+                }
             }
-
-            i = node.next;
         }
 
-        value = default;
-        return false;*/
+        return false;
     }
 
     public bool Remove(TKey key)
     {
-        var node = this.FindNode(key);
-        if (Unsafe.IsNullRef(ref node))
-        {// Not found
-            return false;
-        }
-        else
-        {// Found
-            return true;
-        }
-    }
+        // The overload Remove(TKey key, out TValue value) is a copy of this method with one additional
+        // statement to copy the value for entry being removed into the output parameter.
+        // Code has been intentionally duplicated for performance reasons.
 
-    /// <summary>
-    /// Removes a specified node from the collection.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to remove.</param>
-    public void RemoveNode(int nodeIndex)
-    {
-        if (this.nodes[nodeIndex].IsInvalid())
+        if (key == null)
         {
-            return;
+            throw new ArgumentNullException(nameof(key));
         }
 
-        var nodePrevious = this.nodes[nodeIndex].previous;
-        var nodeNext = this.nodes[nodeIndex].next;
-        if (this.nodes[nodeIndex].key == null)
-        {// Null list
-            if (nodeIndex >= this.nodeCount)
-            {// check node index.
-                return;
-            }
-
-            if (nodePrevious == -1)
-            {
-                this.nullList = nodeNext;
-            }
-            else
-            {
-                this.nodes[nodePrevious].next = nodeNext;
-            }
-
-            if (nodeNext != -1)
-            {
-                this.nodes[nodeNext].previous = nodePrevious;
-            }
-        }
-        else
+        if (this._buckets != null)
         {
-            // node index <= this.nodeCount
-            var index = this.nodes[nodeIndex].hashCode & this.hashMask;
-            if (nodePrevious == -1)
-            {
-                this.buckets[index] = nodeNext;
-            }
-            else
-            {
-                this.nodes[nodePrevious].next = nodeNext;
-            }
+            Debug.Assert(this._entries != null, "entries should be non-null");
+            uint collisionCount = 0;
 
-            if (nodeNext != -1)
-            {
-                this.nodes[nodeNext].previous = nodePrevious;
-            }
-        }
+            uint hashCode = (uint)key.GetHashCode();
 
-        this.nodes[nodeIndex].hashCode = 0;
-        this.nodes[nodeIndex].previous = Node.UnusedNode;
-        this.nodes[nodeIndex].next = this.freeList;
-        this.nodes[nodeIndex].key = default!;
-        this.nodes[nodeIndex].value = default!;
-        this.freeList = nodeIndex;
-        this.freeCount++;
-
-        this.version++;
-    }
-
-    [MemberNotNull(nameof(this.buckets), nameof(this.nodes))]
-    private void Initialize(uint minimumSize)
-    {
-        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
-
-        this.buckets = new int[capacity];
-        for (var n = 0; n < capacity; n++)
-        {
-            this.buckets[n] = UnusedIndex;
-        }
-
-        this.nodes = new Node[capacity];
-        this.freeList = UnusedIndex;
-    }
-
-    private (int NodeIndex, bool NewlyAdded) Probe(TKey key, TValue value)
-    {
-        if (this.nodeCount == this.nodes.Length)
-        {
-            this.Resize();
-        }
-
-        var hash = key.GetHashCode();
-        var index = hash & (this.buckets.Length - 1);
-        if (!this.AllowDuplicate)
-        {
-            var i = this.buckets[index];
+            ref int bucket = ref this.GetBucket(hashCode);
+            Entry[]? entries = this._entries;
+            int last = -1;
+            int i = bucket - 1; // Value in buckets is 1-based
             while (i >= 0)
             {
-                ref Node node = ref this.nodes[i];
-                if (node.hash == hash && node.key.Equals(key))
-                {// Identical
-                    return (i, false);
+                ref Entry entry = ref entries[i];
+
+                if (entry.hashCode == hashCode && key.Equals(entry.key))
+                {
+                    if (last < 0)
+                    {
+                        bucket = entry.next + 1; // Value in buckets is 1-based
+                    }
+                    else
+                    {
+                        entries[last].next = entry.next;
+                    }
+
+                    Debug.Assert((StartOfFreeList - this._freeList) < 0, "shouldn't underflow because max hashtable length is MaxPrimeArrayLength = 0x7FEFFFFD(2146435069) _freelist underflow threshold 2147483646");
+                    entry.next = StartOfFreeList - this._freeList;
+
+                    if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+                    {
+                        entry.key = default!;
+                    }
+
+                    if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+                    {
+                        entry.value = default!;
+                    }
+
+                    this._freeList = i;
+                    this._freeCount++;
+                    return true;
                 }
 
-                i = node.next;
+                last = i;
+                i = entry.next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    throw new InvalidOperationException();
+                }
             }
         }
 
-        var newIndex = this.NewNode();
-        this.nodes[newIndex].hash = hash;
-        this.nodes[newIndex].key = key;
-        this.nodes[newIndex].value = value;
+        return false;
+    }
 
-        if (this.buckets[index] == UnusedIndex)
+    public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+    {
+        ref TValue valRef = ref this.FindValue(key);
+        if (!Unsafe.IsNullRef(ref valRef))
         {
-            this.nodes[newIndex].next = UnusedIndex;
-            this.buckets[index] = newIndex;
+            value = valRef;
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
+    public bool TryAdd(TKey key, TValue value) =>
+        this.TryInsert(key, value, false);
+
+    internal ref TValue FindValue(TKey key)
+    {
+        if (key == null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
+        ref Entry entry = ref Unsafe.NullRef<Entry>();
+        if (this._buckets != null)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                uint hashCode = (uint)key.GetHashCode();
+                int i = this.GetBucket(hashCode);
+                Entry[]? entries = this._entries;
+                uint collisionCount = 0;
+
+                // ValueType: Devirtualize with EqualityComparer<TKey>.Default intrinsic
+                i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
+                do
+                {
+                    // Test in if to drop range check for following array access
+                    if ((uint)i >= (uint)entries.Length)
+                    {
+                        goto ReturnNotFound;
+                    }
+
+                    entry = ref entries[i];
+                    if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
+                    {
+                        goto ReturnFound;
+                    }
+
+                    i = entry.next;
+
+                    collisionCount++;
+                }
+                while (collisionCount <= (uint)entries.Length);
+
+                // The chain of entries forms a loop; which means a concurrent update has happened.
+                // Break out of the loop and throw, rather than looping forever.
+                goto ConcurrentOperation;
+            }
+            else
+            {
+                uint hashCode = (uint)key.GetHashCode();
+                int i = this.GetBucket(hashCode);
+                Entry[]? entries = this._entries;
+                uint collisionCount = 0;
+                i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
+                do
+                {
+                    // Test in if to drop range check for following array access
+                    if ((uint)i >= (uint)entries.Length)
+                    {
+                        goto ReturnNotFound;
+                    }
+
+                    entry = ref entries[i];
+                    if (entry.hashCode == hashCode && key.Equals(entry.key))
+                    {
+                        goto ReturnFound;
+                    }
+
+                    i = entry.next;
+
+                    collisionCount++;
+                }
+                while (collisionCount <= (uint)entries.Length);
+
+                // The chain of entries forms a loop; which means a concurrent update has happened.
+                // Break out of the loop and throw, rather than looping forever.
+                goto ConcurrentOperation;
+            }
+        }
+
+        goto ReturnNotFound;
+
+ConcurrentOperation:
+        throw new InvalidOperationException();
+ReturnFound:
+        ref TValue value = ref entry.value;
+Return:
+        return ref value;
+ReturnNotFound:
+        value = ref Unsafe.NullRef<TValue>();
+        goto Return;
+    }
+
+    [MemberNotNull(nameof(_buckets), nameof(_entries))]
+    private uint Initialize(uint minimumSize)
+    {
+        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
+        this._buckets = new int[capacity];
+        this._entries = new Entry[capacity];
+
+        this._freeList = -1;
+
+        return capacity;
+    }
+
+    private bool TryInsert(TKey key, TValue value, bool overwrite)
+    {
+        // NOTE: this method is mirrored in CollectionsMarshal.GetValueRefOrAddDefault below.
+        // If you make any changes here, make sure to keep that version in sync as well.
+
+        if (key == null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
+        if (this._buckets == null)
+        {
+            this.Initialize(0);
+        }
+
+        Entry[]? entries = this._entries;
+
+        uint hashCode = (uint)key.GetHashCode();
+
+        uint collisionCount = 0;
+        ref int bucket = ref this.GetBucket(hashCode);
+        int i = bucket - 1; // Value in _buckets is 1-based
+
+        if (typeof(TKey).IsValueType)
+        {
+            // ValueType: Devirtualize with EqualityComparer<TKey>.Default intrinsic
+            while ((uint)i < (uint)entries.Length)
+            {
+                if (entries[i].hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entries[i].key, key))
+                {
+                    if (overwrite)
+                    {
+                        entries[i].value = value;
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                i = entries[i].next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    throw new InvalidOperationException();
+                }
+            }
         }
         else
         {
-            this.nodes[newIndex].next = this.buckets[index];
-            this.buckets[index] = newIndex;
+            while ((uint)i < (uint)entries.Length)
+            {
+                if (entries[i].hashCode == hashCode && key.Equals(entries[i].key))
+                {
+                    if (overwrite)
+                    {
+                        entries[i].value = value;
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                i = entries[i].next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    throw new InvalidOperationException();
+                }
+            }
         }
 
-        return (newIndex, true);
+        int index;
+        if (this._freeCount > 0)
+        {
+            index = this._freeList;
+            Debug.Assert((StartOfFreeList - entries[this._freeList].next) >= -1, "shouldn't overflow because `next` cannot underflow");
+            this._freeList = StartOfFreeList - entries[this._freeList].next;
+            this._freeCount--;
+        }
+        else
+        {
+            int count = this._count;
+            if (count == entries.Length)
+            {
+                this.Resize();
+                bucket = ref this.GetBucket(hashCode);
+            }
+
+            index = count;
+            this._count = count + 1;
+            entries = this._entries;
+        }
+
+        ref Entry entry = ref entries![index];
+        entry.hashCode = hashCode;
+        entry.next = bucket - 1; // Value in _buckets is 1-based
+        entry.key = key;
+        entry.value = value;
+        bucket = index + 1; // Value in _buckets is 1-based
+
+        return true;
+    }
+
+    private void Resize() => this.Resize(this._count << 1);
+
+    private void Resize(int newSize)
+    {
+        Entry[] entries = new Entry[newSize];
+
+        int count = this._count;
+        Array.Copy(this._entries, entries, count);
+
+        // Assign member variables after both arrays allocated to guard against corruption from OOM if second fails
+        this._buckets = new int[newSize];
+        for (int i = 0; i < count; i++)
+        {
+            if (entries[i].next >= -1)
+            {
+                ref int bucket = ref this.GetBucket(entries[i].hashCode);
+                entries[i].next = bucket - 1; // Value in _buckets is 1-based
+                bucket = i + 1;
+            }
+        }
+
+        this._entries = entries;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int NewNode()
+    private ref int GetBucket(uint hashCode)
     {
-        int nodeIndex;
-        if (this.freeCount > 0)
-        {// Free list
-            nodeIndex = this.freeList;
-            this.freeList = this.nodes[nodeIndex].next;
-            this.freeCount--;
-        }
-        else
-        {
-            nodeIndex = this.nodeCount;
-            this.nodeCount++;
-        }
-
-        return nodeIndex;
+        int[] buckets = this._buckets!;
+        return ref buckets[(uint)hashCode % buckets.Length];
     }
 
-    private void Resize()
+    private struct Entry
     {
-        var newSize = this.nodes.Length << 1;
-        var newMask = newSize - 1;
-        var newBuckets = new int[newSize];
-        for (var i = 0; i < newBuckets.Length; i++)
-        {
-            newBuckets[i] = UnusedIndex;
-        }
+#pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
+        public uint hashCode;
 
-        var newNodes = new Node[newSize];
-        this.nodes.AsSpan(0, this.nodeCount).CopyTo(newNodes); // Array.Copy(this.nodes, 0, newNodes, 0, this.nodeCount);
+        /// <summary>
+        /// 0-based index of next entry in chain: -1 means end of chain
+        /// also encodes whether this entry _itself_ is part of the free list by changing sign and subtracting 3,
+        /// so -2 means end of free list, -3 means index 0 but on free list, -4 means index 1 but on free list, etc.
+        /// </summary>
+        public int next;
+        public TKey key;     // Key of entry
+        public TValue value; // Value of entry
+#pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
-        for (var i = 0; i < this.nodeCount; i++)
-        {
-            ref Node newNode = ref newNodes[i];
-            if (newNode.IsValid())
-            {
-                var index = newNode.hash & newMask;
-                if (newBuckets[index] == UnusedIndex)
-                {
-                    newNode.next = UnusedIndex;
-                    newBuckets[index] = i;
-                }
-                else
-                {
-                    var newBucket = newBuckets[index];
-                    newNode.next = newBucket;
-                    newBuckets[index] = i;
-                }
-            }
-        }
-
-        // Update
-        this.buckets = newBuckets;
-        this.nodes = newNodes;
     }
-
 }
