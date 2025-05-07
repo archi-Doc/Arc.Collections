@@ -13,7 +13,7 @@ namespace Arc.Collections;
 public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
     where TValue : notnull
-{// GetHashCode, EqualityComparerCode
+{// GetHashCodeCode, EqualityComparerCode
     private const int StartOfFreeList = -3;
 
     public struct Node
@@ -64,7 +64,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 return value;
             }
 
-            throw new KeyNotFoundException($"The given key '{key}' was not present in the collection.");
+            throw new KeyNotFoundException();
         }
 
         set => this.TryInsert(key, value, true);
@@ -125,7 +125,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
         var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
         uint collisionCount = 0;
-        var hashCode = (uint)comparer.GetHashCode(key);
+        var hashCode = (uint)comparer.GetHashCode(key); // GetHashCodeCode
         ref int bucket = ref this.GetBucket(hashCode);
         var nodes = this._nodes;
         var last = -1;
@@ -146,7 +146,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 }
 
                 node.next = StartOfFreeList - this._freeList;
-                if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+                node.key = default!;
+                node.value = default!;
+                /*if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
                 {
                     node.key = default!;
                 }
@@ -154,7 +156,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
                 {
                     node.value = default!;
-                }
+                }*/
 
                 this._freeList = i;
                 this._freeCount++;
@@ -177,7 +179,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
-        var hashCode = (uint)comparer.GetHashCode(key);
+        var hashCode = (uint)comparer.GetHashCode(key); // GetHashCodeCode
         var i = this.GetBucket(hashCode);
         var nodes = this._nodes;
         uint collisionCount = 0;
@@ -213,7 +215,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
         this._buckets = new int[capacity];
         this._nodes = new Node[capacity];
-
         this._freeList = -1;
 
         return capacity;
@@ -228,7 +229,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
         var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
         var nodes = this._nodes;
-        var hashCode = (uint)comparer.GetHashCode(key);
+        var hashCode = (uint)comparer.GetHashCode(key); // GetHashCodeCode
         uint collisionCount = 0;
         ref int bucket = ref this.GetBucket(hashCode);
         var i = bucket - 1; // Value in _buckets is 1-based
