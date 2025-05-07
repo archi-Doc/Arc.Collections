@@ -37,7 +37,7 @@ public class UnorderedMapSlimTest
         }
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public int AddSerialInt_Dictionary()
     {
         var c = new Dictionary<int, int>();
@@ -107,9 +107,9 @@ public class UnorderedMapSlimTest
         }
 
         return c.Count;
-    }
+    }*/
 
-    [Benchmark]
+    // [Benchmark]
     public int GetRandomInt_Dictionary()
     {
         var total = 0;
@@ -153,4 +153,25 @@ public class UnorderedMapSlimTest
 
         return total;
     }
+
+    /*[Benchmark]
+    public void AddAndRemove_Dictionary()
+    {
+        this.IntDictionary.Remove(this.IntArray[0]);
+        this.IntDictionary.Add(this.IntArray[0], this.IntArray[0] * 2);
+    }
+
+    [Benchmark]
+    public void AddAndRemove_UnorderedMap()
+    {
+        this.IntUnorderedMap.Remove(this.IntArray[0]);
+        this.IntUnorderedMap.Add(this.IntArray[0], this.IntArray[0] * 2);
+    }
+
+    [Benchmark]
+    public void AddAndRemove_UnorderedMapSlim()
+    {
+        this.IntUnorderedMapSlim.Remove(this.IntArray[0]);
+        this.IntUnorderedMapSlim.Add(this.IntArray[0], this.IntArray[0] * 2);
+    }*/
 }
