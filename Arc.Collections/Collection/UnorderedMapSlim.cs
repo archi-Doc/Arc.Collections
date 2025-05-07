@@ -123,9 +123,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             throw new ArgumentNullException(nameof(key));
         }
 
-        // var comparer = EqualityComparer<TKey>.Default;
+        var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
         uint collisionCount = 0;
-        var hashCode = (uint)key.GetHashCode();
+        var hashCode = (uint)comparer.GetHashCode(key);
         ref int bucket = ref this.GetBucket(hashCode);
         var nodes = this._nodes;
         var last = -1;
@@ -134,8 +134,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         {
             ref Node node = ref nodes[i];
 
-            if (node.hashCode == hashCode && key.Equals(node.key))
-            {// EqualityComparerCode
+            if (node.hashCode == hashCode && comparer.Equals(key, node.key))
+            {
                 if (last < 0)
                 {
                     bucket = node.next + 1; // Value in buckets is 1-based
