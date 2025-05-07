@@ -10,9 +10,14 @@ namespace Arc.Collections;
 
 #pragma warning disable SA1309 // Field names should not begin with underscore
 
+/// <summary>
+/// Represents a collection of key/value pairs that are organized based on the hash code of the key.
+/// This is a lightweight implementation optimized for performance with minimal memory overhead.
+/// </summary>
+/// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
+/// <typeparam name="TValue">The type of values in the map.</typeparam>
 public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
-    where TValue : notnull
 {// GetHashCodeCode, EqualityComparerCode
     private const int StartOfFreeList = -3;
 
@@ -44,17 +49,33 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     private int _freeList;
     private int _freeCount;
 
+    /// <summary>
+    /// Gets the number of elements contained in the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
     public int Count => this._count - this._freeCount;
 
+    /// <summary>
+    /// Gets the total capacity of the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
     public int Capacity => this._nodes.Length;
 
     #endregion
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UnorderedMapSlim{TKey, TValue}"/> class that is empty with the specified initial capacity.
+    /// </summary>
+    /// <param name="minimumSize">The minimum capacity to allocate.</param>
     public UnorderedMapSlim(uint minimumSize = 0)
     {
         this.Initialize(minimumSize);
     }
 
+    /// <summary>
+    /// Gets or sets the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key of the value to get or set.</param>
+    /// <returns>The value associated with the specified key.</returns>
+    /// <exception cref="KeyNotFoundException">The key does not exist in the collection.</exception>
     public TValue this[TKey key]
     {
         get
@@ -70,10 +91,26 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         set => this.TryInsert(key, value, true);
     }
 
+    /// <summary>
+    /// Adds an element with the provided key and value to the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
+    /// <param name="key">The key of the element to add.</param>
+    /// <param name="value">The value of the element to add.</param>
+    /// <exception cref="ArgumentNullException">key is null.</exception>
     public void Add(TKey key, TValue value) => this.TryInsert(key, value, true);
 
+    /// <summary>
+    /// Attempts to add the specified key and value to the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
+    /// <param name="key">The key of the element to add.</param>
+    /// <param name="value">The value of the element to add.</param>
+    /// <returns><see langword="true"/> if the key/value pair was added successfully; <see langword="false"/> if the key already exists.</returns>
+    /// <exception cref="ArgumentNullException">key is null.</exception>
     public bool TryAdd(TKey key, TValue value) => this.TryInsert(key, value, false);
 
+    /// <summary>
+    /// Removes all keys and values from the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
     public void Clear()
     {
         var count = this._count;
@@ -88,8 +125,18 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
     }
 
+    /// <summary>
+    /// Determines whether the <see cref="UnorderedMapSlim{TKey, TValue}"/> contains the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate in the <see cref="UnorderedMapSlim{TKey, TValue}"/>.</param>
+    /// <returns><see langword="true"/> if the <see cref="UnorderedMapSlim{TKey, TValue}"/> contains an element with the specified key; otherwise, <see langword="false"/>.</returns>
     public bool ContainsKey(TKey key) => this.TryGetValue(key, out _);
 
+    /// <summary>
+    /// Determines whether the <see cref="UnorderedMapSlim{TKey, TValue}"/> contains a specific value.
+    /// </summary>
+    /// <param name="value">The value to locate in the <see cref="UnorderedMapSlim{TKey, TValue}"/>.</param>
+    /// <returns><see langword="true"/> if the <see cref="UnorderedMapSlim{TKey, TValue}"/> contains an element with the specified value; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var nodes = this._nodes;
@@ -116,6 +163,13 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         return false;
     }
 
+    /// <summary>
+    /// Removes the element with the specified key from the <see cref="UnorderedMapSlim{TKey, TValue}"/>.
+    /// </summary>
+    /// <param name="key">The key of the element to remove.</param>
+    /// <returns><see langword="true"/> if the element is successfully removed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException">key is null.</exception>
+    /// <exception cref="InvalidOperationException">An error occurred during the operation.</exception>
     public bool Remove(TKey key)
     {
         if (key is null)
@@ -146,9 +200,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 }
 
                 node.next = StartOfFreeList - this._freeList;
-                node.key = default!;
-                node.value = default!;
-                /*if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
                 {
                     node.key = default!;
                 }
@@ -156,7 +208,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
                 {
                     node.value = default!;
-                }*/
+                }
 
                 this._freeList = i;
                 this._freeCount++;
@@ -176,6 +228,13 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         return false;
     }
 
+    /// <summary>
+    /// Gets the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key whose value to get.</param>
+    /// <param name="value">When this method returns, contains the value associated with the specified key, if the key is found;
+    /// otherwise, the default value for the type of the value parameter.</param>
+    /// <returns><see langword="true"/> if the object that implements <see cref="UnorderedMapSlim{TKey, TValue}"/> contains an element with the specified key; otherwise, <see langword="false"/>.</returns>
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
