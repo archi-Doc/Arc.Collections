@@ -6,6 +6,8 @@ using System.Linq;
 using Arc.Collections;
 using Xunit;
 
+#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+
 namespace xUnitTest;
 
 public static class TestHelper
@@ -20,9 +22,23 @@ public static class TestHelper
         }
     }
 
-#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
     public static void ValidateWithDictionary<TKey, TValue>(this UnorderedMap<TKey, TValue> um, Dictionary<TKey, TValue> dic)
-#pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+    {
+        um.Count.Is(dic.Count);
+        foreach (var x in um)
+        {
+            dic.TryGetValue(x.Key, out var value).IsTrue();
+            Comparer<TValue>.Default.Compare(x.Value, value).Is(0);
+        }
+
+        foreach (var x in dic)
+        {
+            um.TryGetValue(x.Key, out var value).IsTrue();
+            Comparer<TValue>.Default.Compare(x.Value, value).Is(0);
+        }
+    }
+
+    public static void ValidateWithDictionary<TKey, TValue>(this UnorderedMapSlim<TKey, TValue> um, Dictionary<TKey, TValue> dic)
     {
         um.Count.Is(dic.Count);
         foreach (var x in um)

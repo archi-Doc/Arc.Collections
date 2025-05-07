@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -12,25 +11,27 @@ namespace Arc.Collections;
 
 public class UnorderedMapSlim<TKey, TValue>
     where TKey : notnull
-{
+{// GetHashCode, EqualityComparerCode
     private const int StartOfFreeList = -3;
+
+    #region FieldAndProperty
+
     private int[] _buckets;
     private Entry[] _entries;
     private int _count;
     private int _freeList;
     private int _freeCount;
 
+    public int Count => this._count - this._freeCount;
+
+    public int Capacity => this._entries.Length;
+
+    #endregion
+
     public UnorderedMapSlim(uint minimumSize = 0)
     {
         this.Initialize(minimumSize);
     }
-
-    public int Count => this._count - this._freeCount;
-
-    /// <summary>
-    /// Gets the total numbers of elements the internal data structure can hold without resizing.
-    /// </summary>
-    public int Capacity => this._entries?.Length ?? 0;
 
     public TValue this[TKey key]
     {
@@ -42,28 +43,19 @@ public class UnorderedMapSlim<TKey, TValue>
                 return value;
             }
 
-            throw new KeyNotFoundException($"The given key '{key}' was not present in the dictionary.");
+            throw new KeyNotFoundException($"The given key '{key}' was not present in the collection.");
         }
 
-        set
-        {
-            bool modified = this.TryInsert(key, value, true);
-        }
+        set => this.TryInsert(key, value, true);
     }
 
-    public void Add(TKey key, TValue value)
-    {
-        bool modified = this.TryInsert(key, value, true);
-    }
+    public void Add(TKey key, TValue value) => this.TryInsert(key, value, true);
 
     public void Clear()
     {
-        int count = this._count;
+        var count = this._count;
         if (count > 0)
         {
-            Debug.Assert(this._buckets != null, "_buckets should be non-null");
-            Debug.Assert(this._entries != null, "_entries should be non-null");
-
             Array.Clear(this._buckets);
 
             this._count = 0;
@@ -73,17 +65,16 @@ public class UnorderedMapSlim<TKey, TValue>
         }
     }
 
-    public bool ContainsKey(TKey key) =>
-        !Unsafe.IsNullRef(ref this.FindValue(key));
+    public bool ContainsKey(TKey key) => !Unsafe.IsNullRef(ref this.FindValue(key));
 
     public bool ContainsValue(TValue value)
     {
-        Entry[]? entries = this._entries;
-        if (value == null)
+        var entries = this._entries;
+        if (value is null)
         {
-            for (int i = 0; i < this._count; i++)
+            for (var i = 0; i < this._count; i++)
             {
-                if (entries![i].next >= -1 && entries[i].value == null)
+                if (entries![i].next >= -1 && entries[i].value is null)
                 {
                     return true;
                 }
@@ -91,9 +82,8 @@ public class UnorderedMapSlim<TKey, TValue>
         }
         else if (typeof(TValue).IsValueType)
         {
-            // ValueType: Devirtualize with EqualityComparer<TValue>.Default intrinsic
-            for (int i = 0; i < this._count; i++)
-            {
+            for (var i = 0; i < this._count; i++)
+            {// EqualityComparerCode
                 if (entries![i].next >= -1 && EqualityComparer<TValue>.Default.Equals(entries[i].value, value))
                 {
                     return true;
@@ -102,12 +92,9 @@ public class UnorderedMapSlim<TKey, TValue>
         }
         else
         {
-            // Object type: Shared Generic, EqualityComparer<TValue>.Default won't devirtualize
-            // https://github.com/dotnet/runtime/issues/10050
-            // So cache in a local rather than get EqualityComparer per loop iteration
-            EqualityComparer<TValue> defaultComparer = EqualityComparer<TValue>.Default;
-            for (int i = 0; i < this._count; i++)
-            {
+            var defaultComparer = EqualityComparer<TValue>.Default;
+            for (var i = 0; i < this._count; i++)
+            {// EqualityComparerCode
                 if (entries![i].next >= -1 && defaultComparer.Equals(entries[i].value, value))
                 {
                     return true;
@@ -120,67 +107,55 @@ public class UnorderedMapSlim<TKey, TValue>
 
     public bool Remove(TKey key)
     {
-        // The overload Remove(TKey key, out TValue value) is a copy of this method with one additional
-        // statement to copy the value for entry being removed into the output parameter.
-        // Code has been intentionally duplicated for performance reasons.
-
-        if (key == null)
+        if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
 
-        if (this._buckets != null)
+        uint collisionCount = 0;
+        uint hashCode = (uint)key.GetHashCode();
+        ref int bucket = ref this.GetBucket(hashCode);
+        var entries = this._entries;
+        var last = -1;
+        var i = bucket - 1;
+        while (i >= 0)
         {
-            Debug.Assert(this._entries != null, "entries should be non-null");
-            uint collisionCount = 0;
+            ref Entry entry = ref entries[i];
 
-            uint hashCode = (uint)key.GetHashCode();
+            if (entry.hashCode == hashCode && key.Equals(entry.key))
+            {// EqualityComparerCode
+                if (last < 0)
+                {
+                    bucket = entry.next + 1; // Value in buckets is 1-based
+                }
+                else
+                {
+                    entries[last].next = entry.next;
+                }
 
-            ref int bucket = ref this.GetBucket(hashCode);
-            Entry[]? entries = this._entries;
-            int last = -1;
-            int i = bucket - 1; // Value in buckets is 1-based
-            while (i >= 0)
+                entry.next = StartOfFreeList - this._freeList;
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+                {
+                    entry.key = default!;
+                }
+
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+                {
+                    entry.value = default!;
+                }
+
+                this._freeList = i;
+                this._freeCount++;
+                return true;
+            }
+
+            last = i;
+            i = entry.next;
+
+            collisionCount++;
+            if (collisionCount > (uint)entries.Length)
             {
-                ref Entry entry = ref entries[i];
-
-                if (entry.hashCode == hashCode && key.Equals(entry.key))
-                {
-                    if (last < 0)
-                    {
-                        bucket = entry.next + 1; // Value in buckets is 1-based
-                    }
-                    else
-                    {
-                        entries[last].next = entry.next;
-                    }
-
-                    Debug.Assert((StartOfFreeList - this._freeList) < 0, "shouldn't underflow because max hashtable length is MaxPrimeArrayLength = 0x7FEFFFFD(2146435069) _freelist underflow threshold 2147483646");
-                    entry.next = StartOfFreeList - this._freeList;
-
-                    if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
-                    {
-                        entry.key = default!;
-                    }
-
-                    if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
-                    {
-                        entry.value = default!;
-                    }
-
-                    this._freeList = i;
-                    this._freeCount++;
-                    return true;
-                }
-
-                last = i;
-                i = entry.next;
-
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    throw new InvalidOperationException();
-                }
+                throw new InvalidOperationException();
             }
         }
 
@@ -200,12 +175,11 @@ public class UnorderedMapSlim<TKey, TValue>
         return false;
     }
 
-    public bool TryAdd(TKey key, TValue value) =>
-        this.TryInsert(key, value, false);
+    public bool TryAdd(TKey key, TValue value) => this.TryInsert(key, value, false);
 
     internal ref TValue FindValue(TKey key)
     {
-        if (key == null)
+        if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
@@ -215,16 +189,14 @@ public class UnorderedMapSlim<TKey, TValue>
         {
             if (typeof(TKey).IsValueType)
             {
-                uint hashCode = (uint)key.GetHashCode();
-                int i = this.GetBucket(hashCode);
-                Entry[]? entries = this._entries;
+                var hashCode = (uint)key.GetHashCode();
+                var i = this.GetBucket(hashCode);
+                var entries = this._entries;
                 uint collisionCount = 0;
 
-                // ValueType: Devirtualize with EqualityComparer<TKey>.Default intrinsic
                 i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
                 do
                 {
-                    // Test in if to drop range check for following array access
                     if ((uint)i >= (uint)entries.Length)
                     {
                         goto ReturnNotFound;
@@ -232,7 +204,7 @@ public class UnorderedMapSlim<TKey, TValue>
 
                     entry = ref entries[i];
                     if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
-                    {
+                    {// EqualityComparerCode
                         goto ReturnFound;
                     }
 
@@ -242,20 +214,17 @@ public class UnorderedMapSlim<TKey, TValue>
                 }
                 while (collisionCount <= (uint)entries.Length);
 
-                // The chain of entries forms a loop; which means a concurrent update has happened.
-                // Break out of the loop and throw, rather than looping forever.
                 goto ConcurrentOperation;
             }
             else
             {
-                uint hashCode = (uint)key.GetHashCode();
-                int i = this.GetBucket(hashCode);
-                Entry[]? entries = this._entries;
+                var hashCode = (uint)key.GetHashCode();
+                var i = this.GetBucket(hashCode);
+                var entries = this._entries;
                 uint collisionCount = 0;
                 i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
                 do
                 {
-                    // Test in if to drop range check for following array access
                     if ((uint)i >= (uint)entries.Length)
                     {
                         goto ReturnNotFound;
@@ -263,7 +232,7 @@ public class UnorderedMapSlim<TKey, TValue>
 
                     entry = ref entries[i];
                     if (entry.hashCode == hashCode && key.Equals(entry.key))
-                    {
+                    {// EqualityComparerCode
                         goto ReturnFound;
                     }
 
@@ -273,8 +242,6 @@ public class UnorderedMapSlim<TKey, TValue>
                 }
                 while (collisionCount <= (uint)entries.Length);
 
-                // The chain of entries forms a loop; which means a concurrent update has happened.
-                // Break out of the loop and throw, rather than looping forever.
                 goto ConcurrentOperation;
             }
         }
@@ -306,32 +273,21 @@ ReturnNotFound:
 
     private bool TryInsert(TKey key, TValue value, bool overwrite)
     {
-        // NOTE: this method is mirrored in CollectionsMarshal.GetValueRefOrAddDefault below.
-        // If you make any changes here, make sure to keep that version in sync as well.
-
-        if (key == null)
+        if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
 
-        if (this._buckets == null)
-        {
-            this.Initialize(0);
-        }
-
-        Entry[]? entries = this._entries;
-
-        uint hashCode = (uint)key.GetHashCode();
-
+        var entries = this._entries;
+        var hashCode = (uint)key.GetHashCode();
         uint collisionCount = 0;
         ref int bucket = ref this.GetBucket(hashCode);
-        int i = bucket - 1; // Value in _buckets is 1-based
+        var i = bucket - 1; // Value in _buckets is 1-based
 
         if (typeof(TKey).IsValueType)
         {
-            // ValueType: Devirtualize with EqualityComparer<TKey>.Default intrinsic
             while ((uint)i < (uint)entries.Length)
-            {
+            {// EqualityComparerCode
                 if (entries[i].hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entries[i].key, key))
                 {
                     if (overwrite)
@@ -355,7 +311,7 @@ ReturnNotFound:
         else
         {
             while ((uint)i < (uint)entries.Length)
-            {
+            {// EqualityComparerCode
                 if (entries[i].hashCode == hashCode && key.Equals(entries[i].key))
                 {
                     if (overwrite)
@@ -381,7 +337,6 @@ ReturnNotFound:
         if (this._freeCount > 0)
         {
             index = this._freeList;
-            Debug.Assert((StartOfFreeList - entries[this._freeList].next) >= -1, "shouldn't overflow because `next` cannot underflow");
             this._freeList = StartOfFreeList - entries[this._freeList].next;
             this._freeCount--;
         }
@@ -413,14 +368,12 @@ ReturnNotFound:
 
     private void Resize(int newSize)
     {
-        Entry[] entries = new Entry[newSize];
-
-        int count = this._count;
+        var entries = new Entry[newSize];
+        var count = this._count;
         Array.Copy(this._entries, entries, count);
 
-        // Assign member variables after both arrays allocated to guard against corruption from OOM if second fails
         this._buckets = new int[newSize];
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             if (entries[i].next >= -1)
             {
@@ -436,8 +389,8 @@ ReturnNotFound:
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref int GetBucket(uint hashCode)
     {
-        int[] buckets = this._buckets!;
-        return ref buckets[(uint)hashCode % buckets.Length];
+        var buckets = this._buckets;
+        return ref buckets[hashCode & (buckets.Length - 1)];
     }
 
     private struct Entry
@@ -454,6 +407,5 @@ ReturnNotFound:
         public TKey key;     // Key of entry
         public TValue value; // Value of entry
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
-
     }
 }
