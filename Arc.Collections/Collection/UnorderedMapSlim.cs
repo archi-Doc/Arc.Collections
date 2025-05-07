@@ -226,58 +226,32 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             throw new ArgumentNullException(nameof(key));
         }
 
+        var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
         var entries = this._nodes;
-        var hashCode = (uint)key.GetHashCode();
+        var hashCode = (uint)comparer.GetHashCode(key);
         uint collisionCount = 0;
         ref int bucket = ref this.GetBucket(hashCode);
         var i = bucket - 1; // Value in _buckets is 1-based
 
-        if (typeof(TKey).IsValueType)
+        while ((uint)i < (uint)entries.Length)
         {
-            while ((uint)i < (uint)entries.Length)
-            {// EqualityComparerCode
-                if (entries[i].hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entries[i].key, key))
+            if (entries[i].hashCode == hashCode && comparer.Equals(entries[i].key, key))
+            {
+                if (overwrite)
                 {
-                    if (overwrite)
-                    {
-                        entries[i].value = value;
-                        return true;
-                    }
-
-                    return false;
+                    entries[i].value = value;
+                    return true;
                 }
 
-                i = entries[i].next;
-
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    throw new InvalidOperationException();
-                }
+                return false;
             }
-        }
-        else
-        {
-            while ((uint)i < (uint)entries.Length)
-            {// EqualityComparerCode
-                if (entries[i].hashCode == hashCode && key.Equals(entries[i].key))
-                {
-                    if (overwrite)
-                    {
-                        entries[i].value = value;
-                        return true;
-                    }
 
-                    return false;
-                }
+            i = entries[i].next;
 
-                i = entries[i].next;
-
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    throw new InvalidOperationException();
-                }
+            collisionCount++;
+            if (collisionCount > (uint)entries.Length)
+            {
+                throw new InvalidOperationException();
             }
         }
 
@@ -337,8 +311,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref int GetBucket(uint hashCode)
     {
-        var b = this._buckets;
-        return ref b[hashCode & (b.Length - 1)];
+        var bucket = this._buckets;
+        return ref bucket[hashCode & (bucket.Length - 1)];
     }
 
     #region IEnumerable
