@@ -109,7 +109,7 @@ public class UnorderedMapSlimTest
         return c.Count;
     }*/
 
-    // [Benchmark]
+    /*[Benchmark]
     public int GetRandomInt_Dictionary()
     {
         var total = 0;
@@ -152,26 +152,44 @@ public class UnorderedMapSlimTest
         }
 
         return total;
-    }
+    }*/
 
-    /*[Benchmark]
+    [Benchmark]
     public void AddAndRemove_Dictionary()
     {
         this.IntDictionary.Remove(this.IntArray[0]);
+        this.IntDictionary.Remove(this.IntArray[1]);
+        this.IntDictionary.Remove(this.IntArray[2]);
+        this.IntDictionary.Remove(this.IntArray[3]);
         this.IntDictionary.Add(this.IntArray[0], this.IntArray[0] * 2);
+        this.IntDictionary.Add(this.IntArray[1], this.IntArray[1] * 2);
+        this.IntDictionary.Add(this.IntArray[2], this.IntArray[2] * 2);
+        this.IntDictionary.Add(this.IntArray[3], this.IntArray[3] * 2);
     }
 
     [Benchmark]
     public void AddAndRemove_UnorderedMap()
     {
         this.IntUnorderedMap.Remove(this.IntArray[0]);
+        this.IntUnorderedMap.Remove(this.IntArray[1]);
+        this.IntUnorderedMap.Remove(this.IntArray[2]);
+        this.IntUnorderedMap.Remove(this.IntArray[3]);
         this.IntUnorderedMap.Add(this.IntArray[0], this.IntArray[0] * 2);
+        this.IntUnorderedMap.Add(this.IntArray[1], this.IntArray[1] * 2);
+        this.IntUnorderedMap.Add(this.IntArray[2], this.IntArray[2] * 2);
+        this.IntUnorderedMap.Add(this.IntArray[3], this.IntArray[3] * 2);
     }
 
     [Benchmark]
     public void AddAndRemove_UnorderedMapSlim()
     {
         this.IntUnorderedMapSlim.Remove(this.IntArray[0]);
+        this.IntUnorderedMapSlim.Remove(this.IntArray[1]);
+        this.IntUnorderedMapSlim.Remove(this.IntArray[2]);
+        this.IntUnorderedMapSlim.Remove(this.IntArray[3]);
         this.IntUnorderedMapSlim.Add(this.IntArray[0], this.IntArray[0] * 2);
-    }*/
+        this.IntUnorderedMapSlim.Add(this.IntArray[1], this.IntArray[1] * 2);
+        this.IntUnorderedMapSlim.Add(this.IntArray[2], this.IntArray[2] * 2);
+        this.IntUnorderedMapSlim.Add(this.IntArray[3], this.IntArray[3] * 2);
+    }
 }

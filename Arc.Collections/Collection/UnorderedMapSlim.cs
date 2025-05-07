@@ -16,33 +16,37 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 {// GetHashCode, EqualityComparerCode
     private const int StartOfFreeList = -3;
 
-    private struct Entry
+    public struct Node
     {
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
-        public uint hashCode;
+        internal uint hashCode;
 
         /// <summary>
         /// 0-based index of next entry in chain: -1 means end of chain
         /// also encodes whether this entry _itself_ is part of the free list by changing sign and subtracting 3,
         /// so -2 means end of free list, -3 means index 0 but on free list, -4 means index 1 but on free list, etc.
         /// </summary>
-        public int next;
-        public TKey key;     // Key of entry
-        public TValue value; // Value of entry
+        internal int next;
+        internal TKey key;     // Key of entry
+        internal TValue value; // Value of entry
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
+
+        public TKey Key => this.key;
+
+        public TValue Value => this.value;
     }
 
     #region FieldAndProperty
 
     private int[] _buckets;
-    private Entry[] _entries;
+    private Node[] _nodes;
     private int _count;
     private int _freeList;
     private int _freeCount;
 
     public int Count => this._count - this._freeCount;
 
-    public int Capacity => this._entries.Length;
+    public int Capacity => this._nodes.Length;
 
     #endregion
 
@@ -55,8 +59,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     {
         get
         {
-            ref TValue value = ref this.FindValue(key);
-            if (!Unsafe.IsNullRef(ref value))
+            if (this.TryGetValue(key, out var value))
             {
                 return value;
             }
@@ -69,6 +72,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
     public void Add(TKey key, TValue value) => this.TryInsert(key, value, true);
 
+    public bool TryAdd(TKey key, TValue value) => this.TryInsert(key, value, false);
+
     public void Clear()
     {
         var count = this._count;
@@ -79,15 +84,15 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             this._count = 0;
             this._freeList = -1;
             this._freeCount = 0;
-            Array.Clear(this._entries, 0, count);
+            Array.Clear(this._nodes, 0, count);
         }
     }
 
-    public bool ContainsKey(TKey key) => !Unsafe.IsNullRef(ref this.FindValue(key));
+    public bool ContainsKey(TKey key) => this.TryGetValue(key, out _);
 
     public bool ContainsValue(TValue value)
     {
-        var entries = this._entries;
+        var entries = this._nodes;
         if (value is null)
         {
             for (var i = 0; i < this._count; i++)
@@ -98,25 +103,13 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                 }
             }
         }
-        else if (typeof(TValue).IsValueType)
+
+        var comparer = EqualityComparer<TValue>.Default; // EqualityComparerCode
+        for (var i = 0; i < this._count; i++)
         {
-            for (var i = 0; i < this._count; i++)
-            {// EqualityComparerCode
-                if (entries[i].next >= -1 && EqualityComparer<TValue>.Default.Equals(entries[i].value, value))
-                {
-                    return true;
-                }
-            }
-        }
-        else
-        {
-            var defaultComparer = EqualityComparer<TValue>.Default;
-            for (var i = 0; i < this._count; i++)
-            {// EqualityComparerCode
-                if (entries![i].next >= -1 && defaultComparer.Equals(entries[i].value, value))
-                {
-                    return true;
-                }
+            if (entries![i].next >= -1 && comparer.Equals(entries[i].value, value))
+            {
+                return true;
             }
         }
 
@@ -130,36 +123,37 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             throw new ArgumentNullException(nameof(key));
         }
 
+        // var comparer = EqualityComparer<TKey>.Default;
         uint collisionCount = 0;
         var hashCode = (uint)key.GetHashCode();
         ref int bucket = ref this.GetBucket(hashCode);
-        var entries = this._entries;
+        var nodes = this._nodes;
         var last = -1;
         var i = bucket - 1;
         while (i >= 0)
         {
-            ref Entry entry = ref entries[i];
+            ref Node node = ref nodes[i];
 
-            if (entry.hashCode == hashCode && key.Equals(entry.key))
+            if (node.hashCode == hashCode && key.Equals(node.key))
             {// EqualityComparerCode
                 if (last < 0)
                 {
-                    bucket = entry.next + 1; // Value in buckets is 1-based
+                    bucket = node.next + 1; // Value in buckets is 1-based
                 }
                 else
                 {
-                    entries[last].next = entry.next;
+                    nodes[last].next = node.next;
                 }
 
-                entry.next = StartOfFreeList - this._freeList;
+                node.next = StartOfFreeList - this._freeList;
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
                 {
-                    entry.key = default!;
+                    node.key = default!;
                 }
 
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
                 {
-                    entry.value = default!;
+                    node.value = default!;
                 }
 
                 this._freeList = i;
@@ -168,10 +162,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             }
 
             last = i;
-            i = entry.next;
+            i = node.next;
 
             collisionCount++;
-            if (collisionCount > (uint)entries.Length)
+            if (collisionCount > (uint)nodes.Length)
             {
                 throw new InvalidOperationException();
             }
@@ -185,92 +179,44 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
         var hashCode = (uint)comparer.GetHashCode(key);
         var i = this.GetBucket(hashCode);
-        var entries = this._entries;
+        var nodes = this._nodes;
         uint collisionCount = 0;
         i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
         do
         {
-            if ((uint)i >= (uint)entries.Length)
+            if ((uint)i >= (uint)nodes.Length)
             {
                 value = default;
                 return false;
             }
 
-            ref Entry entry = ref entries[i];
-            if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
+            ref Node node = ref nodes[i];
+            if (node.hashCode == hashCode && comparer.Equals(key, node.key))
             {
-                value = entry.value;
+                value = node.value;
                 return true;
             }
 
-            i = entry.next;
+            i = node.next;
 
             collisionCount++;
         }
-        while (collisionCount <= (uint)entries.Length);
+        while (collisionCount <= (uint)nodes.Length);
 
         value = default;
         return false;
-
-        /*ref TValue valRef = ref this.FindValue(key);
-        if (!Unsafe.IsNullRef(ref valRef))
-        {
-            value = valRef;
-            return true;
-        }
-
-        value = default;
-        return false;*/
     }
 
-    public bool TryAdd(TKey key, TValue value) => this.TryInsert(key, value, false);
-
-    [MemberNotNull(nameof(_buckets), nameof(_entries))]
+    [MemberNotNull(nameof(_buckets), nameof(_nodes))]
     private uint Initialize(uint minimumSize)
     {
         var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
         this._buckets = new int[capacity];
-        this._entries = new Entry[capacity];
+        this._nodes = new Node[capacity];
 
         this._freeList = -1;
 
         return capacity;
-    }
-
-    private ref TValue FindValue(TKey key)
-    {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
-
-        ref Entry entry = ref Unsafe.NullRef<Entry>();
-        var comparer = EqualityComparer<TKey>.Default; // EqualityComparerCode
-        var hashCode = (uint)comparer.GetHashCode(key);
-        var i = this.GetBucket(hashCode);
-        var entries = this._entries;
-        uint collisionCount = 0;
-        i--; // Value in _buckets is 1-based; subtract 1 from i. We do it here so it fuses with the following conditional.
-        do
-        {
-            if ((uint)i >= (uint)entries.Length)
-            {
-                return ref Unsafe.NullRef<TValue>();
-            }
-
-            entry = ref entries[i];
-            if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
-            {
-                return ref entry.value;
-            }
-
-            i = entry.next;
-
-            collisionCount++;
-        }
-        while (collisionCount <= (uint)entries.Length);
-
-        throw new InvalidOperationException(); // ConcurrentOperation
     }
 
     private bool TryInsert(TKey key, TValue value, bool overwrite)
@@ -280,7 +226,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             throw new ArgumentNullException(nameof(key));
         }
 
-        var entries = this._entries;
+        var entries = this._nodes;
         var hashCode = (uint)key.GetHashCode();
         uint collisionCount = 0;
         ref int bucket = ref this.GetBucket(hashCode);
@@ -353,10 +299,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
             index = count;
             this._count = count + 1;
-            entries = this._entries;
+            entries = this._nodes;
         }
 
-        ref Entry entry = ref entries![index];
+        ref Node entry = ref entries![index];
         entry.hashCode = hashCode;
         entry.next = bucket - 1; // Value in _buckets is 1-based
         entry.key = key;
@@ -370,9 +316,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
     private void Resize(int newSize)
     {
-        var entries = new Entry[newSize];
+        var entries = new Node[newSize];
         var count = this._count;
-        Array.Copy(this._entries, entries, count);
+        Array.Copy(this._nodes, entries, count);
 
         this._buckets = new int[newSize];
         for (var i = 0; i < count; i++)
@@ -385,7 +331,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             }
         }
 
-        this._entries = entries;
+        this._nodes = entries;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -420,7 +366,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         {
             while ((uint)this._index < (uint)this._map._count)
             {
-                ref Entry entry = ref this._map._entries![this._index++];
+                ref Node entry = ref this._map._nodes![this._index++];
 
                 if (entry.next >= -1)
                 {
