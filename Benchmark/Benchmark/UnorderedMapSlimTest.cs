@@ -64,7 +64,7 @@ public class UnorderedMapSlimTest
     [Benchmark]
     public int AddSerialInt_UnorderedMapSlim()
     {
-        var c = new UnorderedMapSlim<int, int>(9);
+        var c = new UnorderedMapSlim<int, int>();
         for (var n = 0; n < this.Count; n++)
         {
             c.Add(n, n);
@@ -98,6 +98,18 @@ public class UnorderedMapSlimTest
     }
 
     [Benchmark]
+    public int AddRandomInt_UnorderedMapSlim()
+    {
+        var c = new UnorderedMapSlim<int, int>();
+        for (var n = 0; n < this.Count; n++)
+        {
+            c.Add(this.IntArray[n], this.IntArray[n]);
+        }
+
+        return c.Count;
+    }
+
+    [Benchmark]
     public int GetRandomInt_Dictionary()
     {
         var total = 0;
@@ -119,6 +131,21 @@ public class UnorderedMapSlimTest
         for (var n = 0; n < this.Count; n++)
         {
             if (this.IntUnorderedMap.TryGetValue(n, out var value))
+            {
+                total += value;
+            }
+        }
+
+        return total;
+    }
+
+    [Benchmark]
+    public int GetRandomInt_UnorderedMapSlim()
+    {
+        var total = 0;
+        for (var n = 0; n < this.Count; n++)
+        {
+            if (this.IntUnorderedMapSlim.TryGetValue(n, out var value))
             {
                 total += value;
             }
