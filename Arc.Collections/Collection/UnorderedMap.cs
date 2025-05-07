@@ -6,28 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-#pragma warning disable SA1124 // Do not use regions
-#pragma warning disable SA1202 // Elements should be ordered by access
-
 namespace Arc.Collections;
-
-/*
-/// <summary>
-/// Represents an interface specific to unordered map.
-/// </summary>
-public interface IUnorderedMap
-{
-    /// <summary>
-    /// Clears the map.
-    /// </summary>
-    void Clear();
-
-    /// <summary>
-    /// Removes the node at the specified index.
-    /// </summary>
-    /// <param name="nodeIndex">The index of the node to remove.</param>
-    void RemoveNode(int nodeIndex);
-}*/
 
 /// <summary>
 /// Represents a collection of objects. <see cref="UnorderedMap{TKey, TValue}"/> uses a hash table structure to store objects.
@@ -40,15 +19,21 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     {
         public const int UnusedNode = -2;
 
-        public int HashCode; // Hash code
-        public int Previous;   // Index of previous node, UnusedNode(-2) if the node is not used.
-        public int Next;        // Index of next node
-        public TKey Key;      // Key
-        public TValue Value; // Value
+#pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
+        internal int hashCode;
+        internal int previous;   // Index of previous node, UnusedNode(-2) if the node is not used.
+        internal int next;        // Index of next node
+        internal TKey key;
+        internal TValue value;
+#pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
-        public bool IsValid() => this.Previous != UnusedNode;
+        public bool IsValid() => this.previous != UnusedNode;
 
-        public bool IsInvalid() => this.Previous == UnusedNode;
+        public bool IsInvalid() => this.previous == UnusedNode;
+
+        public TKey Key => this.key;
+
+        public TValue Value => this.value;
     }
 
     /// <summary>
@@ -116,6 +101,9 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         }
     }
 
+    public (Node[] Nodes, int Max) UnsafeGetNodes()
+        => (this.nodes, this.nodeCount);
+
     #region Enumerator
 
     public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
@@ -164,8 +152,8 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             {
                 if (this.map.nodes[this.index].IsValid())
                 {
-                    this.key = this.map.nodes[this.index].Key;
-                    this.value = this.map.nodes[this.index].Value;
+                    this.key = this.map.nodes[this.index].key;
+                    this.value = this.map.nodes[this.index].value;
                     this.index++;
                     return true;
                 }
@@ -265,7 +253,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             {
                 if (this.nodes[nodeIndex].IsValid())
                 {
-                    keyValuePairArray[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].Key, this.nodes[nodeIndex].Value);
+                    keyValuePairArray[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].key, this.nodes[nodeIndex].value);
                 }
 
                 nodeIndex++;
@@ -285,7 +273,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                 {
                     if (this.nodes[nodeIndex].IsValid())
                     {
-                        objects[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].Key, this.nodes[nodeIndex].Value);
+                        objects[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].key, this.nodes[nodeIndex].value);
                     }
 
                     nodeIndex++;
@@ -456,7 +444,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             {
                 if (this.map.nodes[nodeIndex].IsValid())
                 {
-                    array[index++] = this.map.nodes[nodeIndex].Key;
+                    array[index++] = this.map.nodes[nodeIndex].key;
                 }
 
                 nodeIndex++;
@@ -505,7 +493,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                     {
                         if (this.map.nodes[nodeIndex].IsValid())
                         {
-                            objects[index++] = this.map.nodes[nodeIndex].Key!;
+                            objects[index++] = this.map.nodes[nodeIndex].key!;
                         }
 
                         nodeIndex++;
@@ -597,7 +585,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             {
                 if (this.map.nodes[nodeIndex].IsValid())
                 {
-                    array[index++] = this.map.nodes[nodeIndex].Value;
+                    array[index++] = this.map.nodes[nodeIndex].value;
                 }
 
                 nodeIndex++;
@@ -646,7 +634,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                     {
                         if (this.map.nodes[nodeIndex].IsValid())
                         {
-                            objects[index++] = this.map.nodes[nodeIndex].Value;
+                            objects[index++] = this.map.nodes[nodeIndex].value;
                         }
 
                         nodeIndex++;
@@ -781,7 +769,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                 throw new KeyNotFoundException();
             }
 
-            return this.nodes[index].Value;
+            return this.nodes[index].value;
         }
 
         set
@@ -789,7 +777,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var result = this.Add(key, value);
             if (!result.NewlyAdded)
             {
-                this.nodes[result.NodeIndex].Value = value;
+                this.nodes[result.NodeIndex].value = value;
             }
         }
     }
@@ -802,7 +790,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         {
             for (var i = 0; i < this.nodeCount; i++)
             {
-                if (this.nodes[i].IsValid() && this.nodes[i].Value == null)
+                if (this.nodes[i].IsValid() && this.nodes[i].value == null)
                 {
                     return true;
                 }
@@ -813,7 +801,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var c = EqualityComparer<TValue>.Default;
             for (int i = 0; i < this.nodeCount; i++)
             {
-                if (this.nodes[i].IsValid() && c.Equals(this.nodes[i].Value, value))
+                if (this.nodes[i].IsValid() && c.Equals(this.nodes[i].value, value))
                 {
                     return true;
                 }
@@ -831,7 +819,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         {
             if (this.nullList != -1)
             {
-                value = this.nodes[this.nullList].Value;
+                value = this.nodes[this.nullList].value;
                 return true;
             }
         }
@@ -842,13 +830,14 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var i = this.buckets[index];
             while (i >= 0)
             {
-                if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                ref Node node = ref this.nodes[i];
+                if (node.hashCode == hashCode && this.Comparer.Equals(node.key, key!))
                 {// Identical
-                    value = this.nodes[i].Value;
+                    value = node.value;
                     return true;
                 }
 
-                i = this.nodes[i].Next;
+                i = node.next;
             }
         }
 
@@ -941,12 +930,12 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var i = this.buckets[index];
             while (i >= 0)
             {
-                if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
                 {// Identical
                     return i;
                 }
 
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
 
             return -1; // Not found
@@ -968,12 +957,12 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var i = this.nullList;
             while (i >= 0)
             {
-                if (c.Equals(this.nodes[i].Value, value))
+                if (c.Equals(this.nodes[i].value, value))
                 {// Identical
                     return i;
                 }
 
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
         }
         else
@@ -983,14 +972,14 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             var i = this.buckets[index];
             while (i >= 0)
             {
-                if (this.nodes[i].HashCode == hashCode &&
-                    this.Comparer.Equals(this.nodes[i].Key, key) &&
-                    c.Equals(this.nodes[i].Value, value))
+                if (this.nodes[i].hashCode == hashCode &&
+                    this.Comparer.Equals(this.nodes[i].key, key) &&
+                    c.Equals(this.nodes[i].value, value))
                 {// Identical
                     return i;
                 }
 
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
         }
 
@@ -1023,20 +1012,20 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             while (i >= 0)
             {
                 yield return i;
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
         }
         else
         {
-            var hashCode = this.nodes[i].HashCode;
+            var hashCode = this.nodes[i].hashCode;
             while (i >= 0)
             {
-                if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
                 {// Identical
                     yield return i;
                 }
 
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
         }
     }
@@ -1058,21 +1047,21 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         {// Null list
             while (i >= 0)
             {
-                yield return this.nodes[i].Value;
-                i = this.nodes[i].Next;
+                yield return this.nodes[i].value;
+                i = this.nodes[i].next;
             }
         }
         else
         {
-            var hashCode = this.nodes[i].HashCode;
+            var hashCode = this.nodes[i].hashCode;
             while (i >= 0)
             {
-                if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key!))
+                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
                 {// Identical
-                    yield return this.nodes[i].Value;
+                    yield return this.nodes[i].value;
                 }
 
-                i = this.nodes[i].Next;
+                i = this.nodes[i].next;
             }
         }
     }
@@ -1100,20 +1089,20 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     {
         if (key == null)
         {
-            if (this.nodes[nodeIndex].Key == null)
+            if (this.nodes[nodeIndex].key == null)
             {// Identical
                 return false;
             }
         }
         else
         {
-            if (this.Comparer.Equals(this.nodes[nodeIndex].Key, key))
+            if (this.Comparer.Equals(this.nodes[nodeIndex].key, key))
             {// Identical
                 return false;
             }
         }
 
-        var value = this.nodes[nodeIndex].Value;
+        var value = this.nodes[nodeIndex].value;
         this.RemoveNode(nodeIndex);
         var result = this.Probe(key, value); // Reuse nodeIndex from this.freeList
         return result.NewlyAdded;
@@ -1133,7 +1122,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             return false;
         }
 
-        if (this.nodes[nodeIndex].Key == null)
+        if (this.nodes[nodeIndex].key == null)
         {// Null list
             if (nodeIndex >= this.nodeCount)
             {// check node index.
@@ -1141,7 +1130,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             }
         }
 
-        this.nodes[nodeIndex].Value = value;
+        this.nodes[nodeIndex].value = value;
         return true;
     }
 
@@ -1157,9 +1146,9 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             return;
         }
 
-        var nodePrevious = this.nodes[nodeIndex].Previous;
-        var nodeNext = this.nodes[nodeIndex].Next;
-        if (this.nodes[nodeIndex].Key == null)
+        var nodePrevious = this.nodes[nodeIndex].previous;
+        var nodeNext = this.nodes[nodeIndex].next;
+        if (this.nodes[nodeIndex].key == null)
         {// Null list
             if (nodeIndex >= this.nodeCount)
             {// check node index.
@@ -1172,38 +1161,38 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             }
             else
             {
-                this.nodes[nodePrevious].Next = nodeNext;
+                this.nodes[nodePrevious].next = nodeNext;
             }
 
             if (nodeNext != -1)
             {
-                this.nodes[nodeNext].Previous = nodePrevious;
+                this.nodes[nodeNext].previous = nodePrevious;
             }
         }
         else
         {
             // node index <= this.nodeCount
-            var index = this.nodes[nodeIndex].HashCode & this.hashMask;
+            var index = this.nodes[nodeIndex].hashCode & this.hashMask;
             if (nodePrevious == -1)
             {
                 this.buckets[index] = nodeNext;
             }
             else
             {
-                this.nodes[nodePrevious].Next = nodeNext;
+                this.nodes[nodePrevious].next = nodeNext;
             }
 
             if (nodeNext != -1)
             {
-                this.nodes[nodeNext].Previous = nodePrevious;
+                this.nodes[nodeNext].previous = nodePrevious;
             }
         }
 
-        this.nodes[nodeIndex].HashCode = 0;
-        this.nodes[nodeIndex].Previous = Node.UnusedNode;
-        this.nodes[nodeIndex].Next = this.freeList;
-        this.nodes[nodeIndex].Key = default!;
-        this.nodes[nodeIndex].Value = default!;
+        this.nodes[nodeIndex].hashCode = 0;
+        this.nodes[nodeIndex].previous = Node.UnusedNode;
+        this.nodes[nodeIndex].next = this.freeList;
+        this.nodes[nodeIndex].key = default!;
+        this.nodes[nodeIndex].value = default!;
         this.freeList = nodeIndex;
         this.freeCount++;
 
@@ -1217,7 +1206,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             return;
         }
 
-        this.nodes[nodeIndex].Value = value;
+        this.nodes[nodeIndex].value = value;
     }
 
     protected (TKey? Key, int Count) TryGetMostDuplicateKeyInternal()
@@ -1231,14 +1220,14 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             if (currentIndex >= 0)
             {
                 var currentCount = 1;
-                var currentKey = this.nodes[currentIndex].Key;
+                var currentKey = this.nodes[currentIndex].key;
                 var hashCode = currentKey != null ? this.Comparer.GetHashCode(currentKey) : 0;
 
-                currentIndex = this.nodes[currentIndex].Next;
+                currentIndex = this.nodes[currentIndex].next;
                 while (currentIndex >= 0)
                 {
-                    if (this.nodes[currentIndex].HashCode == hashCode &&
-                        this.Comparer.Equals(this.nodes[currentIndex].Key, currentKey))
+                    if (this.nodes[currentIndex].hashCode == hashCode &&
+                        this.Comparer.Equals(this.nodes[currentIndex].key, currentKey))
                     {// Identical
                         currentCount++;
                     }
@@ -1247,7 +1236,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                         break;
                     }
 
-                    currentIndex = this.nodes[currentIndex].Next;
+                    currentIndex = this.nodes[currentIndex].next;
                 }
 
                 if (currentCount > count)
@@ -1284,21 +1273,21 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             }
 
             newIndex = this.NewNode();
-            this.nodes[newIndex].HashCode = 0;
-            this.nodes[newIndex].Key = key!;
-            this.nodes[newIndex].Value = value;
+            this.nodes[newIndex].hashCode = 0;
+            this.nodes[newIndex].key = key!;
+            this.nodes[newIndex].value = value;
 
             if (this.nullList == -1)
             {
-                this.nodes[newIndex].Previous = -1;
-                this.nodes[newIndex].Next = -1;
+                this.nodes[newIndex].previous = -1;
+                this.nodes[newIndex].next = -1;
                 this.nullList = newIndex;
             }
             else
             {
-                this.nodes[newIndex].Previous = -1;
-                this.nodes[newIndex].Next = this.nullList;
-                this.nodes[this.nullList].Previous = newIndex;
+                this.nodes[newIndex].previous = -1;
+                this.nodes[newIndex].next = this.nullList;
+                this.nodes[this.nullList].previous = newIndex;
                 this.nullList = newIndex;
             }
 
@@ -1314,31 +1303,31 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
                 var i = this.buckets[index];
                 while (i >= 0)
                 {
-                    if (this.nodes[i].HashCode == hashCode && this.Comparer.Equals(this.nodes[i].Key, key))
+                    if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key))
                     {// Identical
                         return (i, false);
                     }
 
-                    i = this.nodes[i].Next;
+                    i = this.nodes[i].next;
                 }
             }
 
             newIndex = this.NewNode();
-            this.nodes[newIndex].HashCode = hashCode;
-            this.nodes[newIndex].Key = key;
-            this.nodes[newIndex].Value = value;
+            this.nodes[newIndex].hashCode = hashCode;
+            this.nodes[newIndex].key = key;
+            this.nodes[newIndex].value = value;
 
             if (this.buckets[index] == -1)
             {
-                this.nodes[newIndex].Previous = -1;
-                this.nodes[newIndex].Next = -1;
+                this.nodes[newIndex].previous = -1;
+                this.nodes[newIndex].next = -1;
                 this.buckets[index] = newIndex;
             }
             else
             {
-                this.nodes[newIndex].Previous = -1;
-                this.nodes[newIndex].Next = this.buckets[index];
-                this.nodes[this.buckets[index]].Previous = newIndex;
+                this.nodes[newIndex].previous = -1;
+                this.nodes[newIndex].next = this.buckets[index];
+                this.nodes[this.buckets[index]].previous = newIndex;
                 this.buckets[index] = newIndex;
             }
 
@@ -1354,7 +1343,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         if (this.freeCount > 0)
         {// Free list
             index = this.freeList;
-            this.freeList = this.nodes[index].Next;
+            this.freeList = this.nodes[index].next;
             this.freeCount--;
         }
         else
@@ -1366,7 +1355,7 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         return index;
     }
 
-    internal void Resize()
+    private void Resize()
     {
         const int minimumCapacity = 1 << MinLogCapacity;
         var newSize = this.nodes.Length << 1;
@@ -1390,25 +1379,25 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
             ref Node newNode = ref newNodes[i];
             if (newNode.IsValid())
             {
-                if (newNode.Key == null)
+                if (newNode.key == null)
                 {// Null list. No need to modify.
                 }
                 else
                 {
-                    var bucket = newNode.HashCode & newMask;
+                    var bucket = newNode.hashCode & newMask;
                     if (newBuckets[bucket] == -1)
                     {
-                        newNode.Previous = -1;
-                        newNode.Next = -1;
+                        newNode.previous = -1;
+                        newNode.next = -1;
                         newBuckets[bucket] = i;
                     }
                     else
                     {
                         var newBucket = newBuckets[bucket];
-                        newNode.Previous = -1;
-                        newNode.Next = newBucket;
+                        newNode.previous = -1;
+                        newNode.next = newBucket;
                         newBuckets[bucket] = i;
-                        newNodes[newBucket].Previous = i;
+                        newNodes[newBucket].previous = i;
                     }
                 }
             }
@@ -1422,73 +1411,4 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     }
 
     #endregion
-
-    public (Node[] Nodes, int Max) UnsafeGetNodes()
-        => (this.nodes, this.nodeCount);
-
-    /*#region UnsafeEnumerator
-
-    public IEnumerable<TValue> UnsafeValues => new UnsafeValueCollection(this);
-
-    private readonly struct UnsafeValueCollection : IEnumerable<TValue>
-    {
-        public UnsafeValueCollection(UnorderedMap<TKey, TValue> map)
-        {
-            this.map = map;
-        }
-
-        private readonly UnorderedMap<TKey, TValue> map;
-
-        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
-            => new UnsafeValueEnumerator(this.map);
-
-        IEnumerator IEnumerable.GetEnumerator()
-            => new UnsafeValueEnumerator(this.map);
-    }
-
-    private struct UnsafeValueEnumerator : IEnumerator<TValue>
-    {
-        private readonly Node[] nodes;
-        private readonly int max;
-        private int index;
-        private TValue? value;
-
-        internal UnsafeValueEnumerator(UnorderedMap<TKey, TValue> map)
-        {
-            this.nodes = map.nodes;
-            this.max = map.nodeCount;
-            this.index = 0;
-        }
-
-        public TValue Current
-            => this.value!;
-
-        object IEnumerator.Current
-            => this.value!;
-
-        public void Dispose()
-            => this.Reset();
-
-        public bool MoveNext()
-        {
-            if (this.index < this.max)
-            {
-                this.value = this.nodes[this.index++].Value;
-                return true;
-            }
-            else
-            {
-                this.value = default;
-                return false;
-            }
-        }
-
-        public void Reset()
-        {
-            this.index = 0;
-            this.value = default;
-        }
-    }
-
-    #endregion*/
 }
