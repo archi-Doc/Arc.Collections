@@ -295,18 +295,19 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
         while ((uint)i < (uint)nodes.Length)
         {
-            if (nodes[i].hashCode == hashCode && comparer.Equals(nodes[i].key, key))
+            ref Node node2 = ref nodes[i];
+            if (node2.hashCode == hashCode && comparer.Equals(node2.key, key))
             {
                 if (overwrite)
                 {
-                    nodes[i].value = value;
+                    node2.value = value;
                     return true;
                 }
 
                 return false;
             }
 
-            i = nodes[i].next;
+            i = node2.next;
 
             collisionCount++;
             if (collisionCount > (uint)nodes.Length)
