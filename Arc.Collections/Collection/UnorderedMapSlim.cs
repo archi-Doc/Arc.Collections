@@ -1,16 +1,19 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
 #pragma warning disable SA1309 // Field names should not begin with underscore
 
-public class UnorderedMapSlim<TKey, TValue>
+public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
+    where TValue : notnull
 {// GetHashCode, EqualityComparerCode
     private const int StartOfFreeList = -3;
 
@@ -392,6 +395,73 @@ ReturnNotFound:
         var buckets = this._buckets;
         return ref buckets[hashCode & (buckets.Length - 1)];
     }
+
+    #region IEnumerable
+
+#pragma warning disable SA1202 // Elements should be ordered by access
+    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this);
+#pragma warning restore SA1202 // Elements should be ordered by access
+
+    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
+
+    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+    {
+        private readonly UnorderedMapSlim<TKey, TValue> _dictionary;
+        private int _index;
+        private KeyValuePair<TKey, TValue> _current;
+
+        internal Enumerator(UnorderedMapSlim<TKey, TValue> dictionary)
+        {
+            this._dictionary = dictionary;
+            this._index = 0;
+            this._current = default;
+        }
+
+        public bool MoveNext()
+        {
+            while ((uint)this._index < (uint)this._dictionary._count)
+            {
+                ref Entry entry = ref this._dictionary._entries![this._index++];
+
+                if (entry.next >= -1)
+                {
+                    this._current = new KeyValuePair<TKey, TValue>(entry.key, entry.value);
+                    return true;
+                }
+            }
+
+            this._index = this._dictionary._count + 1;
+            this._current = default;
+            return false;
+        }
+
+        public KeyValuePair<TKey, TValue> Current => this._current;
+
+        public void Dispose()
+        {
+        }
+
+        object? IEnumerator.Current
+        {
+            get
+            {
+                if (this._index == 0 || (this._index == this._dictionary._count + 1))
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return new KeyValuePair<TKey, TValue>(this._current.Key, this._current.Value);
+            }
+        }
+
+        void IEnumerator.Reset()
+        {
+            this._index = 0;
+            this._current = default;
+        }
+    }
+
+    #endregion
 
     private struct Entry
     {

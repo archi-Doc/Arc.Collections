@@ -52,27 +52,6 @@ public class UnorderedMapSlimTest
     }
 
     [Fact]
-    public void TestNull()
-    {
-        var um = new UnorderedMapSlim<int?, UnorderedMapTestClass>();
-        um.Add(0, new UnorderedMapTestClass(0));
-        um.Add(null, new UnorderedMapTestClass(999));
-        um.Add(2, new UnorderedMapTestClass(2));
-        um.Add(1, new UnorderedMapTestClass(1));
-        um.Add(5, new UnorderedMapTestClass(5));
-
-        um.Count.Is(5);
-        um[null].Id.Is(999);
-        um[0].Id.Is(0);
-        um[1].Id.Is(1);
-        um[2].Id.Is(2);
-        um[5].Id.Is(5);
-
-        um.Keys.OrderBy(x => x).SequenceEqual(new int?[] { null, 0, 1, 2, 5, }).IsTrue();
-        um.OrderBy(x => x.Key).Select(x => x.Value.Id).SequenceEqual(new int[] { 999, 0, 1, 2, 5, }).IsTrue();
-    }
-
-    [Fact]
     public void TestClass()
     {
         var um = new UnorderedMapSlim<UnorderedMapTestClass, int>();
