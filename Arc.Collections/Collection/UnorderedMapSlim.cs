@@ -11,7 +11,7 @@ namespace Arc.Collections;
 #pragma warning disable SA1309 // Field names should not begin with underscore
 
 /// <summary>
-/// Represents a collection of key/value pairs that are organized based on the hash code of the key.
+/// Represents a collection of key/value pairs that are organized based on the hash code of the key.<br/>
 /// This is a lightweight implementation optimized for performance with minimal memory overhead.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
@@ -295,18 +295,19 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
         while ((uint)i < (uint)nodes.Length)
         {
-            if (nodes[i].hashCode == hashCode && comparer.Equals(nodes[i].key, key))
+            ref Node node2 = ref nodes[i];
+            if (node2.hashCode == hashCode && comparer.Equals(node2.key, key))
             {
                 if (overwrite)
                 {
-                    nodes[i].value = value;
+                    node2.value = value;
                     return true;
                 }
 
                 return false;
             }
 
-            i = nodes[i].next;
+            i = node2.next;
 
             collisionCount++;
             if (collisionCount > (uint)nodes.Length)
