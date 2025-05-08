@@ -11,7 +11,7 @@ namespace Arc.Collections;
 #pragma warning disable SA1309 // Field names should not begin with underscore
 
 /// <summary>
-/// Represents a collection of key/value pairs that are organized based on the hash code of the key.
+/// Represents a collection of key/value pairs that are organized based on the hash code of the key.<br/>
 /// This is a lightweight implementation optimized for performance with minimal memory overhead.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
