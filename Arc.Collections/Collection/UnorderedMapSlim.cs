@@ -13,6 +13,9 @@ namespace Arc.Collections;
 /// <summary>
 /// Represents a collection of key/value pairs that are organized based on the hash code of the key.<br/>
 /// This is a lightweight implementation optimized for performance with minimal memory overhead.
+/// <br/>NOT thread-safe: <br/>
+/// It can be accessed from multiple reader threads if used as immutable.<br/>
+/// However, if there is any writer thread, all access must be protected by mutual exclusion.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
