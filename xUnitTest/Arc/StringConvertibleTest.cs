@@ -18,7 +18,7 @@ public class StringConvertibleClass : IStringConvertible<StringConvertibleClass>
 
     static int IStringConvertible<StringConvertibleClass>.MaxStringLength => 1;
 
-    static bool IStringConvertible<StringConvertibleClass>.TryParse(ReadOnlySpan<char> source, out StringConvertibleClass? @object, out int read)
+    static bool IStringConvertible<StringConvertibleClass>.TryParse(ReadOnlySpan<char> source, out StringConvertibleClass? @object, out int read, IConversionOptions? conversionOptions)
     {
         read = 0;
         if (source.Length != 1 || source[0] != 'a')
@@ -37,7 +37,7 @@ public class StringConvertibleClass : IStringConvertible<StringConvertibleClass>
     int IStringConvertible<StringConvertibleClass>.GetStringLength()
         => -1;
 
-    bool IStringConvertible<StringConvertibleClass>.TryFormat(Span<char> destination, out int written)
+    bool IStringConvertible<StringConvertibleClass>.TryFormat(Span<char> destination, out int written, IConversionOptions? conversionOptions)
     {
         if (destination.Length < 1)
         {
@@ -64,7 +64,7 @@ public class StringConvertibleClass2 : IStringConvertible<StringConvertibleClass
 
     public static int MaxStringLength => 256;
 
-    static bool IStringConvertible<StringConvertibleClass2>.TryParse(ReadOnlySpan<char> source, out StringConvertibleClass2? instance, out int read)
+    static bool IStringConvertible<StringConvertibleClass2>.TryParse(ReadOnlySpan<char> source, out StringConvertibleClass2? instance, out int read, IConversionOptions? conversionOptions)
     {
         instance = null;
         read = 0;
@@ -83,7 +83,7 @@ public class StringConvertibleClass2 : IStringConvertible<StringConvertibleClass
     int IStringConvertible<StringConvertibleClass2>.GetStringLength()
         => this.data.Length;
 
-    bool IStringConvertible<StringConvertibleClass2>.TryFormat(Span<char> destination, out int written)
+    bool IStringConvertible<StringConvertibleClass2>.TryFormat(Span<char> destination, out int written, IConversionOptions? conversionOptions)
     {
         if (destination.Length < this.data.Length)
         {

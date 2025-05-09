@@ -21,8 +21,9 @@ public interface IStringConvertible<T>
     /// <param name="source">The source utf-16 span.</param>
     /// <param name="object">An object converted from the utf-16 span.</param>
     /// <param name="read">The number of chars read from the source span.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? @object, out int read);
+    static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? @object, out int read, IConversionOptions? conversionOptions = default);
 
     /// <summary>
     ///  Gets the maximum length of the utf-16 encoded data.<br/>
@@ -34,6 +35,7 @@ public interface IStringConvertible<T>
 
     /// <summary>
     ///  Get the actual length of the utf-16 encoded data.<br/>
+    ///  Note that the length may change depending on the implementation of <see cref="IConversionOptions"/> and <see cref="TryFormat(Span{char}, out int, IConversionOptions?)"/>.<br/>
     ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.<br/>
     ///  If not implemented, please return -1 instead of throwing an exception.
     /// </summary>
@@ -46,6 +48,7 @@ public interface IStringConvertible<T>
     /// <param name="destination">The destination span of <see cref="char"/> (utf-16).<br/>
     /// Allocate an array of a length greater than or equal to <seealso cref="GetStringLength"/> or <seealso cref="MaxStringLength"/>.</param>
     /// <param name="written">The number of bytes that were written in destination.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    bool TryFormat(Span<char> destination, out int written);
+    bool TryFormat(Span<char> destination, out int written, IConversionOptions? conversionOptions = default);
 }
