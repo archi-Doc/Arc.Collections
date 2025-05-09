@@ -271,12 +271,13 @@ public static class BaseHelper
     /// <param name="source">The source value to parse.</param>
     /// <param name="variable">The name of the environment variable to check if the source value is empty.</param>
     /// <param name="instance">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
-    public static bool TryParseFromSourceOrEnvironmentVariable<T>(ReadOnlySpan<char> source, string variable, [MaybeNullWhen(false)] out T instance)
+    public static bool TryParseFromSourceOrEnvironmentVariable<T>(ReadOnlySpan<char> source, string variable, [MaybeNullWhen(false)] out T instance, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
         // 1st Source
-        if (T.TryParse(source, out instance!, out _))
+        if (T.TryParse(source, out instance!, out _, conversionOptions))
         {// source.Length > 0 &&
             return true;
         }
@@ -284,7 +285,7 @@ public static class BaseHelper
         // 2nd: Environment variable
         if (Environment.GetEnvironmentVariable(variable) is { } source2)
         {
-            if (T.TryParse(source2, out instance!, out _))
+            if (T.TryParse(source2, out instance!, out _, conversionOptions))
             {
                 return true;
             }
@@ -300,13 +301,14 @@ public static class BaseHelper
     /// <typeparam name="T">The type of the value to parse.</typeparam>
     /// <param name="variable">The name of the environment variable to check if the source value is empty.</param>
     /// <param name="instance">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
-    public static bool TryParseFromEnvironmentVariable<T>(string variable, [MaybeNullWhen(false)] out T instance)
+    public static bool TryParseFromEnvironmentVariable<T>(string variable, [MaybeNullWhen(false)] out T instance, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
         if (Environment.GetEnvironmentVariable(variable) is { } source)
         {
-            return T.TryParse(source, out instance, out _);
+            return T.TryParse(source, out instance, out _, conversionOptions);
         }
         else
         {
@@ -320,9 +322,10 @@ public static class BaseHelper
     /// </summary>
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns>The string representation of the object.</returns>
     [SkipLocalsInit]
-    public static string ConvertToString<T>(this T obj)
+    public static string ConvertToString<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     { // MemoryMarshal.CreateSpan<char>(ref MemoryMarshal.GetReference(str.AsSpan()), str.Length);
         var length = obj.GetStringLength();
@@ -342,7 +345,7 @@ public static class BaseHelper
 
         try
         {
-            if (obj.TryFormat(span, out var written))
+            if (obj.TryFormat(span, out var written, conversionOptions))
             {
                 return new string(span.Slice(0, written));
             }
@@ -365,9 +368,10 @@ public static class BaseHelper
     /// </summary>
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns>The UTF-8 byte array representation of the object.</returns>
     [SkipLocalsInit]
-    public static byte[] ConvertToUtf8<T>(this T obj)
+    public static byte[] ConvertToUtf8<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     { // MemoryMarshal.CreateSpan<char>(ref MemoryMarshal.GetReference(str.AsSpan()), str.Length);
         var length = obj.GetStringLength();
@@ -387,7 +391,7 @@ public static class BaseHelper
 
         try
         {
-            if (obj.TryFormat(span, out var written))
+            if (obj.TryFormat(span, out var written, conversionOptions))
             {
                 var result = span.Slice(0, written);
                 var count = Encoding.UTF8.GetByteCount(result);

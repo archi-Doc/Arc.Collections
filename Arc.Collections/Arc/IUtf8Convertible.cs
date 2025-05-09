@@ -19,18 +19,10 @@ public interface IUtf8Convertible<T>
     /// </summary>
     /// <param name="source">The source utf-8 span.</param>
     /// <param name="object">An object converted from the utf-8 span.</param>
-    /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    static bool TryParse(ReadOnlySpan<byte> source, [MaybeNullWhen(false)] out T? @object)
-        => T.TryParse(source, out @object, out _);
-
-    /// <summary>
-    /// Convert a <see cref="byte"/> (utf-8) span to an object.
-    /// </summary>
-    /// <param name="source">The source utf-8 span.</param>
-    /// <param name="object">An object converted from the utf-8 span.</param>
     /// <param name="read">The number of bytes read from the source span.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    static abstract bool TryParse(ReadOnlySpan<byte> source, [MaybeNullWhen(false)] out T? @object, out int read);
+    static abstract bool TryParse(ReadOnlySpan<byte> source, [MaybeNullWhen(false)] out T? @object, out int read, IConversionOptions? conversionOptions);
 
     /// <summary>
     ///  Gets the maximum length of the utf-8 encoded data.<br/>
@@ -41,6 +33,7 @@ public interface IUtf8Convertible<T>
 
     /// <summary>
     ///  Get the actual length of the utf-8 encoded data.<br/>
+    ///  Note that the length may change depending on the implementation of <see cref="IConversionOptions"/> and <see cref="TryFormat(Span{byte}, out int, IConversionOptions?)"/>.<br/>
     ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.
     /// </summary>
     /// <returns>The actual utf-8 encoded length.</returns>
@@ -52,6 +45,7 @@ public interface IUtf8Convertible<T>
     /// <param name="destination">The destination span of <see cref="byte"/> (utf-8).<br/>
     /// Allocate an array of a length greater than or equal to <seealso cref="GetStringLength"/> or <seealso cref="MaxStringLength"/>.</param>
     /// <param name="written">The number of bytes that were written in destination.</param>
+    /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    bool TryFormat(Span<byte> destination, out int written);
+    bool TryFormat(Span<byte> destination, out int written, IConversionOptions? conversionOptions);
 }
