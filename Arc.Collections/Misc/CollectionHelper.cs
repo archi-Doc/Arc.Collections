@@ -9,6 +9,10 @@ public static class CollectionHelper
     public const uint MinimumCapacity = 8;
     public const uint MaximumCapacity = 0x80000000;
 
+    /*public static T? GetOption<T>(this IConversionOptions conversionOptions)
+        where T : class
+        => conversionOptions.GetOption(typeof(T)) as T;*/
+
     public static uint CalculatePowerOfTwoCapacity(uint minimumSize)
     {
         if (minimumSize < MinimumCapacity)
