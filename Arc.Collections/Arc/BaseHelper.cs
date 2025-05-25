@@ -18,6 +18,11 @@ namespace Arc;
 /// </summary>
 public static class BaseHelper
 {
+    public const int Int32MaxDecimalChars = 11;
+    public const int UInt32MaxDecimalChars = 10;
+    public const int Int64MaxDecimalChars = 20;
+    public const int UInt64MaxDecimalChars = 20;
+
     private const int P1 = 10;
     private const int P2 = 100;
     private const int P3 = 1000;
