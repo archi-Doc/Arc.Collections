@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -18,24 +19,81 @@ namespace Arc;
 /// </summary>
 public static class BaseHelper
 {
-    private const int P1 = 10;
-    private const int P2 = 100;
-    private const int P3 = 1000;
-    private const int P4 = 10000;
-    private const int P5 = 100000;
-    private const int P6 = 1000000;
-    private const int P7 = 10000000;
-    private const int P8 = 100000000;
-    private const int P9 = 1000000000;
-    private const long P10 = 10000000000;
-    private const long P11 = 100000000000;
-    private const long P12 = 1000000000000;
-    private const long P13 = 10000000000000;
-    private const long P14 = 100000000000000;
-    private const long P15 = 1000000000000000;
-    private const long P16 = 10000000000000000;
-    private const long P17 = 100000000000000000;
-    private const long P18 = 1000000000000000000;
+    public const int Int32MaxDecimalChars = 11;
+    public const int UInt32MaxDecimalChars = 10;
+    public const int Int64MaxDecimalChars = 20;
+    public const int UInt64MaxDecimalChars = 20;
+
+    private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
+    private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    public static int CountDecimalChars(int value)
+    {
+        if (value == 0)
+        {
+            return 1;
+        }
+        else if (value > 0)
+        {
+            var v2 = (uint)value;
+            int bits = 32 - BitOperations.LeadingZeroCount(v2);
+            int log10 = (bits * 1233) >> 12;
+            return log10 + ((v2 >= Pow10[log10]) ? 1 : 0);
+        }
+        else
+        {
+            var v2 = (uint)-value;
+            int bits = 32 - BitOperations.LeadingZeroCount(v2);
+            int log10 = (bits * 1233) >> 12;
+            return log10 + 1 + ((v2 >= Pow10[log10]) ? 1 : 0);
+        }
+    }
+
+    public static int CountDecimalChars(uint value)
+    {
+        if (value == 0)
+        {
+            return 1;
+        }
+
+        int bits = 32 - BitOperations.LeadingZeroCount(value);
+        int log10 = (bits * 1233) >> 12;
+        return log10 + ((value >= Pow10[log10]) ? 1 : 0);
+    }
+
+    public static int CountDecimalChars(long value)
+    {
+        if (value == 0)
+        {
+            return 1;
+        }
+        else if (value > 0)
+        {
+            var v2 = (ulong)value;
+            int bits = 64 - BitOperations.LeadingZeroCount(v2);
+            int log10 = (bits * 1233) >> 12;
+            return log10 + ((v2 >= Pow10B[log10]) ? 1 : 0);
+        }
+        else
+        {
+            var v2 = (ulong)-value;
+            int bits = 64 - BitOperations.LeadingZeroCount(v2);
+            int log10 = (bits * 1233) >> 12;
+            return log10 + 1 + ((v2 >= Pow10B[log10]) ? 1 : 0);
+        }
+    }
+
+    public static int CountDecimalChars(ulong value)
+    {
+        if (value == 0)
+        {
+            return 1;
+        }
+
+        int bits = 64 - BitOperations.LeadingZeroCount(value);
+        int log10 = (bits * 1233) >> 12;
+        return log10 + ((value >= Pow10B[log10]) ? 1 : 0);
+    }
 
     /// <summary>
     /// Tries to load a resource from the specified assembly and returns it as a byte array.
@@ -119,7 +177,26 @@ public static class BaseHelper
         }
     }
 
+    /*
 #pragma warning disable SA1503 // Braces should not be omitted
+    private const int P1 = 10;
+    private const int P2 = 100;
+    private const int P3 = 1000;
+    private const int P4 = 10000;
+    private const int P5 = 100000;
+    private const int P6 = 1000000;
+    private const int P7 = 10000000;
+    private const int P8 = 100000000;
+    private const int P9 = 1000000000;
+    private const long P10 = 10000000000;
+    private const long P11 = 100000000000;
+    private const long P12 = 1000000000000;
+    private const long P13 = 10000000000000;
+    private const long P14 = 100000000000000;
+    private const long P15 = 1000000000000000;
+    private const long P16 = 10000000000000000;
+    private const long P17 = 100000000000000000;
+    private const long P18 = 1000000000000000000;
 
     /// <summary>
     /// Gets the length of the string representation of the specified number.
@@ -262,6 +339,7 @@ public static class BaseHelper
         }
     }
 #pragma warning restore SA1503 // Braces should not be omitted
+    */
 
     /// <summary>
     /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="instance"/> parameter.
