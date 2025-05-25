@@ -19,14 +19,34 @@ namespace Arc;
 /// </summary>
 public static class BaseHelper
 {
+    /// <summary>
+    /// The maximum number of characters required to represent a 32-bit signed integer in decimal format, including the sign.
+    /// </summary>
     public const int Int32MaxDecimalChars = 11;
+
+    /// <summary>
+    /// The maximum number of characters required to represent a 32-bit unsigned integer in decimal format.
+    /// </summary>
     public const int UInt32MaxDecimalChars = 10;
+
+    /// <summary>
+    /// The maximum number of characters required to represent a 64-bit signed integer in decimal format, including the sign.
+    /// </summary>
     public const int Int64MaxDecimalChars = 20;
+
+    /// <summary>
+    /// The maximum number of characters required to represent a 64-bit unsigned integer in decimal format.
+    /// </summary>
     public const int UInt64MaxDecimalChars = 20;
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
+    /// <summary>
+    /// Returns the number of characters required to represent a 32-bit signed integer in decimal format, including the sign if negative.
+    /// </summary>
+    /// <param name="value">The 32-bit signed integer value.</param>
+    /// <returns>The number of decimal characters required to represent the value.</returns>
     public static int CountDecimalChars(int value)
     {
         if (value == 0)
@@ -49,6 +69,11 @@ public static class BaseHelper
         }
     }
 
+    /// <summary>
+    /// Returns the number of characters required to represent a 32-bit unsigned integer in decimal format.
+    /// </summary>
+    /// <param name="value">The 32-bit unsigned integer value.</param>
+    /// <returns>The number of decimal characters required to represent the value.</returns>
     public static int CountDecimalChars(uint value)
     {
         if (value == 0)
@@ -61,6 +86,11 @@ public static class BaseHelper
         return log10 + ((value >= Pow10[log10]) ? 1 : 0);
     }
 
+    /// <summary>
+    /// Returns the number of characters required to represent a 64-bit signed integer in decimal format, including the sign if negative.
+    /// </summary>
+    /// <param name="value">The 64-bit signed integer value.</param>
+    /// <returns>The number of decimal characters required to represent the value.</returns>
     public static int CountDecimalChars(long value)
     {
         if (value == 0)
@@ -83,6 +113,11 @@ public static class BaseHelper
         }
     }
 
+    /// <summary>
+    /// Returns the number of characters required to represent a 64-bit unsigned integer in decimal format.
+    /// </summary>
+    /// <param name="value">The 64-bit unsigned integer value.</param>
+    /// <returns>The number of decimal characters required to represent the value.</returns>
     public static int CountDecimalChars(ulong value)
     {
         if (value == 0)
