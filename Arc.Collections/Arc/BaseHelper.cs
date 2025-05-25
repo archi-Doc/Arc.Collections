@@ -8,7 +8,6 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Xml.Linq;
 
 #pragma warning disable SA1405
 
@@ -127,7 +126,7 @@ public static class BaseHelper
     /// </summary>
     /// <param name="number">The number to get the string length for.</param>
     /// <returns>The length of the string representation of the number.</returns>
-    public static int GetStringLength(int number)
+    public static int CountDecimalChars(int number)
     {
         int add = 0;
         if (number < 0)
@@ -178,7 +177,7 @@ public static class BaseHelper
     /// </summary>
     /// <param name="number">The number to get the string length for.</param>
     /// <returns>The length of the string representation of the number.</returns>
-    public static int GetStringLength(long number)
+    public static int CountDecimalChars(long number)
     {
         int add = 0;
         if (number < 0)
