@@ -18,7 +18,7 @@ public class CountDecimalCharsBenchmark
 
     public CountDecimalCharsBenchmark()
     {
-        CreateTable();
+        // CreateTable();
     }
 
     private static void CreateTable()
