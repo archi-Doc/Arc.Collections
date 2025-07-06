@@ -9,6 +9,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Microsoft.VisualBasic;
 
 #pragma warning disable SA1405
 
@@ -41,6 +42,46 @@ public static class BaseHelper
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    /// <summary>
+    /// Attempts to append a single character to the destination span.
+    /// </summary>
+    /// <param name="destination">The span to which the character will be appended. The span is updated to exclude the written character.</param>
+    /// <param name="written">A reference to the count of characters written so far. This value is incremented if the append succeeds.</param>
+    /// <param name="c">The character to append.</param>
+    /// <returns><c>true</c> if the character was successfully appended; otherwise, <c>false</c> if there was not enough space.</returns>
+    public static bool TryAppend(scoped ref Span<char> destination, ref int written, char c)
+    {
+        if (destination.Length == 0)
+        {
+            return false;
+        }
+
+        written += 1;
+        destination[0] = c;
+        destination = destination.Slice(1);
+        return true;
+    }
+
+    /// <summary>
+    /// Attempts to append a span of characters to the destination span.
+    /// </summary>
+    /// <param name="destination">The span to which the characters will be appended. The span is updated to exclude the written characters.</param>
+    /// <param name="written">A reference to the count of characters written so far. This value is incremented by the length of <paramref name="span"/> if the append succeeds.</param>
+    /// <param name="span">The span of characters to append.</param>
+    /// <returns><c>true</c> if the characters were successfully appended; otherwise, <c>false</c> if there was not enough space.</returns>
+    public static bool TryAppend(scoped ref Span<char> destination, ref int written, ReadOnlySpan<char> span)
+    {
+        if (destination.Length < span.Length)
+        {
+            return false;
+        }
+
+        span.CopyTo(destination);
+        destination = destination.Slice(span.Length);
+        written += span.Length;
+        return true;
+    }
 
     /// <summary>
     /// Returns the number of characters required to represent a 32-bit signed integer in decimal format, including the sign if negative.
