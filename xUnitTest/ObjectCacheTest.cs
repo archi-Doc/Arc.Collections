@@ -14,7 +14,7 @@ public class ObjectCacheTest
     [Fact]
     public void Test1()
     {
-        ObjectCache<int, ObjectCacheClass> cache = new(4);
+        KeyedObjectCache<int, ObjectCacheClass> cache = new(4);
 
         cache.TryGet(0).IsNull();
 

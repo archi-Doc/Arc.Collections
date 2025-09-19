@@ -13,7 +13,7 @@ public record ObjectCacheClass(int Id, string Name);
 public class ObjectCacheBenchmark
 {
     private const int N = 50;
-    private ObjectCache<int, ObjectCacheClass> cache = new(N);
+    private KeyedObjectCache<int, ObjectCacheClass> cache = new(N);
 
     public ObjectCacheBenchmark()
     {
@@ -34,9 +34,9 @@ public class ObjectCacheBenchmark
     }
 
     [Benchmark]
-    public ObjectCache<int, ObjectCacheClass> Cache5()
+    public KeyedObjectCache<int, ObjectCacheClass> Cache5()
     {
-        var cache = new ObjectCache<int, ObjectCacheClass>(10);
+        var cache = new KeyedObjectCache<int, ObjectCacheClass>(10);
         for (var i = 0; i < 5; i++)
         {
             cache.Cache(i, new(i, i.ToString()));

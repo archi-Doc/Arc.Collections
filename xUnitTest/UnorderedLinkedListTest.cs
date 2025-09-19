@@ -28,7 +28,7 @@ public class UnorderedLinkedListTest
         l.SequenceEqual(array).IsTrue();
         l.Clear();
 
-        foreach (var x in array.Reverse())
+        foreach (var x in Enumerable.Reverse(array))
         {
             l.AddFirst(x);
         }

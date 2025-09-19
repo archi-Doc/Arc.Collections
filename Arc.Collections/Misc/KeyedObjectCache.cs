@@ -11,12 +11,12 @@ namespace Arc.Collections;
 /// You can cache used objects and retrieve them the next time by specifying the <typeparamref name="TKey"/>.<br/>
 /// This is for classes with very high costs, such as encryption.<br/>
 /// <br/>
-/// If <typeparamref name="TObject"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
+/// If <typeparamref name="TObject"/> implements <see cref="IDisposable"/>, <see cref="KeyedObjectCache{TKey, TObject}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
 /// This class can also be disposed, although this is not always necessary.
 /// </summary>
 /// <typeparam name="TKey">The type of the key used to retrieve an object from the cache.</typeparam>
 /// <typeparam name="TObject">The type of objects contained in the cache.</typeparam>
-public sealed class ObjectCache<TKey, TObject> : IDisposable
+public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     where TKey : IEquatable<TKey>
 {
     /// <summary>
@@ -24,11 +24,11 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     public readonly struct Interface : IDisposable
     {
-        public readonly ObjectCache<TKey, TObject> ObjectCache;
+        public readonly KeyedObjectCache<TKey, TObject> ObjectCache;
         public readonly TKey Key;
         public readonly TObject? Object;
 
-        internal Interface(ObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
+        internal Interface(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
         {
             this.ObjectCache = objectCache;
             this.Key = key;
@@ -73,10 +73,10 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ObjectCache{TKey, TObject}"/> class.<br/>
+    /// Initializes a new instance of the <see cref="KeyedObjectCache{TKey, TObject}"/> class.<br/>
     /// </summary>
     /// <param name="cacheSize">The maximum number of objects in the cache.</param>
-    public ObjectCache(int cacheSize)
+    public KeyedObjectCache(int cacheSize)
     {
         this.CacheSize = cacheSize;
     }
@@ -177,9 +177,9 @@ public sealed class ObjectCache<TKey, TObject> : IDisposable
     private bool disposed = false; // To detect redundant calls.
 
     /// <summary>
-    /// Finalizes an instance of the <see cref="ObjectCache{TObject, TKey}"/> class.
+    /// Finalizes an instance of the <see cref="KeyedObjectCache{TObject, TKey}"/> class.
     /// </summary>
-    ~ObjectCache()
+    ~KeyedObjectCache()
     {
         this.Dispose(false);
     }
