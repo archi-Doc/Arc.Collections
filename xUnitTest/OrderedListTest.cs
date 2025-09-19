@@ -93,7 +93,7 @@ public class OrderedListTest
         ol.SequenceEqual(array).IsTrue();
 
         ol = new OrderedList<int>(array, OrderedListClass.InternalComparer.Instance);
-        ol.SequenceEqual(array.Reverse()).IsTrue();
+        ol.SequenceEqual(Enumerable.Reverse(array)).IsTrue();
 
         var ol2 = new OrderedList<OrderedListClass>();
         ol2.Add(new OrderedListClass(1, 0)); // 0

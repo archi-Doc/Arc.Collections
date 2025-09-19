@@ -21,7 +21,7 @@ public class OrderedMultiSetTest
         ol.SequenceEqual(ms).IsTrue();
 
         ms = new OrderedMultiSet<int>(array, OrderedListClass.InternalComparer.Instance);
-        ms.SequenceEqual(array.Reverse()).IsTrue();
+        ms.SequenceEqual(Enumerable.Reverse(array)).IsTrue();
 
         var ms2 = new OrderedMultiSet<OrderedListClass>();
         ms2.Add(new OrderedListClass(1, 0)); // 0
