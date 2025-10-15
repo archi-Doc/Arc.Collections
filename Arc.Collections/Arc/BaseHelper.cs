@@ -44,6 +44,50 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Converts all line feed ('\n') characters in the input string to carriage return and line feed ("\r\n") pairs,
+    /// except where the line feed is already preceded by a carriage return. This ensures all line endings are in CRLF format.
+    /// </summary>
+    /// <param name="text">The input string to convert line endings for.</param>
+    /// <returns>
+    /// A new string with all line feed characters converted to CRLF pairs, unless already in CRLF format.
+    /// If no conversion is necessary, returns the original string.
+    /// </returns>
+    public static string ConvertLfToCrLf(string text)
+    {
+        var extra = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '\n' && (i == 0 || text[i - 1] != '\r'))
+            {
+                extra++;
+            }
+        }
+
+        if (extra == 0)
+        {
+            return text;
+        }
+
+        return string.Create(text.Length + extra, text, static (dest, source) =>
+        {
+            var position = 0;
+            for (var i = 0; i < source.Length; i++)
+            {
+                char c = source[i];
+                if (c == '\n' && (i == 0 || source[i - 1] != '\r'))
+                {
+                    dest[position++] = '\r';
+                    dest[position++] = '\n';
+                }
+                else
+                {
+                    dest[position++] = c;
+                }
+            }
+        });
+    }
+
+    /// <summary>
     /// Attempts to append a single character to the destination span.
     /// </summary>
     /// <param name="destination">The span to which the character will be appended. The span is updated to exclude the written character.</param>

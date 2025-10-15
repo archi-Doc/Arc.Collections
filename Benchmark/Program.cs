@@ -17,7 +17,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<CountDecimalCharsBenchmark>();
+        DebugRun<ObjectPoolBenchmark2>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
@@ -35,6 +35,7 @@ public class Program
             typeof(ObjectCacheBenchmark),
             typeof(UnorderedMapTest2),
             typeof(ObjectPoolBenchmark),
+            typeof(ObjectPoolBenchmark2),
             typeof(ReverseOrderTest),
             typeof(UnorderedMapTest),
             typeof(OrderedPublicTest),

@@ -6,6 +6,46 @@ using BenchmarkDotNet.Attributes;
 
 namespace Benchmark;
 
+public record class ObjectPoolTestClass
+{
+    private static ObjectPool<ObjectPoolTestClass> pool = new(() => new ObjectPoolTestClass(), 32);
+
+    public static ObjectPoolTestClass Rent() => pool.Rent();
+
+    public static void Return(ObjectPoolTestClass obj) => pool.Return(obj);
+
+    public ObjectPoolTestClass()
+    {
+    }
+
+    public object Object1 { get; set; } = new();
+
+    public object Object2 { get; set; } = new();
+
+    public object Object3 { get; set; } = new();
+
+    public object Object4 { get; set; } = new();
+}
+
+public record struct ObjectPoolTestStruct
+{
+    public ObjectPoolTestStruct(object obj1, object obj2, object obj3, object obj4)
+    {
+        this.Object1 = obj1;
+        this.Object2 = obj2;
+        this.Object3 = obj3;
+        this.Object4 = obj4;
+    }
+
+    public object Object1 { get; set; }
+
+    public object Object2 { get; set; }
+
+    public object Object3 { get; set; }
+
+    public object Object4 { get; set; }
+}
+
 [Config(typeof(BenchmarkConfig))]
 public class ObjectPoolBenchmark
 {
@@ -16,10 +56,7 @@ public class ObjectPoolBenchmark
         this.objectPool = provider.Create<Sha3_256>();
     }
 
-    [Params(10)]
-    public int Length { get; set; }
-
-    public byte[] ByteArray { get; set; } = default!;
+    private ObjectPoolTestClass testClass = new();
 
     public Sha3_256 SHA3Instance { get; } = new();
 
@@ -40,16 +77,56 @@ public class ObjectPoolBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        this.ByteArray = new byte[this.Length];
-        for (var i = 0; i < this.Length; i++)
-        {
-            this.ByteArray[i] = (byte)i;
-        }
     }
 
     [GlobalCleanup]
     public void Cleanup()
     {
+    }
+
+    [Benchmark]
+    public ObjectPoolTestStruct TestStruct_New()
+    {
+        var st = new ObjectPoolTestStruct(this.testClass.Object1, this.testClass.Object2, this.testClass.Object3, this.testClass.Object4);
+        st.Object1 = st.Object2;
+        st.Object3 = st.Object4;
+        return st;
+    }
+
+    [Benchmark]
+    public ObjectPoolTestClass TestClass_New()
+    {
+        return new();
+    }
+
+    [Benchmark]
+    public ObjectPoolTestClass TestClass_Pool1()
+    {
+        var obj = ObjectPoolTestClass.Rent();
+        ObjectPoolTestClass.Return(obj);
+        return obj;
+    }
+
+    [Benchmark]
+    public ObjectPoolTestClass TestClass_Pool8()
+    {
+        var obj1 = ObjectPoolTestClass.Rent();
+        var obj2 = ObjectPoolTestClass.Rent();
+        var obj3 = ObjectPoolTestClass.Rent();
+        var obj4 = ObjectPoolTestClass.Rent();
+        var obj5 = ObjectPoolTestClass.Rent();
+        var obj6 = ObjectPoolTestClass.Rent();
+        var obj7 = ObjectPoolTestClass.Rent();
+        var obj8 = ObjectPoolTestClass.Rent();
+        ObjectPoolTestClass.Return(obj1);
+        ObjectPoolTestClass.Return(obj2);
+        ObjectPoolTestClass.Return(obj3);
+        ObjectPoolTestClass.Return(obj4);
+        ObjectPoolTestClass.Return(obj5);
+        ObjectPoolTestClass.Return(obj6);
+        ObjectPoolTestClass.Return(obj7);
+        ObjectPoolTestClass.Return(obj8);
+        return obj1;
     }
 
     [Benchmark]
