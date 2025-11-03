@@ -8,8 +8,10 @@ using System.IO;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
-using Microsoft.VisualBasic;
 
 #pragma warning disable SA1405
 
@@ -42,6 +44,90 @@ public static class BaseHelper
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    /// <summary>
+    /// Computes the sum of all elements in a span of signed bytes using SIMD acceleration when available.
+    /// </summary>
+    /// <param name="data">The read-only span of signed bytes to sum.</param>
+    /// <returns>The sum of all elements in the span as a 32-bit signed integer.</returns>
+    public static unsafe int Sum(ReadOnlySpan<sbyte> data)
+    {
+        int sum = 0;
+        int i = 0;
+
+        if (Avx2.IsSupported && data.Length >= 32)
+        {
+            var accumulator = Vector256<int>.Zero;
+
+            for (; i <= data.Length - 32; i += 32)
+            {
+                var bytes = Avx2.LoadVector256((sbyte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(data.Slice(i))));
+
+                var low16 = Avx2.ConvertToVector256Int16(bytes.GetLower());
+                var high16 = Avx2.ConvertToVector256Int16(bytes.GetUpper());
+
+                var low32_1 = Avx2.ConvertToVector256Int32(low16.GetLower());
+                var low32_2 = Avx2.ConvertToVector256Int32(low16.GetUpper());
+                var high32_1 = Avx2.ConvertToVector256Int32(high16.GetLower());
+                var high32_2 = Avx2.ConvertToVector256Int32(high16.GetUpper());
+
+                accumulator = Avx2.Add(accumulator, low32_1);
+                accumulator = Avx2.Add(accumulator, low32_2);
+                accumulator = Avx2.Add(accumulator, high32_1);
+                accumulator = Avx2.Add(accumulator, high32_2);
+            }
+
+            var x = Avx2.HorizontalAdd(accumulator, accumulator);
+            x = Avx2.HorizontalAdd(x, x);
+            var sum128 = Sse2.Add(x.GetLower(), x.GetUpper());
+            sum = Sse2.ConvertToInt32(sum128);
+        }
+
+        for (; i < data.Length; i++)
+        {
+            sum += data[i];
+        }
+
+        return sum;
+    }
+
+    /// <summary>
+    /// Computes the sum of all elements in a span of unsigned bytes using SIMD acceleration when available.
+    /// </summary>
+    /// <param name="data">The read-only span of unsigned bytes to sum.</param>
+    /// <returns>The sum of all elements in the span as a 32-bit unsigned integer.</returns>
+    public static unsafe ulong Sum(ReadOnlySpan<byte> data)
+    {
+        ulong acc = 0;
+        ref byte p = ref MemoryMarshal.GetReference(data);
+        int len = data.Length;
+        int i = 0;
+
+        if (Sse2.IsSupported)
+        {
+            for (; i + 32 <= len; i += 32)
+            {
+                var v256 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref p, i));
+                var sadLo = Sse2.SumAbsoluteDifferences(v256.GetLower(), Vector128<byte>.Zero).AsUInt64();
+                var sadHi = Sse2.SumAbsoluteDifferences(v256.GetUpper(), Vector128<byte>.Zero).AsUInt64();
+                acc += sadLo.GetElement(0) + sadLo.GetElement(1) + sadHi.GetElement(0) + sadHi.GetElement(1);
+            }
+
+            for (; i + 16 <= len; i += 16)
+            {
+                var v128 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref p, i));
+                var sad = Sse2.SumAbsoluteDifferences(v128, Vector128<byte>.Zero).AsUInt64();
+                acc += sad.GetElement(0) + sad.GetElement(1);
+            }
+        }
+
+        for (; i < len; i++)
+        {
+            acc += data[i];
+        }
+
+        return acc;
+    }
 
     /// <summary>
     /// Converts all line feed ('\n') characters in the input string to carriage return and line feed ("\r\n") pairs,
