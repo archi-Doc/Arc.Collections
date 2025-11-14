@@ -2,6 +2,7 @@
 
 using System;
 using System.Buffers;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -44,6 +45,72 @@ public static class BaseHelper
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    /// <summary>
+    /// Estimates the number of bytes that form a valid UTF-8 string in the byte array.<br/>
+    /// Only the trailing bytes are inspected; the entire byte array is not validated.
+    /// </summary>
+    /// <param name="bytes">A byte span used to obtain the number of valid bytes.</param>
+    /// <returns>Returns the number of valid bytes.</returns>
+    public static int GetValidUtf8Length(ReadOnlySpan<byte> bytes)
+    {
+        var length = bytes.Length;
+        var i = length - 1;
+        if (length == 0)
+        {// Empty buffer
+            return 0;
+        }
+
+        if (bytes[i] <= 0x7F)
+        {// ASCII byte
+            return length;
+        }
+
+        if ((bytes[i] & 0b1100_0000) == 0b1000_0000)
+        {
+            i--;
+            if (i >= 0 && (bytes[i] & 0b1100_0000) == 0b1000_0000)
+            {
+                i--;
+                if (i >= 0 && (bytes[i] & 0b1100_0000) == 0b1000_0000)
+                {
+                    i--;
+                }
+            }
+        }
+
+        if (i < 0)
+        {
+            return 0;
+        }
+
+        int seqLen;
+        if ((bytes[i] & 0b1110_0000) == 0b1100_0000)
+        {
+            seqLen = 2;
+        }
+        else if ((bytes[i] & 0b1111_0000) == 0b1110_0000)
+        {
+            seqLen = 3;
+        }
+        else if ((bytes[i] & 0b1111_1000) == 0b1111_0000)
+        {
+            seqLen = 4;
+        }
+        else
+        {
+            return length;
+        }
+
+        if (length < i + seqLen)
+        {
+            return i;
+        }
+        else
+        {
+            return length;
+        }
+    }
 
     /// <summary>
     /// Computes the sum of all elements in a span of signed bytes using SIMD acceleration when available.
