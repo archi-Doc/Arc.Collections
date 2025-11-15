@@ -145,7 +145,7 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
 
     public override int GetHashCode()
     {
-        // return (int)Arc.Crypto.XxHash3.Hash64(this.AsSpan());
+        // return (int)Arc.Crypto.XxHash3Slim.Hash64(this.AsSpan());
         // return (((((((((((((this.Int0 * 397) ^ this.Int1) * 397) ^ this.Int2) * 397) ^ this.Int3) * 397) ^ this.Int4) * 397) ^ this.Int5) * 397) ^ this.Int6) * 397) ^ this.Int7; // Fast, but...
         return HashCode.Combine(this.Long0, this.Long1, this.Long2, this.Long3);
     }
