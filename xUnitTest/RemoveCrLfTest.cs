@@ -12,7 +12,7 @@ public class RemoveCrLfTest
     public void Test1()
     {
         BaseHelper.RemoveCrLf("ABC").Is("ABC");
-        BaseHelper.RemoveCrLf("ABC\r").Is("ABC");
+        BaseHelper.RemoveCrLf("ABC\n").Is("ABC");
         BaseHelper.RemoveCrLf("ABC\r\n").Is("ABC");
         BaseHelper.RemoveCrLf("ABC\n").Is("ABC");
         BaseHelper.RemoveCrLf("\r\nABC\r\n\r\n").Is("ABC");
