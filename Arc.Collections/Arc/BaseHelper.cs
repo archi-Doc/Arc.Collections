@@ -47,6 +47,54 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Removes all newline characters ('\r' and '\n') from the input string.
+    /// </summary>
+    /// <param name="input">The input string from which to remove newline characters.</param>
+    /// <returns>
+    /// A new string with all newline characters removed. If the input is null or empty, returns an empty string.
+    /// If there are no newline characters, returns the original string.
+    /// </returns>
+    public static string RemoveCrLf(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return string.Empty;
+        }
+
+        if (!input.Contains('\n'))
+        {
+            return input;
+        }
+
+        var newlineCount = 0;
+        for (var i = 0; i < input.Length; i++)
+        {
+            if (input[i] == '\r' || input[i] == '\n')
+            {
+                newlineCount++;
+            }
+        }
+
+        if (newlineCount == 0)
+        {
+            return input;
+        }
+
+        var resultLength = input.Length - newlineCount;
+        return string.Create(resultLength, input, static (span, src) =>
+        {
+            var position = 0;
+            for (var i = 0; i < src.Length; i++)
+            {
+                if (src[i] != '\r' && src[i] != '\n')
+                {
+                    span[position++] = src[i];
+                }
+            }
+        });
+    }
+
+    /// <summary>
     /// Estimates the number of bytes that form a valid UTF-8 string in the byte array.<br/>
     /// Only the trailing bytes are inspected; the entire byte array is not validated.
     /// </summary>
