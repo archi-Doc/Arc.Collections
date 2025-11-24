@@ -245,6 +245,34 @@ public static class BaseHelper
     }
 
     /// <summary>
+    /// Finds the index of the first line feed character ('\n') or carriage return ('\r') in the specified text span,
+    /// accommodating both Lf ('\n') and CrLf ('\r\n') line endings.
+    /// </summary>
+    /// <param name="text">The span of characters to search for line feed or carriage return characters.</param>
+    /// <param name="newLineLength">When this method returns, contains the length of the detected line ending:
+    /// 1 for Lf ('\n'), 2 for CrLf ('\r\n'), or 0 if no line ending is found.</param>
+    /// <returns>The zero-based index of the line ending (Lf or CrLf) in the text span, or -1 if no line ending is found.</returns>
+    public static int IndexOfLfOrCrLf(ReadOnlySpan<char> text, out int newLineLength)
+    {// \r\n (CrLf) or \n (Lf)
+        var index = text.IndexOf('\n');
+        if (index < 0)
+        {// Not found]
+            newLineLength = 0;
+            return -1;
+        }
+        else if (index > 0 && text[index - 1] == '\r')
+        {// \r\n (CrLf)
+            newLineLength = 2;
+            return index - 1;
+        }
+        else
+        {// \n (Lf)
+            newLineLength = 1;
+            return index;
+        }
+    }
+
+    /// <summary>
     /// Converts all line feed ('\n') characters in the input string to carriage return and line feed ("\r\n") pairs,
     /// except where the line feed is already preceded by a carriage return. This ensures all line endings are in CRLF format.
     /// </summary>
