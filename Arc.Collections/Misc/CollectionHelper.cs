@@ -13,6 +13,18 @@ public static class CollectionHelper
         where T : class
         => conversionOptions.GetOption(typeof(T)) as T;*/
 
+    /// <summary>
+    /// Calculates the next power-of-two capacity that is greater than or equal to the specified minimum size.
+    /// </summary>
+    /// <param name="minimumSize">The minimum required capacity.</param>
+    /// <returns>
+    /// A power-of-two value that is greater than or equal to <paramref name="minimumSize"/>,
+    /// clamped between <see cref="MinimumCapacity"/> and <see cref="MaximumCapacity"/>.
+    /// </returns>
+    /// <remarks>
+    /// This method ensures the returned capacity is always a power of two, which is optimal
+    /// for hash-based collections and memory allocation patterns.
+    /// </remarks>
     public static uint CalculatePowerOfTwoCapacity(uint minimumSize)
     {
         if (minimumSize < MinimumCapacity)
@@ -25,6 +37,28 @@ public static class CollectionHelper
         }
 
         return 1u << (32 - BitOperations.LeadingZeroCount(minimumSize - 1));
+    }
+
+    /// <summary>
+    /// Calculates the next power-of-two capacity that is greater than or equal to the specified minimum size.
+    /// </summary>
+    /// <param name="minimumSize">The minimum required capacity.</param>
+    /// <returns>
+    /// A power-of-two value that is greater than or equal to <paramref name="minimumSize"/>,
+    /// with a minimum value of <see cref="MinimumCapacity"/>.
+    /// </returns>
+    /// <remarks>
+    /// This method ensures the returned capacity is always a power of two, which is optimal
+    /// for hash-based collections and memory allocation patterns.
+    /// </remarks>
+    public static int CalculatePowerOfTwoCapacity(int minimumSize)
+    {
+        if (minimumSize < MinimumCapacity)
+        {
+            return (int)MinimumCapacity;
+        }
+
+        return 1 << (32 - BitOperations.LeadingZeroCount((uint)minimumSize - 1));
     }
 
     public const int MaxPrimeArrayLength = 0x7FEFFFFD;
