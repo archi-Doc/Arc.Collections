@@ -1,6 +1,9 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -15,6 +18,11 @@ public class LimitedArray<T>
     public LimitedArray()
     {
         this.values = [];
+    }
+
+    public LimitedArray(IEnumerable<T> values)
+    {
+        this.values = values.ToArray();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
