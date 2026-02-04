@@ -51,7 +51,6 @@ public class LimitedArray<T>
                     this.values[i] = this.values[this.values.Length - 1];
                     Array.Resize(ref this.values, this.values.Length - 1);
                     return true;
-
                 }
             }
         }
