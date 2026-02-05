@@ -19,7 +19,7 @@ namespace Arc.Collections;
 public sealed class CircularQueue<T>
 {
     private const int MinimumCapacity = 1;
-    private readonly Slot[] slots;
+    private readonly Slot[] slotArray;
     private readonly int slotsMask;
     private PaddedHeadAndTail headAndTail;
 
@@ -36,16 +36,16 @@ public sealed class CircularQueue<T>
             capacity = 1 << (32 - BitOperations.LeadingZeroCount((uint)capacity - 1));
         }
 
-        this.slots = new Slot[capacity];
+        this.slotArray = new Slot[capacity];
         this.slotsMask = capacity - 1;
-        for (var i = 0; i < this.slots.Length; i++)
+        for (var i = 0; i < this.slotArray.Length; i++)
         {
-            this.slots[i].SequenceNumber = i;
+            this.slotArray[i].SequenceNumber = i;
         }
     }
 
     /// <summary>Gets the number of elements this queue can store.</summary>
-    public int Capacity => this.slots.Length;
+    public int Capacity => this.slotArray.Length;
 
     /// <summary>
     /// Tries to dequeue an element from the circular queue.
@@ -54,24 +54,24 @@ public sealed class CircularQueue<T>
     /// <returns><see langword="true"/> if an item was successfully dequeued; otherwise, <see langword="false"/>.</returns>
     public bool TryDequeue([MaybeNullWhen(false)] out T item)
     {
-        var slots = this.slots;
+        var array = this.slotArray;
         while (true)
         {
             var currentHead = Volatile.Read(ref this.headAndTail.Head);
             var slotsIndex = currentHead & this.slotsMask;
-            var sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
+            var sequenceNumber = Volatile.Read(ref array[slotsIndex].SequenceNumber);
             var diff = sequenceNumber - (currentHead + 1);
             if (diff == 0)
             {
                 if (Interlocked.CompareExchange(ref this.headAndTail.Head, currentHead + 1, currentHead) == currentHead)
                 {
-                    item = slots[slotsIndex].Item!;
+                    item = array[slotsIndex].Item!;
                     if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                     {
-                        slots[slotsIndex].Item = default;
+                        array[slotsIndex].Item = default;
                     }
 
-                    Volatile.Write(ref slots[slotsIndex].SequenceNumber, currentHead + slots.Length);
+                    Volatile.Write(ref array[slotsIndex].SequenceNumber, currentHead + array.Length);
                     return true;
                 }
             }
@@ -96,19 +96,19 @@ public sealed class CircularQueue<T>
     /// </returns>
     public bool TryEnqueue(T item)
     {
-        Slot[] slots = this.slots;
+        var array = this.slotArray;
         while (true)
         {
-            int currentTail = Volatile.Read(ref this.headAndTail.Tail);
-            int slotsIndex = currentTail & this.slotsMask;
-            int sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
-            int diff = sequenceNumber - currentTail;
+            var currentTail = Volatile.Read(ref this.headAndTail.Tail);
+            var slotsIndex = currentTail & this.slotsMask;
+            var sequenceNumber = Volatile.Read(ref array[slotsIndex].SequenceNumber);
+            var diff = sequenceNumber - currentTail;
             if (diff == 0)
             {
                 if (Interlocked.CompareExchange(ref this.headAndTail.Tail, currentTail + 1, currentTail) == currentTail)
                 {
-                    slots[slotsIndex].Item = item;
-                    Volatile.Write(ref slots[slotsIndex].SequenceNumber, currentTail + 1);
+                    array[slotsIndex].Item = item;
+                    Volatile.Write(ref array[slotsIndex].SequenceNumber, currentTail + 1);
                     return true;
                 }
             }
