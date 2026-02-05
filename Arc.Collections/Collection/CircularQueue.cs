@@ -1,5 +1,6 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -46,6 +47,11 @@ public sealed class CircularQueue<T>
 
     /// <summary>Gets the number of elements this queue can store.</summary>
     public int Capacity => this.slotArray.Length;
+
+    /// <summary>
+    /// Gets the number of elements contained in the queue.
+    /// </summary>
+    public int Count => this.headAndTail.Tail - this.headAndTail.Head;
 
     /// <summary>
     /// Tries to dequeue an element from the circular queue.
@@ -119,6 +125,7 @@ public sealed class CircularQueue<T>
         }
     }
 
+    [DebuggerDisplay("Item = {Item}, SequenceNumber = {SequenceNumber}")]
     [StructLayout(LayoutKind.Auto)]
     private struct Slot
     {
@@ -127,6 +134,7 @@ public sealed class CircularQueue<T>
     }
 }
 
+[DebuggerDisplay("Head = {Head}, Tail = {Tail}")]
 [StructLayout(LayoutKind.Explicit, Size = 3 * CacheLineSize)] // padding before/between/after fields
 internal struct PaddedHeadAndTail
 {
