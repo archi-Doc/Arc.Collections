@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Arc.Collections;
@@ -72,13 +72,17 @@ public class CircularQueueTest
     [Fact]
     public async Task Test3()
     {
-        const int Concurrent = 10;
+        const int P = 10;
         const int N = 1000;
         const int Capacity = 16384;
 
-
         var q = new CircularQueue<int>(Capacity);
-        Parallel.ForEach(Enumerable.Range(0, Concurrent), x =>
+        var method = typeof(CircularQueue<int>).GetMethod("SetSequenceNumberForDebug", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        int start = unchecked(int.MaxValue + 1 - (Capacity * 1)); // int.MinValue
+        method.Invoke(q, [start, ]);
+        // q.SetSequenceNumberForDebug();
+
+        Parallel.ForEach(Enumerable.Range(0, P), x =>
         {
             var r = new Random();
 
@@ -112,7 +116,7 @@ public class CircularQueueTest
             // 300
         });
 
-        q.Count.Is(300 * Concurrent);
+        q.Count.Is(300 * P);
     }
 
     private static void DequeueN(CircularQueue<int> queue, int count)

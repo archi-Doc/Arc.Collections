@@ -125,6 +125,17 @@ public sealed class CircularQueue<T>
         }
     }
 
+    private void SetSequenceNumberForDebug(int start)
+    {
+        this.headAndTail.Head = start;
+        this.headAndTail.Tail = start;
+
+        for (var i = 0; i < this.slotArray.Length; i++)
+        {
+            this.slotArray[i].SequenceNumber = start + i;
+        }
+    }
+
     [DebuggerDisplay("Item = {Item}, SequenceNumber = {SequenceNumber}")]
     [StructLayout(LayoutKind.Auto)]
     private struct Slot
