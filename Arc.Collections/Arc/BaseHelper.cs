@@ -2,7 +2,6 @@
 
 using System;
 using System.Buffers;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -13,8 +12,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
-
-#pragma warning disable SA1405
 
 namespace Arc;
 
@@ -45,6 +42,76 @@ public static class BaseHelper
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    /// <summary>
+    /// Returns the minimum of two <see langword="ulong"/> values, considering cyclical wrap-around.
+    /// </summary>
+    /// <param name="value1">The first value to compare.</param>
+    /// <param name="value2">The second value to compare.</param>
+    /// <returns>
+    /// The value that is considered minimum in a cyclical comparison.
+    /// </returns>
+    public static ulong CircularMin(ulong value1, ulong value2)
+        => CircularCompareTo(value1, value2) < 0 ? value1 : value2;
+
+    /// <summary>
+    /// Returns the maximum of two <see langword="ulong"/> values, considering cyclical wrap-around.
+    /// </summary>
+    /// <param name="value1">The first value to compare.</param>
+    /// <param name="value2">The second value to compare.</param>
+    /// <returns>
+    /// The value that is considered maximum in a cyclical comparison.
+    /// </returns>
+    public static ulong CircularMax(ulong value1, ulong value2)
+        => CircularCompareTo(value1, value2) >= 0 ? value1 : value2;
+
+    /// <summary>
+    /// Compares this value with a specified <see langword="ulong"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).
+    /// </summary>
+    /// <param name="value1">The first value to compare.</param>
+    /// <param name="value2">The second value to compare.</param>
+    /// <returns>-1 if <paramref name="value1"/> is less than <paramref name="value2"/>; 0 if they are equal; 1 if <paramref name="value1"/> is greater than <paramref name="value2"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int CircularCompareTo(this ulong value1, ulong value2)
+    {
+        var diff = value1 - value2;
+        if (diff > 0x8000_0000_0000_0000)
+        {
+            return -1;
+        }
+        else if (diff > 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Compares this value with a specified <see langword="uint"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).
+    /// </summary>
+    /// <param name="value1">The first value to compare.</param>
+    /// <param name="value2">The second value to compare.</param>
+    /// <returns>-1 if <paramref name="value1"/> is less than <paramref name="value2"/>; 0 if they are equal; 1 if <paramref name="value1"/> is greater than <paramref name="value2"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int CircularCompareTo(this uint value1, uint value2)
+    {
+        var diff = value1 - value2;
+        if (diff > 0x8000_0000)
+        {
+            return -1;
+        }
+        else if (diff > 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
 
     /// <summary>
     /// Removes all newline characters ('\r' and '\n') from the input string.
@@ -823,7 +890,7 @@ public static class BaseHelper
                 var count = Encoding.UTF8.GetByteCount(result);
                 var array = new byte[count];
                 length = Encoding.UTF8.GetBytes(result, array);
-                Debug.Assert(length == array.Length);
+                Debug.Assert(length == array.Length, string.Empty);
                 return array;
             }
             else
