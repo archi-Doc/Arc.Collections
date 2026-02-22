@@ -17,11 +17,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<LimitedArrayTest>();
+        DebugRun<WhiteSpaceBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(WhiteSpaceBenchmark),
             typeof(LimitedArrayTest),
             typeof(RemoveCrLfTest),
             typeof(CountDecimalCharsBenchmark),

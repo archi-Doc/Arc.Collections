@@ -44,6 +44,49 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Finds the index of the first separator or whitespace character in the specified span.
+    /// </summary>
+    /// <param name="span">The span of characters to search for a separator or whitespace character.</param>
+    /// <returns>
+    /// The zero-based index of the first separator or whitespace character in the span, or -1 if none is found.
+    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// </returns>
+    public static int IndexOfSeparator(this ReadOnlySpan<char> span)
+    {
+        for (var i = 0; i < span.Length; i++)
+        {
+            var val = span[i];
+
+            if (val < 256)
+            {
+                if ((val <= 0x0D && val >= 0x09) || val == 0x20 || val == 0xA0)
+                { // U+0009 to U+000D, U+0020
+                    return i;
+                }
+                else if (val == ',' || val == ';')
+                { // Separator
+                    return i;
+                }
+
+                continue;
+            }
+
+            if (val >= '\u2000' && val <= '\u200A')
+            {// U+2000 to U+200A
+                return i;
+            }
+            else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+            {// U+2028, U+2029, U+3000
+                return i;
+            }
+
+            // Not white space.
+        }
+
+        return -1;
+    }
+
+    /// <summary>
     /// Counts how many times <paramref name="value"/> appears in <paramref name="text"/>.<br/>
     /// Overlapping occurrences are not counted.
     /// </summary>
