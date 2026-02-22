@@ -40,9 +40,7 @@ public static class BaseHelper
     /// </summary>
     public const int UInt64MaxDecimalChars = 20;
 
-    private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
-    private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
-    private static readonly bool[] SeparatorMap = [
+    public static readonly bool[] SeparatorCharFlag = [
         false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
         true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, // 0x20-0x2F
@@ -51,7 +49,7 @@ public static class BaseHelper
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x50-0x5F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x60-0x6F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x70-0x7F
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x80-0x8F
+        false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, // 0x80-0x8F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x90-0x9F
         true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xA0-0xAF
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xB0-0xBF
@@ -60,6 +58,9 @@ public static class BaseHelper
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xE0-0xEF
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xF0-0xFF
     ];
+
+    private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
+    private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
     /// Finds the index of the first separator or whitespace character in the specified span.
@@ -77,7 +78,7 @@ public static class BaseHelper
 
             if (val < 0xFF)
             {
-                if (SeparatorMap[val])
+                if (SeparatorCharFlag[val])
                 {
                     return i;
                 }
