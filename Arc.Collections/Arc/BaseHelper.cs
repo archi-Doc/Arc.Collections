@@ -49,7 +49,7 @@ public static class BaseHelper
     /// <param name="span">The span of characters to search for a separator or whitespace character.</param>
     /// <returns>
     /// The zero-based index of the first separator or whitespace character in the span, or -1 if none is found.
-    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
     /// </returns>
     public static int IndexOfSeparator(this ReadOnlySpan<char> span)
     {
@@ -57,17 +57,18 @@ public static class BaseHelper
         {
             var val = span[i];
 
-            if (val < 256)
+            if (val < 0xFF)
             {
-                if ((val <= 0x0D && val >= 0x09) || val == 0x20 || val == 0xA0)
-                { // U+0009 to U+000D, U+0020
+                if (val <= 0x0D && val >= 0x09)
+                { // U+0009 to U+000D
                     return i;
                 }
-                else if (val == ',' || val == ';')
-                { // Separator
+                else if (val == 0x20 || val == 0x2C || val == 0xA0)
+                { // Separator (Space, ',', NBSP)
                     return i;
                 }
 
+                // Not separator.
                 continue;
             }
 
@@ -80,7 +81,7 @@ public static class BaseHelper
                 return i;
             }
 
-            // Not white space.
+            // Not separator.
         }
 
         return -1;
