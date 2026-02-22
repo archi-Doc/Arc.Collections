@@ -42,6 +42,24 @@ public static class BaseHelper
 
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+    private static readonly bool[] SeparatorMap = [
+        false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
+        true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, // 0x20-0x2F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x30-0x3F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x40-0x4F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x50-0x5F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x60-0x6F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x70-0x7F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x80-0x8F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x90-0x9F
+        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xA0-0xAF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xB0-0xBF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xC0-0xCF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xD0-0xDF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xE0-0xEF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xF0-0xFF
+    ];
 
     /// <summary>
     /// Finds the index of the first separator or whitespace character in the specified span.
@@ -55,10 +73,29 @@ public static class BaseHelper
     {
         for (var i = 0; i < span.Length; i++)
         {
-            if (char.IsWhiteSpace(span[i]) || span[i] == 0x2C)
+            var val = span[i];
+
+            if (val < 0xFF)
             {
+                if (SeparatorMap[val])
+                {
+                    return i;
+                }
+
+                // Not separator.
+                continue;
+            }
+
+            if (val >= '\u2000' && val <= '\u200A')
+            {// U+2000 to U+200A
                 return i;
             }
+            else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+            {// U+2028, U+2029, U+3000
+                return i;
+            }
+
+            // Not separator.
         }
 
         return -1;

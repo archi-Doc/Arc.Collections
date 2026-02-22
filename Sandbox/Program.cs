@@ -12,5 +12,9 @@ class Program
 
         var map = new Utf16UnorderedMap<int>();
         map.TryAdd("abc", 123);
+
+        foreach (var x in map)
+        {
+        }
     }
 }
