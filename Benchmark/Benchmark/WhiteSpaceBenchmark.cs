@@ -16,8 +16,10 @@ public class WhiteSpaceBenchmark
         int i;
         i = this.IsWhiteSpace();
         i = this.IndexOfSeparator();
+        i = this.IndexOfSeparatorB();
         i = this.IsWhiteSpace2();
         i = this.IndexOfSeparator2();
+        i = this.IndexOfSeparatorB2();
     }
 
     [GlobalSetup]
@@ -53,6 +55,12 @@ public class WhiteSpaceBenchmark
     }
 
     [Benchmark]
+    public int IndexOfSeparatorB()
+    {
+        return this.Text.AsSpan().IndexOfSeparatorB();
+    }
+
+    [Benchmark]
     public int IsWhiteSpace2()
     {
         int i = 0;
@@ -72,5 +80,11 @@ public class WhiteSpaceBenchmark
     public int IndexOfSeparator2()
     {
         return this.Text2.AsSpan().IndexOfSeparator();
+    }
+
+    [Benchmark]
+    public int IndexOfSeparatorB2()
+    {
+        return this.Text2.AsSpan().IndexOfSeparatorB();
     }
 }

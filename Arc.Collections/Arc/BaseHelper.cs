@@ -55,6 +55,19 @@ public static class BaseHelper
     {
         for (var i = 0; i < span.Length; i++)
         {
+            if (char.IsWhiteSpace(span[i]) || span[i] == 0x2C)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public static int IndexOfSeparatorB(this ReadOnlySpan<char> span)
+    {
+        for (var i = 0; i < span.Length; i++)
+        {
             var val = span[i];
 
             if (val < 0xFF)

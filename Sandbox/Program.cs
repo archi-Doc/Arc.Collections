@@ -10,11 +10,7 @@ class Program
     {
         Console.WriteLine("Hello World!");
 
-        var rentArray = BytePool.Default.Rent(10);
-
-        Console.WriteLine(CollectionHelper.CalculatePowerOfTwoCapacity(30));
-        Console.WriteLine(CollectionHelper.CalculatePowerOfTwoCapacity(31));
-        Console.WriteLine(CollectionHelper.CalculatePowerOfTwoCapacity(32));
-        Console.WriteLine(CollectionHelper.CalculatePowerOfTwoCapacity(33));
+        var map = new Utf16UnorderedMap<int>();
+        map.TryAdd("abc", 123);
     }
 }
