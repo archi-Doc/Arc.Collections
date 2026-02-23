@@ -102,40 +102,31 @@ public static class BaseHelper
         return -1;
     }
 
-    public static int IndexOfSeparatorB(this ReadOnlySpan<char> span)
+    /// <summary>
+    /// Determines whether the specified character is a separator or whitespace character.
+    /// </summary>
+    /// <param name="val">The character to evaluate.</param>
+    /// <returns>
+    /// <c>true</c> if the character is a separator or whitespace character; otherwise, <c>false</c>.
+    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// </returns>
+    public static bool IsSeparator(char val)
     {
-        for (var i = 0; i < span.Length; i++)
+        if (val < 0xFF)
         {
-            var val = span[i];
-
-            if (val < 0xFF)
-            {
-                if (val <= 0x0D && val >= 0x09)
-                { // U+0009 to U+000D
-                    return i;
-                }
-                else if (val == 0x20 || val == 0x2C || val == 0xA0)
-                { // Separator (Space, ',', NBSP)
-                    return i;
-                }
-
-                // Not separator.
-                continue;
-            }
-
-            if (val >= '\u2000' && val <= '\u200A')
-            {// U+2000 to U+200A
-                return i;
-            }
-            else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
-            {// U+2028, U+2029, U+3000
-                return i;
-            }
-
-            // Not separator.
+            return SeparatorCharFlag[val];
         }
 
-        return -1;
+        if (val >= '\u2000' && val <= '\u200A')
+        {// U+2000 to U+200A
+            return true;
+        }
+        else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+        {// U+2028, U+2029, U+3000
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
