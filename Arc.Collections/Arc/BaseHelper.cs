@@ -44,7 +44,7 @@ public static class BaseHelper
         false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
         true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, // 0x20-0x2F
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x30-0x3F
+        false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, // 0x30-0x3F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x40-0x4F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x50-0x5F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x60-0x6F

@@ -12,7 +12,10 @@ public class Utf8ValidatorTests
     {
         for (char c = default; c < 0xFF; c++)
         {
-            if (c != ',')
+            if (c == ',' || c == ';')
+            {
+            }
+            else
             {
                 BaseHelper.SeparatorCharFlag[c].Is(char.IsWhiteSpace(c));
             }
