@@ -40,8 +40,103 @@ public static class BaseHelper
     /// </summary>
     public const int UInt64MaxDecimalChars = 20;
 
+    public static readonly bool[] SeparatorCharFlag = [
+        false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
+        true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, // 0x20-0x2F
+        false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, // 0x30-0x3F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x40-0x4F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x50-0x5F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x60-0x6F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x70-0x7F
+        false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, // 0x80-0x8F
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x90-0x9F
+        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xA0-0xAF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xB0-0xBF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xC0-0xCF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xD0-0xDF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xE0-0xEF
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0xF0-0xFF
+    ];
+
     private static readonly uint[] Pow10 = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000,];
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
+
+    /// <summary>
+    /// Finds the index of the first separator or whitespace character in the specified span.
+    /// </summary>
+    /// <param name="span">The span of characters to search for a separator or whitespace character.</param>
+    /// <returns>
+    /// The zero-based index of the first separator or whitespace character in the span, or -1 if none is found.
+    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// </returns>
+    public static int IndexOfSeparator(this ReadOnlySpan<char> span)
+    {
+        for (var i = 0; i < span.Length; i++)
+        {
+            var val = span[i];
+
+            if (val < 0xFF)
+            {
+                if (SeparatorCharFlag[val])
+                {
+                    return i;
+                }
+
+                // Not separator.
+                continue;
+            }
+
+            if (val >= '\u2000' && val <= '\u200A')
+            {// U+2000 to U+200A
+                return i;
+            }
+            else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+            {// U+2028, U+2029, U+3000
+                return i;
+            }
+
+            // Not separator.
+        }
+
+        return -1;
+    }
+
+    public static int IndexOfSeparatorB(this ReadOnlySpan<char> span)
+    {
+        for (var i = 0; i < span.Length; i++)
+        {
+            var val = span[i];
+
+            if (val < 0xFF)
+            {
+                if (val <= 0x0D && val >= 0x09)
+                { // U+0009 to U+000D
+                    return i;
+                }
+                else if (val == 0x20 || val == 0x2C || val == 0xA0)
+                { // Separator (Space, ',', NBSP)
+                    return i;
+                }
+
+                // Not separator.
+                continue;
+            }
+
+            if (val >= '\u2000' && val <= '\u200A')
+            {// U+2000 to U+200A
+                return i;
+            }
+            else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+            {// U+2028, U+2029, U+3000
+                return i;
+            }
+
+            // Not separator.
+        }
+
+        return -1;
+    }
 
     /// <summary>
     /// Counts how many times <paramref name="value"/> appears in <paramref name="text"/>.<br/>

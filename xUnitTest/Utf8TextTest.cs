@@ -8,6 +8,21 @@ namespace xUnitTest;
 public class Utf8ValidatorTests
 {
     [Fact]
+    public void SeparatorFlag()
+    {
+        for (char c = default; c < 0xFF; c++)
+        {
+            if (c == ',' || c == ';')
+            {
+            }
+            else
+            {
+                BaseHelper.SeparatorCharFlag[c].Is(char.IsWhiteSpace(c));
+            }
+        }
+    }
+
+    [Fact]
     public void EmptyBytes_ReturnsZero()
     {
         var result = BaseHelper.GetValidUtf8Length(new byte[0]);
