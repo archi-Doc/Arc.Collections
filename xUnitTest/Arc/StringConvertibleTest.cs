@@ -102,6 +102,12 @@ public class StringConvertibleClass2 : IStringConvertible<StringConvertibleClass
 public class StringConvertibleTest
 {
     [Fact]
+    public void Test2()
+    {
+        BaseHelper.ImplementsIStringConvertible(typeof(StringConvertibleTest)).IsFalse();
+        BaseHelper.ImplementsIStringConvertible(typeof(StringConvertibleClass)).IsTrue();
+    }
+    [Fact]
     public void Test1()
     {
         var c1 = new StringConvertibleClass();
