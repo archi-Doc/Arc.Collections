@@ -63,6 +63,37 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Determines whether the specified <see cref="Type"/> implements the <see cref="IStringConvertible{T}"/> interface for itself.
+    /// </summary>
+    /// <param name="t">The type to check for <see cref="IStringConvertible{T}"/> implementation.</param>
+    /// <returns>
+    /// <c>true</c> if the type implements <see cref="IStringConvertible{T}"/> where <c>T</c> is the type itself; otherwise, <c>false</c>.
+    /// </returns>
+    public static bool ImplementsIStringConvertible(Type t)
+    {
+        foreach (var interfaces in t.GetInterfaces())
+        {
+            if (!interfaces.IsGenericType)
+            {
+                continue;
+            }
+
+            if (interfaces.GetGenericTypeDefinition() != typeof(IStringConvertible<>))
+            {
+                continue;
+            }
+
+            var arg = interfaces.GetGenericArguments()[0];
+            if (arg == t)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Finds the index of the first separator or whitespace character in the specified span.
     /// </summary>
     /// <param name="span">The span of characters to search for a separator or whitespace character.</param>
