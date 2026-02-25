@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Arc;
 using Arc.Collections;
 
 namespace ConsoleApp1;
@@ -10,6 +11,8 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        Console.WriteLine($"{VersionHelper.VersionString}");
+
         ObjectPoolSlow.Test();
 
         var array = new int[] { 2, 1, 3, };
