@@ -5,12 +5,14 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Arc;
@@ -260,6 +262,86 @@ public static class BaseHelper
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Removes all occurrences of a specified character from the given span of characters in-place.
+    /// </summary>
+    /// <param name="input">The span of characters to process.</param>
+    /// <param name="value">The character to remove from the span.</param>
+    /// <returns>
+    /// A span containing the characters from <paramref name="input"/> with all occurrences of <paramref name="value"/> removed.
+    /// The returned span may be shorter than the original input.
+    /// </returns>
+    public static Span<char> RemoveAllOccurrences(Span<char> input, char value)
+    {
+        var idx = input.IndexOf(value);
+        if (idx < 0)
+        {
+            return input;
+        }
+
+        var sourcePosition = idx + 1;
+        var destinationPosition = idx;
+        while (true)
+        {
+            idx = input.Slice(sourcePosition).IndexOf(value);
+            if (idx < 0)
+            {
+                var span = input.Slice(sourcePosition);
+                span.CopyTo(input.Slice(destinationPosition));
+                destinationPosition += span.Length;
+                return input.Slice(0, destinationPosition);
+            }
+            else
+            {
+                var span = input.Slice(sourcePosition, idx);
+                span.CopyTo(input.Slice(destinationPosition));
+                destinationPosition += idx;
+                sourcePosition += idx + 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Removes all occurrences of a specified character from the given string.
+    /// </summary>
+    /// <param name="input">The input string to process.</param>
+    /// <param name="value">The character to remove from the string.</param>
+    /// <returns>
+    /// A new string with all occurrences of <paramref name="value"/> removed from <paramref name="input"/>.<br/>
+    /// If the character is not found, returns the original string.
+    /// </returns>
+    public static string RemoveAllOccurrences(string input, char value)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        if (!input.Contains(value))
+        {
+            return input;
+        }
+
+        var newlineCount = input.AsSpan().Count(value);
+        if (newlineCount == 0)
+        {
+            return input;
+        }
+
+        var resultLength = input.Length - newlineCount;
+        return string.Create(resultLength, input, (span, src) =>
+        {
+            var position = 0;
+            for (var i = 0; i < src.Length; i++)
+            {
+                if (src[i] != value)
+                {
+                    span[position++] = src[i];
+                }
+            }
+        });
     }
 
     /// <summary>
