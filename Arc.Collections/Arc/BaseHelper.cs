@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Arc;
@@ -263,6 +264,37 @@ public static class BaseHelper
         }
     }
 
+    public static void RemoveCr(ref Span<char> input)
+    {
+        var idx = input.IndexOf('\r');
+        if (idx < 0)
+        {
+            return;
+        }
+
+        var sourcePosition = idx + 1;
+        var destinationPosition = idx;
+        while (true)
+        {
+            idx = input.Slice(sourcePosition).IndexOf('\r');
+            if (idx < 0)
+            {
+                var span = input.Slice(sourcePosition);
+                span.CopyTo(input.Slice(destinationPosition));
+                destinationPosition += span.Length;
+                input = input.Slice(0, destinationPosition);
+                return;
+            }
+            else
+            {
+                var span = input.Slice(sourcePosition, idx);
+                span.CopyTo(input.Slice(destinationPosition));
+                destinationPosition += idx;
+                sourcePosition += idx + 1;
+            }
+        }
+    }
+
     public static string RemoveCr(string input)
     {
         if (string.IsNullOrEmpty(input))
@@ -270,7 +302,7 @@ public static class BaseHelper
             return string.Empty;
         }
 
-        if (!input.Contains('\r'))
+        /*if (!input.Contains('\r'))
         {
             return input;
         }
@@ -282,8 +314,9 @@ public static class BaseHelper
             {
                 newlineCount++;
             }
-        }
+        }*/
 
+        var newlineCount = input.AsSpan().Count('\r');
         if (newlineCount == 0)
         {
             return input;
