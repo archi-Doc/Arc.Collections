@@ -264,6 +264,15 @@ public static class BaseHelper
         }
     }
 
+    /// <summary>
+    /// Removes all occurrences of a specified character from the given span of characters in-place.
+    /// </summary>
+    /// <param name="input">The span of characters to process.</param>
+    /// <param name="value">The character to remove from the span.</param>
+    /// <returns>
+    /// A span containing the characters from <paramref name="input"/> with all occurrences of <paramref name="value"/> removed.
+    /// The returned span may be shorter than the original input.
+    /// </returns>
     public static Span<char> RemoveAllOccurrences(Span<char> input, char value)
     {
         var idx = input.IndexOf(value);
@@ -294,26 +303,26 @@ public static class BaseHelper
         }
     }
 
+    /// <summary>
+    /// Removes all occurrences of a specified character from the given string.
+    /// </summary>
+    /// <param name="input">The input string to process.</param>
+    /// <param name="value">The character to remove from the string.</param>
+    /// <returns>
+    /// A new string with all occurrences of <paramref name="value"/> removed from <paramref name="input"/>.<br/>
+    /// If the character is not found, returns the original string.
+    /// </returns>
     public static string RemoveAllOccurrences(string input, char value)
     {
         if (string.IsNullOrEmpty(input))
         {
-            return string.Empty;
+            return input;
         }
 
         if (!input.Contains(value))
         {
             return input;
         }
-
-        /*var newlineCount = 0;
-        for (var i = 0; i < input.Length; i++)
-        {
-            if (input[i] == value)
-            {
-                newlineCount++;
-            }
-        }*/
 
         var newlineCount = input.AsSpan().Count(value);
         if (newlineCount == 0)
@@ -322,13 +331,12 @@ public static class BaseHelper
         }
 
         var resultLength = input.Length - newlineCount;
-        return string.Create(resultLength, input, (span, st) =>
+        return string.Create(resultLength, input, (span, src) =>
         {
-            var src = st.AsSpan();
             var position = 0;
             for (var i = 0; i < src.Length; i++)
             {
-                if (st[i] != value)
+                if (src[i] != value)
                 {
                     span[position++] = src[i];
                 }
