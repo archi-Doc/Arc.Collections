@@ -9,6 +9,20 @@ namespace xUnitTest;
 public class BaseHelperTest
 {
     [Fact]
+    public void RemoveCrTest()
+    {
+        BaseHelper.RemoveCr("").Is("");
+        BaseHelper.RemoveCr("ABC").Is("ABC");
+        BaseHelper.RemoveCr("ABC\n").Is("ABC\n");
+        BaseHelper.RemoveCr("ABC\r\n").Is("ABC\n");
+        BaseHelper.RemoveCr("ABC\n").Is("ABC\n");
+        BaseHelper.RemoveCr("\r\nABC\r\n\r\n").Is("\nABC\n\n");
+        BaseHelper.RemoveCr("\r\nA\nB\r\nC").Is("\nA\nB\nC");
+        BaseHelper.RemoveCr("ABC\n012\r\n345").Is("ABC\n012\n345");
+        BaseHelper.RemoveCr("\r\nA\rBC\r\n012\n345\n\n").Is("\nABC\n012\n345\n\n");
+    }
+
+    [Fact]
     public void RemoveCrLfTest()
     {
         BaseHelper.RemoveCrLf("ABC").Is("ABC");

@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -260,6 +261,46 @@ public static class BaseHelper
         {
             return 0;
         }
+    }
+
+    public static string RemoveCr(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return string.Empty;
+        }
+
+        if (!input.Contains('\r'))
+        {
+            return input;
+        }
+
+        var newlineCount = 0;
+        for (var i = 0; i < input.Length; i++)
+        {
+            if (input[i] == '\r')
+            {
+                newlineCount++;
+            }
+        }
+
+        if (newlineCount == 0)
+        {
+            return input;
+        }
+
+        var resultLength = input.Length - newlineCount;
+        return string.Create(resultLength, input, static (span, src) =>
+        {
+            var position = 0;
+            for (var i = 0; i < src.Length; i++)
+            {
+                if (src[i] != '\r')
+                {
+                    span[position++] = src[i];
+                }
+            }
+        });
     }
 
     /// <summary>
