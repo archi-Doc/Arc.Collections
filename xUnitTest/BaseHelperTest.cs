@@ -11,15 +11,20 @@ public class BaseHelperTest
     [Fact]
     public void RemoveCrTest()
     {
-        BaseHelper.RemoveCr("").Is("");
-        BaseHelper.RemoveCr("ABC").Is("ABC");
-        BaseHelper.RemoveCr("ABC\n").Is("ABC\n");
-        BaseHelper.RemoveCr("ABC\r\n").Is("ABC\n");
-        BaseHelper.RemoveCr("ABC\n").Is("ABC\n");
-        BaseHelper.RemoveCr("\r\nABC\r\n\r\n").Is("\nABC\n\n");
-        BaseHelper.RemoveCr("\r\nA\nB\r\nC").Is("\nA\nB\nC");
-        BaseHelper.RemoveCr("ABC\n012\r\n345").Is("ABC\n012\n345");
-        BaseHelper.RemoveCr("\r\nA\rBC\r\n012\n345\n\n").Is("\nABC\n012\n345\n\n");
+        RemoveCr("").Is("");
+        RemoveCr("ABC").Is("ABC");
+        RemoveCr("ABC\n").Is("ABC\n");
+        RemoveCr("ABC\r\n").Is("ABC\n");
+        RemoveCr("ABC\n").Is("ABC\n");
+        RemoveCr("\r\nABC\r\n\r\n").Is("\nABC\n\n");
+        RemoveCr("\r\nA\nB\r\nC").Is("\nA\nB\nC");
+        RemoveCr("ABC\n012\r\n345").Is("ABC\n012\n345");
+        RemoveCr("\r\nA\rBC\r\n012\n345\n\n").Is("\nABC\n012\n345\n\n");
+
+        string RemoveCr(string input)
+        {
+            return BaseHelper.RemoveAllOccurrences(input, '\r');
+        }
     }
 
     [Fact]
@@ -39,7 +44,7 @@ public class BaseHelperTest
         {
             var array = input.ToCharArray();
             var span = array.AsSpan();
-            return new string(BaseHelper.RemoveCr(span));
+            return new string(BaseHelper.RemoveAllOccurrences(span, '\r'));
         }
     }
 

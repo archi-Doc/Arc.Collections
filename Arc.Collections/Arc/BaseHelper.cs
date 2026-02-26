@@ -264,9 +264,9 @@ public static class BaseHelper
         }
     }
 
-    public static Span<char> RemoveCr(Span<char> input)
+    public static Span<char> RemoveAllOccurrences(Span<char> input, char value)
     {
-        var idx = input.IndexOf('\r');
+        var idx = input.IndexOf(value);
         if (idx < 0)
         {
             return input;
@@ -276,7 +276,7 @@ public static class BaseHelper
         var destinationPosition = idx;
         while (true)
         {
-            idx = input.Slice(sourcePosition).IndexOf('\r');
+            idx = input.Slice(sourcePosition).IndexOf(value);
             if (idx < 0)
             {
                 var span = input.Slice(sourcePosition);
@@ -294,40 +294,41 @@ public static class BaseHelper
         }
     }
 
-    public static string RemoveCr(string input)
+    public static string RemoveAllOccurrences(string input, char value)
     {
         if (string.IsNullOrEmpty(input))
         {
             return string.Empty;
         }
 
-        if (!input.Contains('\r'))
+        if (!input.Contains(value))
         {
             return input;
         }
 
-        var newlineCount = 0;
+        /*var newlineCount = 0;
         for (var i = 0; i < input.Length; i++)
         {
-            if (input[i] == '\r')
+            if (input[i] == value)
             {
                 newlineCount++;
             }
-        }
+        }*/
 
-        // var newlineCount = input.AsSpan().Count('\r');
+        var newlineCount = input.AsSpan().Count(value);
         if (newlineCount == 0)
         {
             return input;
         }
 
         var resultLength = input.Length - newlineCount;
-        return string.Create(resultLength, input, static (span, src) =>
+        return string.Create(resultLength, input, (span, st) =>
         {
+            var src = st.AsSpan();
             var position = 0;
             for (var i = 0; i < src.Length; i++)
             {
-                if (src[i] != '\r')
+                if (st[i] != value)
                 {
                     span[position++] = src[i];
                 }

@@ -52,7 +52,7 @@ public class RemoveCrBenchmark
     {
         for (var i = 0; i < testStrings.Length; i++)
         {
-            this.tempStrings[i] = BaseHelper.RemoveCr(this.testStrings[i]);
+            this.tempStrings[i] = BaseHelper.RemoveAllOccurrences(this.testStrings[i], '\r');
         }
 
         return this.tempStrings;
@@ -65,7 +65,7 @@ public class RemoveCrBenchmark
         {
             this.testArrays[i].AsSpan().CopyTo(this.tempArrays[i]);
             var span = this.tempArrays[i].AsSpan();
-            BaseHelper.RemoveCr(span);
+            BaseHelper.RemoveAllOccurrences(span, '\r');
 
         }
 
