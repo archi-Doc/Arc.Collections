@@ -264,12 +264,12 @@ public static class BaseHelper
         }
     }
 
-    public static void RemoveCr(ref Span<char> input)
+    public static Span<char> RemoveCr(Span<char> input)
     {
         var idx = input.IndexOf('\r');
         if (idx < 0)
         {
-            return;
+            return input;
         }
 
         var sourcePosition = idx + 1;
@@ -282,8 +282,7 @@ public static class BaseHelper
                 var span = input.Slice(sourcePosition);
                 span.CopyTo(input.Slice(destinationPosition));
                 destinationPosition += span.Length;
-                input = input.Slice(0, destinationPosition);
-                return;
+                return input.Slice(0, destinationPosition);
             }
             else
             {
@@ -302,7 +301,7 @@ public static class BaseHelper
             return string.Empty;
         }
 
-        /*if (!input.Contains('\r'))
+        if (!input.Contains('\r'))
         {
             return input;
         }
@@ -314,9 +313,9 @@ public static class BaseHelper
             {
                 newlineCount++;
             }
-        }*/
+        }
 
-        var newlineCount = input.AsSpan().Count('\r');
+        // var newlineCount = input.AsSpan().Count('\r');
         if (newlineCount == 0)
         {
             return input;

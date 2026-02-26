@@ -39,8 +39,7 @@ public class BaseHelperTest
         {
             var array = input.ToCharArray();
             var span = array.AsSpan();
-            BaseHelper.RemoveCr(ref span);
-            return new string(span);
+            return new string(BaseHelper.RemoveCr(span));
         }
     }
 
