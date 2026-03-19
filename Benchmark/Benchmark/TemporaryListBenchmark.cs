@@ -52,7 +52,7 @@ public class TemporaryListBenchmark
     [Benchmark]
     public int TemporaryList()
     {
-        var list = new TemporaryListObsolete<TemporaryListClass>();
+        var list = new TemporaryList<TemporaryListClass>();
         list.Add(this.c0);
         list.Add(this.c1);
         list.Add(this.c2);
@@ -67,9 +67,9 @@ public class TemporaryListBenchmark
     }
 
     [Benchmark]
-    public int TemporaryList2()
+    public int TemporaryListObsolete()
     {
-        var list = new TemporaryList2<TemporaryListClass>();
+        var list = new TemporaryListObsolete<TemporaryListClass>();
         list.Add(this.c0);
         list.Add(this.c1);
         list.Add(this.c2);
