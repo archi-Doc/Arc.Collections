@@ -6,58 +6,26 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// A list of temporary objects created using a ref struct.<br/>
-/// If the count is 4 or fewer, it avoids creating a <see cref="List{T}"/> and keeps the objects on the stack.<br/>
-/// It is primarily used when you need to manipulate a collection after exiting a for or foreach loop.
+/// A list of temporary objects implemented as a ref struct.<br/>
+/// If the number of objects is 4 or less, the objects are stored on the stack and no heap allocations are made.<br/>
+/// Use this mainly when you want to modify objects after iterating a collection in a 'for' or 'foreach' loop.
 /// </summary>
 /// <typeparam name="TObject">The type of the objects.</typeparam>
-public ref struct TemporaryList<TObject>
-    where TObject : class
+public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
 {
-    private const int FieldSize = 4;
+    private const int StackObjectCount = 4;
 
-    private TObject? obj0;
-    private TObject? obj1;
-    private TObject? obj2;
-    private TObject? obj3;
+    private int count;
+    private TObject obj0;
+    private TObject obj1;
+    private TObject obj2;
+    private TObject obj3;
     private List<TObject>? list;
 
     /// <summary>
-    /// Gets the number of objects in the queue.
+    /// Gets the number of objects in the list.
     /// </summary>
-    public int Count
-    {
-        get
-        {
-            if (this.obj0 is null)
-            {
-                return 0;
-            }
-            else if (this.obj1 is null)
-            {
-                return 1;
-            }
-            else if (this.obj2 is null)
-            {
-                return 2;
-            }
-            else if (this.obj3 is null)
-            {
-                return 3;
-            }
-            else
-            {
-                if (this.list is null)
-                {
-                    return FieldSize;
-                }
-                else
-                {
-                    return FieldSize + this.list.Count;
-                }
-            }
-        }
-    }
+    public int Count => this.count;
 
     /// <summary>
     /// Adds an object to the list.
@@ -65,70 +33,101 @@ public ref struct TemporaryList<TObject>
     /// <param name="obj">The object to add to the queue.</param>
     public void Add(TObject obj)
     {
-        if (this.obj0 is null)
+        if (this.count == 0)
         {
+            this.count = 1;
             this.obj0 = obj;
             return;
         }
-
-        if (this.obj1 is null)
+        else if (this.count == 1)
         {
+            this.count = 2;
             this.obj1 = obj;
             return;
         }
-
-        if (this.obj2 is null)
+        else if (this.count == 2)
         {
+            this.count = 3;
             this.obj2 = obj;
             return;
         }
-
-        if (this.obj3 is null)
+        else if (this.count == 3)
         {
+            this.count = 4;
             this.obj3 = obj;
             return;
         }
 
+        this.count++;
         this.list ??= new();
         this.list.Add(obj);
     }
 
-    /*
     /// <summary>
-    /// Clears all objects from the queue.<br/>
-    /// This struct exists on the stack, so there is no need to actively call Clear().
+    /// Copies the current contents of this temporary list to a new array.
     /// </summary>
-    public void Clear()
+    /// <returns>
+    /// A new array containing all items in insertion order.<br/>
+    /// Returns an empty array when the list contains no items.
+    /// </returns>
+    public TObject[] ToArray()
     {
-        this.obj0 = default;
-        this.obj1 = default;
-        this.obj2 = default;
-        this.obj3 = default;
-        if (this.list is not null)
+        if (this.Count == 0)
         {
-            this.list.Clear();
-            this.list = default;
+            return [];
         }
-    }*/
+
+        var array = new TObject[this.Count];
+        if (this.Count > 0)
+        {
+            array[0] = this.obj0;
+        }
+
+        if (this.Count > 1)
+        {
+            array[1] = this.obj1;
+        }
+
+        if (this.Count > 2)
+        {
+            array[2] = this.obj2;
+        }
+
+        if (this.Count > 3)
+        {
+            array[3] = this.obj3;
+        }
+
+        for (var i = StackObjectCount; i < this.Count; i++)
+        {
+            array[i] = this.list![i - StackObjectCount];
+        }
+
+        return array;
+    }
 
     public Enumerator GetEnumerator() => new Enumerator(this);
 
+    // IEnumerator<TObject> IEnumerable<TObject>.GetEnumerator() => new Enumerator(this);
+
+    // IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
+
     public ref struct Enumerator : IEnumerator<TObject>
     {
-        private readonly TemporaryList<TObject> queue;
+        private readonly TemporaryList<TObject> temporaryList;
         private int index;
         private TObject? current;
 
-        public Enumerator(TemporaryList<TObject> queue)
+        public Enumerator(TemporaryList<TObject> temporaryList)
         {
-            this.queue = queue;
+            this.temporaryList = temporaryList;
             this.index = -1;
             this.current = default;
         }
 
         public TObject Current => this.current!;
 
-        object IEnumerator.Current => this.Current;
+        object IEnumerator.Current => this.Current!;
 
         public void Dispose()
         {
@@ -136,38 +135,40 @@ public ref struct TemporaryList<TObject>
 
         public bool MoveNext()
         {
-            this.index++;
-            if (this.index >= FieldSize)
+            if (++this.index >= this.temporaryList.Count)
             {
-                if (this.queue.list is { } list)
+                return false;
+            }
+
+            if (this.index >= StackObjectCount &&
+                this.temporaryList.list is { } list)
+            {
+                var i = this.index - StackObjectCount;
+                if (i < list.Count)
                 {
-                    var i = this.index - FieldSize;
-                    if (i < list.Count)
-                    {
-                        this.current = list[i];
-                        return true;
-                    }
+                    this.current = list[i];
+                    return true;
                 }
             }
             else if (this.index == 0)
             {
-                this.current = this.queue.obj0;
-                return this.queue.obj0 is not null;
+                this.current = this.temporaryList.obj0;
+                return true;
             }
             else if (this.index == 1)
             {
-                this.current = this.queue.obj1;
-                return this.queue.obj1 is not null;
+                this.current = this.temporaryList.obj1;
+                return true;
             }
             else if (this.index == 2)
             {
-                this.current = this.queue.obj2;
-                return this.queue.obj2 is not null;
+                this.current = this.temporaryList.obj2;
+                return true;
             }
             else if (this.index == 3)
             {
-                this.current = this.queue.obj3;
-                return this.queue.obj3 is not null;
+                this.current = this.temporaryList.obj3;
+                return true;
             }
 
             return false;
