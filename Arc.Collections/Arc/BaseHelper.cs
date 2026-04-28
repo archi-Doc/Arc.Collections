@@ -65,6 +65,130 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Splits a span of characters into an array of strings based on line breaks.
+    /// Handles both LF (\n) and CRLF (\r\n) line endings.
+    /// </summary>
+    /// <param name="source">The source character span to split into lines.</param>
+    /// <param name="includeEmptyLines">
+    /// If <c>true</c>, includes empty lines in the result.
+    /// If <c>false</c>, filters out empty lines from the result.
+    /// </param>
+    /// <returns>
+    /// An array of strings where each element represents a line from the source.
+    /// Returns an empty array if the source contains no non-empty lines when <paramref name="includeEmptyLines"/> is <c>false</c>.
+    /// </returns>
+    public static string[] SplitLines(ReadOnlySpan<char> source, bool includeEmptyLines = false)
+    {
+        if (includeEmptyLines)
+        {
+            var count = 1;
+            for (var i = 0; i < source.Length; i++)
+            {
+                if (source[i] == '\n')
+                {
+                    count++;
+                }
+            }
+
+            var result = new string[count];
+            var resultIndex = 0;
+            var start = 0;
+            while (true)
+            {
+                var relativeLf = source[start..].IndexOf('\n');
+                if (relativeLf < 0)
+                {
+                    break;
+                }
+
+                var lf = start + relativeLf;
+                var end = lf;
+                if (end > start && source[end - 1] == '\r')
+                {
+                    end--;
+                }
+
+                result[resultIndex++] = source[start..end].ToString();
+                start = lf + 1;
+            }
+
+            result[resultIndex] = source[start..].ToString();
+            return result;
+        }
+        else
+        {
+            var count = 0;
+            var start = 0;
+            while (true)
+            {
+                var relativeLf = source[start..].IndexOf('\n');
+                if (relativeLf < 0)
+                {
+                    break;
+                }
+
+                var lf = start + relativeLf;
+                var end = lf;
+                if (end > start && source[end - 1] == '\r')
+                {
+                    end--;
+                }
+
+                if (end > start)
+                {
+                    count++;
+                }
+
+                start = lf + 1;
+            }
+
+            if (start < source.Length)
+            {
+                count++;
+            }
+
+            if (count == 0)
+            {
+                return [];
+            }
+
+            var result = new string[count];
+            var resultIndex = 0;
+            start = 0;
+            while (true)
+            {
+                var relativeLf = source[start..].IndexOf('\n');
+                if (relativeLf < 0)
+                {
+                    break;
+                }
+
+                var lf = start + relativeLf;
+                var end = lf;
+
+                if (end > start && source[end - 1] == '\r')
+                {
+                    end--;
+                }
+
+                if (end > start)
+                {
+                    result[resultIndex++] = source[start..end].ToString();
+                }
+
+                start = lf + 1;
+            }
+
+            if (start < source.Length)
+            {
+                result[resultIndex] = source[start..].ToString();
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>
     /// Determines whether the specified <see cref="Type"/> implements the <see cref="IStringConvertible{T}"/> interface for itself.
     /// </summary>
     /// <param name="t">The type to check for <see cref="IStringConvertible{T}"/> implementation.</param>
