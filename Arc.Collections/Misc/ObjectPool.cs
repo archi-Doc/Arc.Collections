@@ -3,7 +3,6 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Arc.Collections;
 
@@ -11,11 +10,14 @@ namespace Arc.Collections;
 /// A fast and thread-safe pool of objects (uses <see cref="CircularQueue{T}"/>).<br/>
 /// Target: Classes that will be used/reused frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
 /// <br/>
-/// If <typeparamref name="T"/> implements <see cref="IDisposable"/>, <see cref="ObjectPool{T}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
-/// This class can also be disposed, although this is not always necessary.
+/// If an object implements <see cref="IDisposable"/>, it is disposed when it cannot be stored
+/// because the pool is full, or when the pool itself is disposed.
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
-public class ObjectPool<T> : IDisposable
+/// <remarks>
+/// Rent and Return are thread-safe. Dispose must not be called concurrently with Rent or Return.
+/// </remarks>
+public sealed class ObjectPool<T> : IDisposable
     where T : class
 {
     public const int DefaultPoolSize = 32;
@@ -28,14 +30,8 @@ public class ObjectPool<T> : IDisposable
     public ObjectPool(Func<T> createFunc, int poolSize = DefaultPoolSize)
     {
         this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
-
-        if (typeof(IDisposable).IsAssignableFrom(typeof(T)))
-        {// T is disposable.
-            this.isDisposable = true;
-        }
-
+        this.isDisposable = typeof(IDisposable).IsAssignableFrom(typeof(T));
         this.queue = new(poolSize);
-        this.fastItem = default;
     }
 
     #region FieldAndProperty
@@ -43,13 +39,11 @@ public class ObjectPool<T> : IDisposable
     /// <summary>
     /// Gets the maximum number of objects in the pool.
     /// </summary>
-    public int PoolSize
-        => this.queue.Capacity;
+    public int PoolSize => this.queue.Capacity;
 
     private readonly Func<T> createFunc;
-    private CircularQueue<T> queue;
-    private T? fastItem;
-    private bool isDisposable = false;
+    private readonly bool isDisposable;
+    private readonly CircularQueue<T> queue;
 
     #endregion
 
@@ -61,20 +55,14 @@ public class ObjectPool<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Rent()
     {
-        var item = this.fastItem;
-        if (item == null || Interlocked.CompareExchange(ref this.fastItem, null, item) != item)
-        {
-            if (this.queue.TryDequeue(out item))
-            {
-                return item;
-            }
+        ObjectDisposedException.ThrowIf(this.disposed, this);
 
-            return this.createFunc();
+        if (this.queue.TryDequeue(out var item))
+        {
+            return item;
         }
 
-        return item;
-
-        // return this.objects.TryDequeue(out T? item) ? item : this.createFunc();
+        return this.createFunc();
     }
 
     /// <summary>
@@ -86,14 +74,13 @@ public class ObjectPool<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Return(T instance)
     {
-        if (this.fastItem != null || Interlocked.CompareExchange(ref this.fastItem, instance, null) != null)
-        {
-            if (!this.queue.TryEnqueue(instance))
-            {// The pool is full.
-                if (this.isDisposable && instance is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
+        ObjectDisposedException.ThrowIf(this.disposed, this);
+
+        if (!this.queue.TryEnqueue(instance))
+        {// The pool is full.
+            if (this.isDisposable && instance is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
     }
@@ -102,51 +89,24 @@ public class ObjectPool<T> : IDisposable
 
     private bool disposed = false; // To detect redundant calls.
 
-    /// <summary>
-    /// Finalizes an instance of the <see cref="ObjectPool{T}"/> class.
-    /// </summary>
-    ~ObjectPool()
-    {
-        this.Dispose(false);
-    }
-
     /// <inheritdoc/>
     public void Dispose()
     {
-        this.Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// free managed/native resources.
-    /// </summary>
-    /// <param name="disposing">true: free managed resources.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!this.disposed)
+        if (this.disposed)
         {
-            if (disposing)
-            {
-                // free managed resources.
-                if (this.isDisposable)
-                {// Disposable
-                    while (this.queue.TryDequeue(out var item))
-                    {
-                        if (item is IDisposable disposable)
-                        {
-                            disposable.Dispose();
-                        }
-                    }
-                }
-                else
-                {// Non-disposable
-                    this.queue = new(this.PoolSize);
-                }
-            }
+            return;
+        }
 
-            // free native resources here if there are any.
-            this.disposed = true;
+        this.disposed = true;
+
+        while (this.queue.TryDequeue(out var item))
+        {
+            if (item is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
     }
+
     #endregion
 }

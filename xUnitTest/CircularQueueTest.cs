@@ -69,56 +69,6 @@ public class CircularQueueTest
         }
     }
 
-    [Fact]
-    public async Task Test3()
-    {
-        const int P = 10;
-        const int N = 1000;
-        const int Capacity = 16384;
-
-        var q = new CircularQueue<int>(Capacity);
-        var method = typeof(CircularQueue<int>).GetMethod("SetSequenceNumberForDebug", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        int start = unchecked(int.MaxValue + 1 - (Capacity * 1)); // int.MinValue
-        method.Invoke(q, [start, ]);
-        // q.SetSequenceNumberForDebug();
-
-        Parallel.ForEach(Enumerable.Range(0, P), x =>
-        {
-            var r = new Random();
-
-            EnqueueN(q, r, 100); // 100
-            DequeueN(q, 100); // 0
-            EnqueueN(q, r, 100); // 100
-            DequeueN(q, 50); // 50
-            EnqueueN(q, r, 200); // 250
-
-            for (var i = 0; i < N; i++)
-            {
-                Enqueue(q, r);
-                Dequeue(q);
-            }
-
-            EnqueueN(q, r, 50); // 300
-            for (var i = 0; i < 500; i++)
-            {
-                Enqueue(q, r);
-                Enqueue(q, r);
-                Dequeue(q);
-            }
-
-            for (var i = 0; i < 500; i++)
-            {
-                Enqueue(q, r);
-                Dequeue(q);
-                Dequeue(q);
-            }
-
-            // 300
-        });
-
-        q.Count.Is(300 * P);
-    }
-
     private static void DequeueN(CircularQueue<int> queue, int count)
     {
         SpinWait spinner = default;

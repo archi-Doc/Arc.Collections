@@ -7,7 +7,7 @@ namespace Arc.Collections;
 public static class CollectionHelper
 {
     public const uint MinimumCapacity = 8;
-    public const uint MaximumCapacity = 0x80000000;
+    public const uint MaximumCapacity = 1u << 30;
 
     /*public static T? GetOption<T>(this IConversionOptions conversionOptions)
         where T : class
@@ -56,6 +56,10 @@ public static class CollectionHelper
         if (minimumSize < MinimumCapacity)
         {
             return (int)MinimumCapacity;
+        }
+        else if (minimumSize >= MaximumCapacity)
+        {
+            return (int)MaximumCapacity;
         }
 
         return 1 << (32 - BitOperations.LeadingZeroCount((uint)minimumSize - 1));
