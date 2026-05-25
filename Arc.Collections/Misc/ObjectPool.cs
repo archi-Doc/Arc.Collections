@@ -26,11 +26,11 @@ public sealed class ObjectPool<T> : IDisposable
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.<br/>
     /// </summary>
     /// <param name="createFunc">Delegate to create a new instance.</param>
-    /// <param name="poolSize">The maximum number of objects in the pool.</param>
+    /// <param name="poolSize">The requested maximum number of objects in the pool.<br/>
+    /// The actual capacity may be rounded up.</param>
     public ObjectPool(Func<T> createFunc, int poolSize = DefaultPoolSize)
     {
         this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
-        this.isDisposable = typeof(IDisposable).IsAssignableFrom(typeof(T));
         this.queue = new(poolSize);
     }
 
@@ -42,7 +42,6 @@ public sealed class ObjectPool<T> : IDisposable
     public int PoolSize => this.queue.Capacity;
 
     private readonly Func<T> createFunc;
-    private readonly bool isDisposable;
     private readonly CircularQueue<T> queue;
 
     #endregion
@@ -78,7 +77,7 @@ public sealed class ObjectPool<T> : IDisposable
 
         if (!this.queue.TryEnqueue(instance))
         {// The pool is full.
-            if (this.isDisposable && instance is IDisposable disposable)
+            if (instance is IDisposable disposable)
             {
                 disposable.Dispose();
             }
