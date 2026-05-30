@@ -65,6 +65,80 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Counts the number of leading space characters in the specified span.
+    /// </summary>
+    /// <param name="span">The character span to examine.</param>
+    /// <returns>
+    /// The number of consecutive space characters (' ') at the beginning of the span.<br/>
+    /// Returns 0 if the span is empty or does not start with a space character.
+    /// </returns>
+    public static unsafe int CountLeadingSpaces(ReadOnlySpan<char> span)
+    {
+        var length = span.Length;
+        if (length == 0 || span[0] != ' ')
+        {
+            return 0;
+        }
+
+        var i = 0;
+        if (length < 8)
+        {
+            i = 1;
+            while (i < length && span[i] == ' ')
+            {
+                i++;
+            }
+
+            return i;
+        }
+
+        fixed (char* p = span)
+        {
+            if (Avx2.IsSupported)
+            {
+                Vector256<ushort> spaces = Vector256.Create((ushort)' ');
+                while (i <= length - 16)
+                {
+                    Vector256<ushort> chunk = Avx.LoadVector256((ushort*)(p + i));
+                    Vector256<ushort> eq = Avx2.CompareEqual(chunk, spaces);
+                    uint nonSpaceMask = ~(uint)Avx2.MoveMask(eq.AsByte()) & 0x55555555u;
+                    if (nonSpaceMask != 0)
+                    {
+                        return i + (BitOperations.TrailingZeroCount(nonSpaceMask) >> 1);
+                    }
+
+                    i += 16;
+                }
+            }
+
+            if (Sse2.IsSupported)
+            {
+                Vector128<ushort> spaces = Vector128.Create((ushort)' ');
+
+                while (i <= length - 8)
+                {
+                    Vector128<ushort> chunk = Sse2.LoadVector128((ushort*)(p + i));
+                    Vector128<ushort> eq = Sse2.CompareEqual(chunk, spaces);
+                    uint nonSpaceMask = ~(uint)Sse2.MoveMask(eq.AsByte()) & 0x5555u;
+                    if (nonSpaceMask != 0)
+                    {
+                        return i + (BitOperations.TrailingZeroCount(nonSpaceMask) >> 1);
+                    }
+
+                    i += 8;
+                }
+            }
+
+            while (i < length && p[i] == ' ')
+            {
+                i++;
+            }
+        }
+
+        return i;
+    }
+
+    /// <summary>
     /// Splits a span of characters into an array of strings based on line breaks.
     /// Handles both LF (\n) and CRLF (\r\n) line endings.
     /// </summary>
