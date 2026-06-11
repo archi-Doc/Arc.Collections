@@ -14,6 +14,7 @@ using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.VisualBasic;
 
 namespace Arc;
 
@@ -22,6 +23,10 @@ namespace Arc;
 /// </summary>
 public static class BaseHelper
 {
+    public const char LfChar = '\n';
+    public const char CrChar = '\r';
+    public const char SpaceChar = ' ';
+
     /// <summary>
     /// The maximum number of characters required to represent a 32-bit signed integer in decimal format, including the sign.
     /// </summary>
@@ -65,17 +70,40 @@ public static class BaseHelper
     private static readonly ulong[] Pow10B = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000, 1_000_000_000_000_000, 10_000_000_000_000_000, 100_000_000_000_000_000, 1_000_000_000_000_000_000, 10_000_000_000_000_000_000,];
 
     /// <summary>
+    /// Appends the specified text followed by a line-feed character (<c>\n</c>) to the current <see cref="StringBuilder"/>.
+    /// </summary>
+    /// <param name="sb">The target <see cref="StringBuilder"/> instance.</param>
+    /// <param name="value">The text to append before the line-feed character.</param>
+    /// <returns>The same <see cref="StringBuilder"/> instance for call chaining.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static StringBuilder AppendLf(this StringBuilder sb, string value)
+    {
+        return sb.Append(value).Append(LfChar);
+    }
+
+    /// <summary>
+    /// Appends a line-feed character (<c>\n</c>) to the current <see cref="StringBuilder"/>.
+    /// </summary>
+    /// <param name="sb">The target <see cref="StringBuilder"/> instance.</param>
+    /// <returns>The same <see cref="StringBuilder"/> instance for call chaining.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static StringBuilder AppendLf(this StringBuilder sb)
+    {
+        return sb.Append(LfChar);
+    }
+
+    /// <summary>
     /// Counts the number of leading space characters in the specified span.
     /// </summary>
     /// <param name="span">The character span to examine.</param>
     /// <returns>
-    /// The number of consecutive space characters (' ') at the beginning of the span.<br/>
+    /// The number of consecutive space characters (SpaceChar) at the beginning of the span.<br/>
     /// Returns 0 if the span is empty or does not start with a space character.
     /// </returns>
     public static unsafe int CountLeadingSpaces(ReadOnlySpan<char> span)
     {
         var length = span.Length;
-        if (length == 0 || span[0] != ' ')
+        if (length == 0 || span[0] != SpaceChar)
         {
             return 0;
         }
@@ -84,7 +112,7 @@ public static class BaseHelper
         if (length < 8)
         {
             i = 1;
-            while (i < length && span[i] == ' ')
+            while (i < length && span[i] == SpaceChar)
             {
                 i++;
             }
@@ -96,7 +124,7 @@ public static class BaseHelper
         {
             if (Avx2.IsSupported)
             {
-                Vector256<ushort> spaces = Vector256.Create((ushort)' ');
+                Vector256<ushort> spaces = Vector256.Create((ushort)SpaceChar);
                 while (i <= length - 16)
                 {
                     Vector256<ushort> chunk = Avx.LoadVector256((ushort*)(p + i));
@@ -113,7 +141,7 @@ public static class BaseHelper
 
             if (Sse2.IsSupported)
             {
-                Vector128<ushort> spaces = Vector128.Create((ushort)' ');
+                Vector128<ushort> spaces = Vector128.Create((ushort)SpaceChar);
 
                 while (i <= length - 8)
                 {
@@ -129,7 +157,7 @@ public static class BaseHelper
                 }
             }
 
-            while (i < length && p[i] == ' ')
+            while (i < length && p[i] == SpaceChar)
             {
                 i++;
             }
@@ -158,7 +186,7 @@ public static class BaseHelper
             var count = 1;
             for (var i = 0; i < source.Length; i++)
             {
-                if (source[i] == '\n')
+                if (source[i] == LfChar)
                 {
                     count++;
                 }
@@ -169,7 +197,7 @@ public static class BaseHelper
             var start = 0;
             while (true)
             {
-                var relativeLf = source[start..].IndexOf('\n');
+                var relativeLf = source[start..].IndexOf(LfChar);
                 if (relativeLf < 0)
                 {
                     break;
@@ -177,7 +205,7 @@ public static class BaseHelper
 
                 var lf = start + relativeLf;
                 var end = lf;
-                if (end > start && source[end - 1] == '\r')
+                if (end > start && source[end - 1] == CrChar)
                 {
                     end--;
                 }
@@ -195,7 +223,7 @@ public static class BaseHelper
             var start = 0;
             while (true)
             {
-                var relativeLf = source[start..].IndexOf('\n');
+                var relativeLf = source[start..].IndexOf(LfChar);
                 if (relativeLf < 0)
                 {
                     break;
@@ -203,7 +231,7 @@ public static class BaseHelper
 
                 var lf = start + relativeLf;
                 var end = lf;
-                if (end > start && source[end - 1] == '\r')
+                if (end > start && source[end - 1] == CrChar)
                 {
                     end--;
                 }
@@ -231,7 +259,7 @@ public static class BaseHelper
             start = 0;
             while (true)
             {
-                var relativeLf = source[start..].IndexOf('\n');
+                var relativeLf = source[start..].IndexOf(LfChar);
                 if (relativeLf < 0)
                 {
                     break;
@@ -240,7 +268,7 @@ public static class BaseHelper
                 var lf = start + relativeLf;
                 var end = lf;
 
-                if (end > start && source[end - 1] == '\r')
+                if (end > start && source[end - 1] == CrChar)
                 {
                     end--;
                 }
@@ -543,7 +571,7 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Removes all newline characters ('\r' and '\n') from the input string.
+    /// Removes all newline characters (CrChar and LfChar) from the input string.
     /// </summary>
     /// <param name="input">The input string from which to remove newline characters.</param>
     /// <returns>
@@ -557,7 +585,7 @@ public static class BaseHelper
             return string.Empty;
         }
 
-        if (!input.Contains('\n'))
+        if (!input.Contains(LfChar))
         {
             return input;
         }
@@ -565,7 +593,7 @@ public static class BaseHelper
         var newlineCount = 0;
         for (var i = 0; i < input.Length; i++)
         {
-            if (input[i] == '\r' || input[i] == '\n')
+            if (input[i] == CrChar || input[i] == LfChar)
             {
                 newlineCount++;
             }
@@ -582,7 +610,7 @@ public static class BaseHelper
             var position = 0;
             for (var i = 0; i < src.Length; i++)
             {
-                if (src[i] != '\r' && src[i] != '\n')
+                if (src[i] != CrChar && src[i] != LfChar)
                 {
                     span[position++] = src[i];
                 }
@@ -741,22 +769,22 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Finds the index of the first line feed character ('\n') or carriage return ('\r') in the specified text span,
-    /// accommodating both Lf ('\n') and CrLf ('\r\n') line endings.
+    /// Finds the index of the first line feed character (LfChar) or carriage return (CrChar) in the specified text span,
+    /// accommodating both Lf (LfChar) and CrLf ('\r\n') line endings.
     /// </summary>
     /// <param name="text">The span of characters to search for line feed or carriage return characters.</param>
     /// <param name="newLineLength">When this method returns, contains the length of the detected line ending:
-    /// 1 for Lf ('\n'), 2 for CrLf ('\r\n'), or 0 if no line ending is found.</param>
+    /// 1 for Lf (LfChar), 2 for CrLf ('\r\n'), or 0 if no line ending is found.</param>
     /// <returns>The zero-based index of the line ending (Lf or CrLf) in the text span, or -1 if no line ending is found.</returns>
     public static int IndexOfLfOrCrLf(ReadOnlySpan<char> text, out int newLineLength)
     {// \r\n (CrLf) or \n (Lf)
-        var index = text.IndexOf('\n');
+        var index = text.IndexOf(LfChar);
         if (index < 0)
         {// Not found]
             newLineLength = 0;
             return -1;
         }
-        else if (index > 0 && text[index - 1] == '\r')
+        else if (index > 0 && text[index - 1] == CrChar)
         {// \r\n (CrLf)
             newLineLength = 2;
             return index - 1;
@@ -769,7 +797,7 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Converts all line feed ('\n') characters in the input string to carriage return and line feed ("\r\n") pairs,
+    /// Converts all line feed (LfChar) characters in the input string to carriage return and line feed ("\r\n") pairs,
     /// except where the line feed is already preceded by a carriage return. This ensures all line endings are in CRLF format.
     /// </summary>
     /// <param name="text">The input string to convert line endings for.</param>
@@ -782,7 +810,7 @@ public static class BaseHelper
         var extra = 0;
         for (var i = 0; i < text.Length; i++)
         {
-            if (text[i] == '\n' && (i == 0 || text[i - 1] != '\r'))
+            if (text[i] == LfChar && (i == 0 || text[i - 1] != CrChar))
             {
                 extra++;
             }
@@ -799,10 +827,10 @@ public static class BaseHelper
             for (var i = 0; i < source.Length; i++)
             {
                 char c = source[i];
-                if (c == '\n' && (i == 0 || source[i - 1] != '\r'))
+                if (c == LfChar && (i == 0 || source[i - 1] != CrChar))
                 {
-                    dest[position++] = '\r';
-                    dest[position++] = '\n';
+                    dest[position++] = CrChar;
+                    dest[position++] = LfChar;
                 }
                 else
                 {
