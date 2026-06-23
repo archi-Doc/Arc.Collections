@@ -1,8 +1,8 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading;
 
 #pragma warning disable SA1401
@@ -17,7 +17,7 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of value.</typeparam>
 public class Utf16Hashtable<TValue>
 {
-    private class Item
+    private sealed class Item
     {
         public string Key;
         public TValue Value;
@@ -36,7 +36,7 @@ public class Utf16Hashtable<TValue>
     private Item?[] table;
     private int count;
 
-    public int Count => this.count;
+    public int Count => Volatile.Read(ref this.count);
 
     public Utf16Hashtable(int capacity = 4)
     {
@@ -57,17 +57,50 @@ public class Utf16Hashtable<TValue>
             var n = 0;
             for (var i = 0; i < t.Length; i++)
             {
-                if (t[i] is { } item)
+                var item = t[i];
+                while (item is not null)
                 {
                     values[n++] = item.Value;
                     if (n >= this.count)
                     {
                         break;
                     }
+
+                    item = item.Next;
                 }
             }
 
             return values;
+        }
+    }
+
+    /// <summary>
+    /// Gets an array of key-value pairs.
+    /// </summary>
+    /// <returns>An array of key-value pairs.</returns>
+    public KeyValuePair<string, TValue>[] ToKeyValuePairs()
+    {
+        using (this.lockObject.EnterScope())
+        {
+            var t = this.table;
+            var pairs = new KeyValuePair<string, TValue>[this.count];
+            var n = 0;
+            for (var i = 0; i < t.Length; i++)
+            {
+                var item = t[i];
+                while (item is not null)
+                {
+                    pairs[n++] = new(item.Key, item.Value);
+                    if (n >= this.count)
+                    {
+                        break;
+                    }
+
+                    item = item.Next;
+                }
+            }
+
+            return pairs;
         }
     }
 
@@ -155,7 +188,8 @@ public class Utf16Hashtable<TValue>
 
         while (item != null)
         {
-            if (key.SequenceEqual(item.Key.AsSpan()))
+            if (item.Hash == hash &&
+                key.SequenceEqual(item.Key.AsSpan()))
             {// Identical
                 value = item.Value;
                 return true;
@@ -175,10 +209,9 @@ public class Utf16Hashtable<TValue>
     {
         using (this.lockObject.EnterScope())
         {
-            for (var n = 0; n < this.table.Length; n++)
-            {
-                this.table[n] = default;
-            }
+            var newTable = new Item[this.table.Length];
+            Volatile.Write(ref this.table, newTable);
+            Volatile.Write(ref this.count, 0);
         }
     }
 
@@ -209,7 +242,7 @@ public class Utf16Hashtable<TValue>
                 var i = table[h]!;
                 while (true)
                 {
-                    if (key == i.Key)
+                    if (i.Hash == hash && key == i.Key)
                     {// Identical
                         if (updateValue)
                         {
@@ -266,11 +299,11 @@ public class Utf16Hashtable<TValue>
                 var i = table[h]!;
                 while (true)
                 {
-                    if (key == i.Key)
+                    if (i.Hash == hash && key.SequenceEqual(i.Key.AsSpan()))
                     {// Identical
                         if (updateValue)
                         {
-                            i.Value = valueFactory(key.ToString());
+                            i.Value = valueFactory(i.Key);
                         }
 
                         resultingValue = i.Value;
