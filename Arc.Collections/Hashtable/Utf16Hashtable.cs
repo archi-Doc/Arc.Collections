@@ -209,7 +209,8 @@ public class Utf16Hashtable<TValue>
     {
         using (this.lockObject.EnterScope())
         {
-            Array.Clear(this.table);
+            var newTable = new Item[this.table.Length];
+            Volatile.Write(ref this.table, newTable);
             Volatile.Write(ref this.count, 0);
         }
     }
@@ -241,7 +242,7 @@ public class Utf16Hashtable<TValue>
                 var i = table[h]!;
                 while (true)
                 {
-                    if (key == i.Key)
+                    if (i.Hash == hash && key == i.Key)
                     {// Identical
                         if (updateValue)
                         {
@@ -298,11 +299,11 @@ public class Utf16Hashtable<TValue>
                 var i = table[h]!;
                 while (true)
                 {
-                    if (key.SequenceEqual(i.Key.AsSpan()))
+                    if (i.Hash == hash && key.SequenceEqual(i.Key.AsSpan()))
                     {// Identical
                         if (updateValue)
                         {
-                            i.Value = valueFactory(key.ToString());
+                            i.Value = valueFactory(i.Key);
                         }
 
                         resultingValue = i.Value;
