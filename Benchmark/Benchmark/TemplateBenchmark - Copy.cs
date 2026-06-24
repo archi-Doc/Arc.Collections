@@ -47,7 +47,7 @@ public class Utf16HashtableBenchmark
         this.target = this.keys[7];
     }
 
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     public int StringArray_Search()
     {
         var keys = this.keys;
@@ -65,7 +65,8 @@ public class Utf16HashtableBenchmark
         return -1;
     }
 
-    public int StringArray_Search_StringEqualsOrdinal()
+    [Benchmark]
+    public int StringArray_SearchOrdinal()
     {
         var keys = this.keys;
         var values = this.values;
