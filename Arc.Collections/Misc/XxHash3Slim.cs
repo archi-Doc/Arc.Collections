@@ -97,6 +97,32 @@ public static unsafe class XxHash3Slim
             0xaf, 0xd7, 0xfb, 0xca, 0xbb, 0x4b, 0x40, 0x7e, // DefaultSecretUInt64_23
         ];
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong CombineRotateMultiply(ulong hash1, ulong hash2)
+    {
+        ulong state = unchecked(2 * Prime64_1);
+
+        state += hash1 * Prime64_2;
+        state = BitOperations.RotateLeft(state, 31);
+        state *= Prime64_1;
+
+        state += hash2 * Prime64_2;
+        state = BitOperations.RotateLeft(state, 31);
+        state *= Prime64_1;
+
+        return Avalanche(state);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong CombineMultiplyFold(ulong hash1, ulong hash2)
+    {
+        ulong mixed = Multiply64To128ThenFold(
+            hash1 ^ DefaultSecretUInt64_0,
+            hash2 ^ DefaultSecretUInt64_1);
+
+        return Avalanche(mixed + hash1 + BitOperations.RotateLeft(hash2, 27));
+    }
+
     /// <summary>Computes the XXH3 hash of the provided data.</summary>
     /// <param name="source">The data to hash.</param>
     /// <param name="seed">The seed value for this hash computation.</param>
