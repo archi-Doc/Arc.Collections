@@ -114,8 +114,8 @@ public static unsafe class XxHash3Slim
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong CombineMultiplyFold(ulong hash1, ulong hash2)
-    {
+    public static ulong Combine(ulong hash1, ulong hash2)
+    {// CombineMultiplyFold
         ulong mixed = Multiply64To128ThenFold(
             hash1 ^ DefaultSecretUInt64_0,
             hash2 ^ DefaultSecretUInt64_1);

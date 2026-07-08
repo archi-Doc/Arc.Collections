@@ -10,8 +10,8 @@ namespace Benchmark;
 [Config(typeof(BenchmarkConfig))]
 public class HashCombinerBenchmark
 {
-    private const ulong Hash0 = 0x938C3585E8EF9A4D;
-    private const ulong Hash1 = 0x91E645B3297BED48;
+    private ulong hash0 = 0x938C3585E8EF9A4D;
+    private ulong hash1 = 0x91E645B3297BED48;
 
     public HashCombinerBenchmark()
     {
@@ -20,7 +20,7 @@ public class HashCombinerBenchmark
     [Benchmark]
     public ulong HashCodeCombine()
     {
-        return (ulong)HashCode.Combine(Hash0, Hash1);
+        return (ulong)HashCode.Combine(this.hash0++, this.hash1++);
     }
 
     [Benchmark]
@@ -28,9 +28,9 @@ public class HashCombinerBenchmark
     {
         Span<byte> buffer = stackalloc byte[16];
         var span = buffer;
-        BitConverter.TryWriteBytes(span, Hash0);
+        BitConverter.TryWriteBytes(span, this.hash0++);
         span = span.Slice(sizeof(ulong));
-        BitConverter.TryWriteBytes(span, Hash1);
+        BitConverter.TryWriteBytes(span, this.hash1++);
 
         return XxHash3Slim.Hash64(buffer);
     }
@@ -38,12 +38,12 @@ public class HashCombinerBenchmark
     [Benchmark]
     public ulong CombineRotateMultiply()
     {
-        return XxHash3Slim.CombineRotateMultiply(Hash0, Hash1);
+        return XxHash3Slim.CombineRotateMultiply(this.hash0++, this.hash1++);
     }
 
     [Benchmark]
     public ulong CombineMultiplyFold()
     {
-        return XxHash3Slim.CombineMultiplyFold(Hash0, Hash1);
+        return XxHash3Slim.Combine(this.hash0++, this.hash1++);
     }
 }
