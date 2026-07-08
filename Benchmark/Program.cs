@@ -17,11 +17,13 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<TemporaryListBenchmark>();
+        DebugRun<HashCombinerBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(HashCombinerBenchmark),
+            typeof(Utf16HashtableBenchmark),
             typeof(TemporaryListBenchmark),
             typeof(RemoveCrBenchmark),
             typeof(WhiteSpaceBenchmark),
