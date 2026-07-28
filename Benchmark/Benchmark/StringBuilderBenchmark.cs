@@ -51,4 +51,16 @@ public class StringBuilderBenchmark
 
         return sb.ToString();
     }
+
+    [Benchmark]
+    public string PooledStringBuilder()
+    {
+        using var sb = new PooledStringBuilder();
+        foreach (var x in list)
+        {
+            sb.Append(x);
+        }
+
+        return sb.ToString();
+    }
 }

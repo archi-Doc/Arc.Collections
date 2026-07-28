@@ -6,76 +6,72 @@ using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Arc.Collections;
 
-#pragma warning disable SA1401 // Fields should be private
+namespace Kimi.Compiler.Lexing;
 
-namespace Arc.Collections;
-
+/// <summary>
+/// Builds a string using pooled character arrays.
+/// </summary>
+/// <remarks>
+/// Character arrays and segment objects are returned to their pools when
+/// <see cref="Dispose"/> is called.
+/// </remarks>
 public ref struct PooledStringBuilder
 {
     /// <summary>
-    /// The default size, in characters, of the first rented chunk.
+    /// The default requested capacity of the first segment.
     /// </summary>
     public const int DefaultInitialCapacity = 256;
 
     /// <summary>
-    /// The maximum requested size, in characters, of a rented chunk.
+    /// The maximum requested capacity of a single segment.
     /// </summary>
-    public const int MaxChunkCapacity = 32 * 1024;
+    public const int MaxSegmentCapacity = 32 * 1024;
 
     /// <summary>
-    /// The maximum number of reusable sequence segments retained in the segment pool.
+    /// The maximum number of segment objects retained in the segment pool.
     /// </summary>
     public const int SegmentPoolCapacity = 4 * 1024;
 
-    private static readonly ObjectPool<PooledSequenceSegment> SegmentPool =
-        new(static () => new PooledSequenceSegment(), SegmentPoolCapacity);
+    private static readonly ObjectPool<Segment> SegmentPool = new(static () => new(), SegmentPoolCapacity);
 
-    private char[]? currentArray;
-    private int currentIndex;
+    private Segment? firstSegment;
+    private Segment? lastSegment;
 
-    private PooledSequenceSegment? firstSegment;
-    private PooledSequenceSegment? lastSegment;
-
-    private long length;
-    private int nextChunkCapacity;
-
-    private bool isFinalized;
-    private ReadOnlySequence<char> sequence;
+    private string? cachedString;
+    private int length;
+    private int nextSegmentCapacity;
+    private bool isDisposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PooledStringBuilder"/> struct.
     /// </summary>
     /// <param name="initialCapacity">
-    /// The initial chunk size to request from <see cref="ArrayPool{Char}"/>.
+    /// The requested capacity of the first segment.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="initialCapacity"/> is less than or equal to zero,
-    /// or greater than <see cref="MaxChunkCapacity"/>.
+    /// <paramref name="initialCapacity"/> is outside the supported range.
     /// </exception>
     public PooledStringBuilder(int initialCapacity)
     {
-        if ((uint)(initialCapacity - 1) >= MaxChunkCapacity)
+        if ((uint)(initialCapacity - 1) >= MaxSegmentCapacity)
         {
             ThrowInitialCapacityOutOfRange();
         }
 
-        this.currentArray = null;
-        this.currentIndex = 0;
-
         this.firstSegment = null;
         this.lastSegment = null;
+        this.cachedString = null;
 
         this.length = 0;
-        this.nextChunkCapacity = initialCapacity;
-
-        this.isFinalized = false;
-        this.sequence = ReadOnlySequence<char>.Empty;
+        this.nextSegmentCapacity = initialCapacity;
+        this.isDisposed = false;
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PooledStringBuilder"/> struct
-    /// with the default initial capacity.
+    /// using the default initial capacity.
     /// </summary>
     public PooledStringBuilder()
         : this(DefaultInitialCapacity)
@@ -83,9 +79,9 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Gets the number of characters written to this builder.
+    /// Gets the number of characters stored in this builder.
     /// </summary>
-    public long Length
+    public readonly int Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => this.length;
@@ -95,79 +91,85 @@ public ref struct PooledStringBuilder
     /// Appends a character.
     /// </summary>
     /// <param name="value">The character to append.</param>
-    /// <exception cref="InvalidOperationException">
-    /// This builder has already been finalized.
+    /// <exception cref="ObjectDisposedException">
+    /// This builder has already been disposed.
     /// </exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Add(char value)
+    public void Append(char value)
     {
-        if (this.isFinalized)
+        if (this.isDisposed)
         {
-            ThrowAlreadyFinalized();
+            ThrowDisposed();
         }
 
-        var array = this.currentArray;
+        var segment = this.lastSegment;
 
-        if (array is null)
+        if (segment is null ||
+            (uint)segment.WrittenLength >= (uint)segment.Array.Length)
         {
-            array = this.RentChunk();
-            this.currentArray = array;
-        }
-        else if ((uint)this.currentIndex >= (uint)array.Length)
-        {
-            this.CommitCurrentChunk();
-
-            array = this.RentChunk();
-            this.currentArray = array;
+            segment = this.AddSegment(this.nextSegmentCapacity);
         }
 
-        array[this.currentIndex] = value;
+        segment.Array[segment.WrittenLength++] = value;
 
-        this.currentIndex++;
         this.length++;
+        this.cachedString = null;
     }
 
     /// <summary>
     /// Appends a contiguous range of characters.
     /// </summary>
     /// <param name="value">The characters to append.</param>
-    /// <exception cref="InvalidOperationException">
-    /// This builder has already been finalized.
+    /// <exception cref="ObjectDisposedException">
+    /// This builder has already been disposed.
     /// </exception>
-    public void AddRange(ReadOnlySpan<char> value)
+    /// <exception cref="OutOfMemoryException">
+    /// The resulting string would exceed the supported maximum length.
+    /// </exception>
+    public void Append(ReadOnlySpan<char> value)
     {
-        if (this.isFinalized)
+        if (this.isDisposed)
         {
-            ThrowAlreadyFinalized();
+            ThrowDisposed();
         }
+
+        if (value.IsEmpty)
+        {
+            return;
+        }
+
+        if (value.Length > int.MaxValue - this.length)
+        {
+            ThrowStringTooLong();
+        }
+
+        this.cachedString = null;
 
         while (!value.IsEmpty)
         {
-            var array = this.currentArray;
+            var segment = this.lastSegment;
 
-            if (array is null)
+            if (segment is null ||
+                (uint)segment.WrittenLength >= (uint)segment.Array.Length)
             {
-                array = this.RentChunk();
-                this.currentArray = array;
+                segment = this.AddSegment(
+                    GetRequiredSegmentCapacity(
+                        this.nextSegmentCapacity,
+                        value.Length));
             }
 
-            var availableLength = array.Length - this.currentIndex;
+            var writtenLength = segment.WrittenLength;
+            var copyLength = Math.Min(
+                segment.Array.Length - writtenLength,
+                value.Length);
 
-            if (availableLength == 0)
-            {
-                this.CommitCurrentChunk();
-                continue;
-            }
+            value[..copyLength].CopyTo(
+                segment.Array.AsSpan(writtenLength, copyLength));
 
-            var copyLength = Math.Min(availableLength, value.Length);
-
-            value.Slice(0, copyLength)
-                .CopyTo(array.AsSpan(this.currentIndex, copyLength));
-
-            this.currentIndex += copyLength;
+            segment.WrittenLength = writtenLength + copyLength;
             this.length += copyLength;
 
-            value = value.Slice(copyLength);
+            value = value[copyLength..];
         }
     }
 
@@ -178,255 +180,160 @@ public ref struct PooledStringBuilder
     /// <exception cref="ArgumentNullException">
     /// <paramref name="value"/> is <see langword="null"/>.
     /// </exception>
-    /// <exception cref="InvalidOperationException">
-    /// This builder has already been finalized.
-    /// </exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AddRange(string value)
+    public void Append(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        this.AddRange(value.AsSpan());
+        this.Append(value.AsSpan());
     }
 
     /// <summary>
-    /// Finalizes this builder and returns the produced character sequence.
+    /// Creates or retrieves a string containing all appended characters.
     /// </summary>
     /// <returns>
-    /// A sequence referencing the pooled arrays owned by this builder.
-    /// The sequence remains valid only until <see cref="Dispose"/> is called.
+    /// A string containing all characters stored in this builder.
     /// </returns>
-    public ReadOnlySequence<char> ToReadOnlySequence()
-    {
-        if (this.isFinalized)
-        {
-            return this.sequence;
-        }
-
-        this.isFinalized = true;
-
-        if (this.length == 0)
-        {
-            this.sequence = ReadOnlySequence<char>.Empty;
-            return this.sequence;
-        }
-
-        // Single-chunk fast path. No segment object is required.
-        if (this.firstSegment is null)
-        {
-            this.sequence = new ReadOnlySequence<char>(
-                this.currentArray!.AsMemory(0, this.currentIndex));
-
-            return this.sequence;
-        }
-
-        // Commit the last partially filled array.
-        if (this.currentIndex != 0)
-        {
-            this.CommitCurrentChunk();
-        }
-
-        var first = this.firstSegment!;
-        var last = this.lastSegment!;
-
-        this.sequence = new ReadOnlySequence<char>(
-            first,
-            0,
-            last,
-            last.Memory.Length);
-
-        return this.sequence;
-    }
-
-    /// <summary>
-    /// Creates a string containing all characters written to this builder.
-    /// </summary>
-    /// <returns>
-    /// A newly allocated string containing the builder's current contents.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// The number of characters exceeds the maximum string length.
+    /// <remarks>
+    /// This operation does not release the pooled resources and does not prevent
+    /// further calls to <see cref="Append(char)"/> or
+    /// <see cref="Append(ReadOnlySpan{Char})"/>.
+    ///
+    /// Repeated calls return the cached string until the builder is modified.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// This builder has already been disposed.
     /// </exception>
     public override string ToString()
     {
+        if (this.isDisposed)
+        {
+            ThrowDisposed();
+        }
+
+        var cachedString = this.cachedString;
+
+        if (cachedString is not null)
+        {
+            return cachedString;
+        }
+
         if (this.length == 0)
         {
             return string.Empty;
         }
 
-        if (this.length > int.MaxValue)
+        var firstSegment = this.firstSegment!;
+
+        if (ReferenceEquals(firstSegment, this.lastSegment))
         {
-            ThrowStringTooLong();
+            cachedString = new string(
+                firstSegment.Array,
+                0,
+                firstSegment.WrittenLength);
         }
-
-        var stringLength = (int)this.length;
-        var first = this.firstSegment;
-        var currentArray = this.currentArray;
-        var currentIndex = this.currentIndex;
-
-        // Most builders remain inside the first rented array.
-        // The char[] constructor performs a single allocation and direct copy.
-        if (first is null)
+        else
         {
-            return new string(currentArray!, 0, currentIndex);
-        }
-
-        // A finalized sequence consisting of exactly one committed segment.
-        if (first == this.lastSegment &&
-            currentIndex == 0)
-        {
-            return new string(first.Array!, 0, first.WrittenLength);
-        }
-
-        // Allocate the final string exactly once and copy every chunk directly
-        // into the string's backing storage.
-        return string.Create(
-            stringLength,
-            new StringCreationState(first, currentArray, currentIndex),
-            static (destination, state) =>
-            {
-                var destinationIndex = 0;
-                var segment = state.FirstSegment;
-
-                while (segment is not null)
+            cachedString = string.Create(
+                this.length,
+                firstSegment,
+                static (destination, segment) =>
                 {
-                    var source = segment.Array!
-                        .AsSpan(0, segment.WrittenLength);
+                    var destinationIndex = 0;
 
-                    source.CopyTo(destination.Slice(destinationIndex));
-                    destinationIndex += source.Length;
+                    while (segment is not null)
+                    {
+                        var writtenLength = segment.WrittenLength;
 
-                    segment = segment.GetNextSegment();
-                }
+                        segment.Array.AsSpan(0, writtenLength).CopyTo(destination.Slice(
+                                destinationIndex, writtenLength));
 
-                if (state.CurrentIndex != 0)
-                {
-                    state.CurrentArray!
-                        .AsSpan(0, state.CurrentIndex)
-                        .CopyTo(destination.Slice(destinationIndex));
-                }
-            });
+                        destinationIndex += writtenLength;
+                        segment = segment.Next!;
+                    }
+                });
+        }
+
+        this.cachedString = cachedString;
+        return cachedString;
     }
 
     /// <summary>
-    /// Returns all rented character arrays and sequence segments to their pools.
+    /// Returns all rented character arrays and segment objects to their pools.
     /// </summary>
-    /// <remarks>
-    /// Any previously returned <see cref="ReadOnlySequence{Char}"/> becomes invalid
-    /// after this method is called.
-    /// </remarks>
     public void Dispose()
     {
-        var currentArray = this.currentArray;
-
-        if (currentArray is not null)
+        if (this.isDisposed)
         {
-            // char contains no managed references, so clearing is unnecessary.
-            ArrayPool<char>.Shared.Return(currentArray);
-            this.currentArray = null;
+            return;
         }
 
         var segment = this.firstSegment;
 
         while (segment is not null)
         {
-            var next = segment.GetNextSegment();
+            var next = segment.Next;
             var array = segment.Array;
 
-            if (array is not null)
-            {
-                ArrayPool<char>.Shared.Return(array);
-            }
+            ArrayPool<char>.Shared.Return(array);
 
-            segment.ResetForPool();
+            segment.Reset();
             SegmentPool.Return(segment);
 
             segment = next;
         }
 
-        this.currentIndex = 0;
-
         this.firstSegment = null;
         this.lastSegment = null;
+        this.cachedString = null;
 
         this.length = 0;
-        this.nextChunkCapacity = 0;
-
-        this.sequence = ReadOnlySequence<char>.Empty;
-        this.isFinalized = true;
+        this.nextSegmentCapacity = 0;
+        this.isDisposed = true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int GetNextChunkCapacity(int currentCapacity)
+    private static int GetRequiredSegmentCapacity(int nextCapacity, int remainingLength)
     {
-        if (currentCapacity >= MaxChunkCapacity)
+        if (nextCapacity <= 0)
         {
-            return MaxChunkCapacity;
+            nextCapacity = DefaultInitialCapacity;
         }
 
-        if (currentCapacity > MaxChunkCapacity / 2)
+        if (remainingLength <= nextCapacity)
         {
-            return MaxChunkCapacity;
+            return nextCapacity;
         }
 
-        return currentCapacity << 1;
+        return Math.Min(remainingLength, MaxSegmentCapacity);
     }
-
-    [DoesNotReturn]
-    private static void ThrowInitialCapacityOutOfRange()
-        => throw new ArgumentOutOfRangeException(
-            "initialCapacity",
-            $"The initial capacity must be between 1 and {MaxChunkCapacity}.");
-
-    [DoesNotReturn]
-    private static void ThrowAlreadyFinalized()
-        => throw new InvalidOperationException(
-            "The sequence has already been finalized.");
-
-    [DoesNotReturn]
-    private static void ThrowStringTooLong()
-        => throw new InvalidOperationException(
-            "The number of characters exceeds the maximum string length.");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private char[] RentChunk()
+    private static int GetNextSegmentCapacity(int currentCapacity)
     {
-        var capacity = this.nextChunkCapacity;
-
-        // Handles a default-initialized SequenceBuilder.
-        if (capacity <= 0)
+        if (currentCapacity >= MaxSegmentCapacity)
         {
-            capacity = DefaultInitialCapacity;
+            return MaxSegmentCapacity;
         }
 
-        var array = ArrayPool<char>.Shared.Rent(capacity);
-
-        this.nextChunkCapacity = GetNextChunkCapacity(capacity);
-
-        return array;
+        return Math.Min(currentCapacity << 1, MaxSegmentCapacity);
     }
 
-    private void CommitCurrentChunk()
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private Segment AddSegment(int requestedCapacity)
     {
-        var array = this.currentArray;
-
-        if (array is null)
+        if (requestedCapacity <= 0)
         {
-            return;
+            requestedCapacity = DefaultInitialCapacity;
+        }
+        else if (requestedCapacity > MaxSegmentCapacity)
+        {
+            requestedCapacity = MaxSegmentCapacity;
         }
 
-        var writtenLength = this.currentIndex;
-
-        if (writtenLength == 0)
-        {
-            return;
-        }
-
+        var array = ArrayPool<char>.Shared.Rent(requestedCapacity);
         var segment = SegmentPool.Rent();
 
-        segment.Initialize(
-            array,
-            writtenLength,
-            this.length - writtenLength);
+        segment.Initialize(array);
 
         var lastSegment = this.lastSegment;
 
@@ -436,69 +343,52 @@ public ref struct PooledStringBuilder
         }
         else
         {
-            lastSegment.SetNext(segment);
+            lastSegment.Next = segment;
         }
 
         this.lastSegment = segment;
+        this.nextSegmentCapacity =
+            GetNextSegmentCapacity(requestedCapacity);
 
-        this.currentArray = null;
-        this.currentIndex = 0;
+        return segment;
     }
 
-    private readonly struct StringCreationState
+    [DoesNotReturn]
+    private static void ThrowInitialCapacityOutOfRange()
+        => throw new ArgumentOutOfRangeException(
+            "initialCapacity",
+            $"The initial capacity must be between 1 and {MaxSegmentCapacity}.");
+
+    [DoesNotReturn]
+    private static void ThrowDisposed()
+        => throw new ObjectDisposedException(nameof(PooledStringBuilder));
+
+    [DoesNotReturn]
+    private static void ThrowStringTooLong()
+        => throw new OutOfMemoryException(
+            "The resulting string exceeds the maximum supported length.");
+
+    private sealed class Segment
     {
-        public StringCreationState(
-            PooledSequenceSegment firstSegment,
-            char[]? currentArray,
-            int currentIndex)
-        {
-            this.FirstSegment = firstSegment;
-            this.CurrentArray = currentArray;
-            this.CurrentIndex = currentIndex;
-        }
+        internal char[] Array = null!;
 
-        public readonly PooledSequenceSegment FirstSegment;
-
-        public readonly char[]? CurrentArray;
-
-        public readonly int CurrentIndex;
-    }
-
-    private sealed class PooledSequenceSegment : ReadOnlySequenceSegment<char>
-    {
-        internal char[]? Array;
         internal int WrittenLength;
 
+        internal Segment? Next;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Initialize(
-            char[] array,
-            int writtenLength,
-            long runningIndex)
+        internal void Initialize(char[] array)
         {
             this.Array = array;
-            this.WrittenLength = writtenLength;
-
-            this.Memory = array.AsMemory(0, writtenLength);
-            this.RunningIndex = runningIndex;
+            this.WrittenLength = 0;
             this.Next = null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetNext(PooledSequenceSegment next)
-            => this.Next = next;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PooledSequenceSegment? GetNextSegment()
-            => (PooledSequenceSegment?)this.Next;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ResetForPool()
+        internal void Reset()
         {
-            this.Array = null;
+            this.Array = null!;
             this.WrittenLength = 0;
-
-            this.Memory = default;
-            this.RunningIndex = 0;
             this.Next = null;
         }
     }
