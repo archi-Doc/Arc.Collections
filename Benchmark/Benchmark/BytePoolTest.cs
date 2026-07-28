@@ -16,6 +16,7 @@ public class BytePoolTest
     private const int StackallocThreshold = 1024;
     private const int StackallocThreshold2 = 100;
 
+    private ObjectPool<byte[]> objectPool = new(() => new byte[N]);
     private ConcurrentQueue<byte[]> concurrentQueue = new();
     private int count;
     private int n;
@@ -159,7 +160,7 @@ public class BytePoolTest
 
     [Benchmark]
     public byte[] ArrayPool1()
-    {// CircularQueue
+    {// ArrayPool1
         var array = ArrayPool<byte>.Shared.Rent(N);
         ArrayPool<byte>.Shared.Return(array);
         return array;
@@ -179,6 +180,14 @@ public class BytePoolTest
         var rentArray = SimpleBytePool.Default.Rent(N);
         rentArray.Return();
         return rentArray.Array;
+    }
+
+    [Benchmark]
+    public byte[] ObjectPool1()
+    {
+        var array = this.objectPool.Rent();
+        this.objectPool.Return(array);
+        return array;
     }
 
     /*[Benchmark]
