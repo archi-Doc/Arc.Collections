@@ -64,4 +64,11 @@ public class StringBuilderBenchmark
         var st = sb.ToString();
         return st;
     }
+
+    [Benchmark]
+    public string StringJoin()
+    {
+        var st = string.Concat(this.list);
+        return st;
+    }
 }
