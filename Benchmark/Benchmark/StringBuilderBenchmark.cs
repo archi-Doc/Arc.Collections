@@ -61,6 +61,7 @@ public class StringBuilderBenchmark
             sb.Append(x);
         }
 
-        return sb.ToString();
+        var st = sb.ToString();
+        return st;
     }
 }
