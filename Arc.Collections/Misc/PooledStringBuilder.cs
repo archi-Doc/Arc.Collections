@@ -2,7 +2,7 @@
 
 using System;
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1401 // Fields should be private
@@ -10,7 +10,9 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
-/// Builds a string using pooled character arrays.
+/// Builds a string using pooled character arrays.<br/>
+/// Although it has the constraints of being a ref struct and requiring Dispose() to be called to return the rented arrays,<br/>
+/// it aims to achieve performance comparable to string interpolation.
 /// </summary>
 /// <remarks>
 /// Character arrays and segment objects are returned to their pools when
@@ -21,7 +23,7 @@ public ref struct PooledStringBuilder
     /// <summary>
     /// The default size, in characters, of the first rented chunk.
     /// </summary>
-    public const int DefaultInitialCapacity = 256;
+    public const int DefaultInitialCapacity = 512;
 
     /// <summary>
     /// The maximum requested size, in characters, of a rented chunk.
@@ -31,24 +33,24 @@ public ref struct PooledStringBuilder
     /// <summary>
     /// The maximum number of reusable segments retained in the segment pool.
     /// </summary>
-    public const int SegmentPoolCapacity = 4 * 1024;
+    public const int SegmentPoolCapacity = 1024;
 
+    private static readonly IFormatProvider DefaultFormatProvider = CultureInfo.InvariantCulture;
     private static readonly ArrayPool<char> CharPool = ArrayPool<char>.Shared;
-
     private static readonly ObjectPool<Segment> SegmentPool = new(static () => new(), SegmentPoolCapacity);
 
     private char[]? currentArray;
     private Segment? firstSegment;
     private Segment? lastSegment;
 
-    private long length;
+    private int length;
     private int currentIndex;
     private int nextChunkCapacity;
 
     /// <summary>
     /// Gets the number of characters written to this builder.
     /// </summary>
-    public readonly long Length
+    public readonly int Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => this.length;
@@ -85,6 +87,33 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
+    /// Appends the formatted representation of a value.
+    /// </summary>
+    /// <typeparam name="T">The type of value to append.</typeparam>
+    /// <param name="value">The value to format and append.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Append<T>(T value)
+        where T : ISpanFormattable
+    {
+        var array = this.currentArray;
+        var index = this.currentIndex;
+
+        if (array is not null)
+        {
+            var destination = array.AsSpan(index);
+
+            if (value.TryFormat(destination, out var charsWritten, default, DefaultFormatProvider))
+            {
+                this.currentIndex = index + charsWritten;
+                this.length += charsWritten;
+                return;
+            }
+        }
+
+        this.AppendFormattedSlow(value, array, index);
+    }
+
+    /// <summary>
     /// Appends a contiguous range of characters.
     /// </summary>
     /// <param name="value">The characters to append.</param>
@@ -117,6 +146,10 @@ public ref struct PooledStringBuilder
         this.AppendSlow(value, array, index);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Append(bool value)
+    => this.Append(value ? "True" : "False");
+
     /// <summary>
     /// Creates a string containing all characters written to this builder.
     /// </summary>
@@ -137,7 +170,7 @@ public ref struct PooledStringBuilder
 
         if ((ulong)totalLength > int.MaxValue)
         {
-            ThrowStringTooLong();
+            throw new InvalidOperationException("The number of characters exceeds the maximum string length.");
         }
 
         var array = this.currentArray;
@@ -162,9 +195,7 @@ public ref struct PooledStringBuilder
                 {
                     var writtenLength = segment.WrittenLength;
 
-                    segment.Array!
-                        .AsSpan(0, writtenLength)
-                        .CopyTo(destination.Slice(destinationIndex, writtenLength));
+                    segment.Array!.AsSpan(0, writtenLength).CopyTo(destination.Slice(destinationIndex, writtenLength));
 
                     destinationIndex += writtenLength;
                     segment = segment.Next;
@@ -172,12 +203,9 @@ public ref struct PooledStringBuilder
                 while (segment is not null);
 
                 var currentIndex = state.CurrentIndex;
-
                 if (currentIndex != 0)
                 {
-                    state.CurrentArray!
-                        .AsSpan(0, currentIndex)
-                        .CopyTo(destination.Slice(destinationIndex, currentIndex));
+                    state.CurrentArray.AsSpan(0, currentIndex).CopyTo(destination.Slice(destinationIndex, currentIndex));
                 }
             });
     }
@@ -187,16 +215,13 @@ public ref struct PooledStringBuilder
     /// </summary>
     public void Dispose()
     {
-        var currentArray = this.currentArray;
-
-        if (currentArray is not null)
+        if (this.currentArray is not null)
         {
             // char contains no managed references, so clearing is unnecessary.
-            CharPool.Return(currentArray);
+            CharPool.Return(this.currentArray);
         }
 
         var segment = this.firstSegment;
-
         while (segment is not null)
         {
             var next = segment.Next;
@@ -207,13 +232,41 @@ public ref struct PooledStringBuilder
                 CharPool.Return(array);
             }
 
-            segment.Reset();
-            SegmentPool.Return(segment);
+            segment.Array = null;
+            segment.Next = null;
+            segment.WrittenLength = 0;
 
-            segment = next;
+            SegmentPool.Return(segment);
         }
 
         this = default;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetNextChunkCapacity(int currentCapacity)
+    {
+        if (currentCapacity >= MaxChunkCapacity / 2)
+        {
+            return MaxChunkCapacity;
+        }
+
+        return currentCapacity << 1;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AppendFormattedFallback<T>(
+        ref PooledStringBuilder builder,
+        T value)
+        where T : ISpanFormattable
+    {
+        // An arbitrary ISpanFormattable implementation may require more than
+        // MaxChunkCapacity characters. Fall back to its string representation.
+        var text = value.ToString(default, DefaultFormatProvider);
+
+        if (text is not null)
+        {
+            builder.Append(text.AsSpan());
+        }
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -255,6 +308,62 @@ public ref struct PooledStringBuilder
         this.length = totalLength;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void AppendFormattedSlow<T>(T value, char[]? array, int index)
+        where T : ISpanFormattable
+    {
+        // Preserve the contents already written to the current chunk.
+        if (array is not null && index != 0)
+        {
+            this.AddSegment(array, index);
+            array = null;
+        }
+        else if (array is not null)
+        {
+            // The empty current array is reused for the first formatting attempt.
+            index = 0;
+        }
+
+        while (true)
+        {
+            if (array is null)
+            {
+                array = this.RentChunk(DefaultInitialCapacity);
+            }
+
+            if (value.TryFormat(array, out var charsWritten, default, DefaultFormatProvider))
+            {
+                this.currentArray = array;
+                this.currentIndex = charsWritten;
+                this.length += charsWritten;
+                return;
+            }
+
+            var currentLength = array.Length;
+
+            CharPool.Return(array);
+            array = null;
+
+            if (currentLength >= MaxChunkCapacity)
+            {
+                var text = value.ToString(default, DefaultFormatProvider);
+                if (text is not null)
+                {
+                    this.Append(text.AsSpan());
+                }
+
+                AppendFormattedFallback(ref this, value);
+                return;
+            }
+
+            var minimumCapacity = currentLength <= MaxChunkCapacity / 2
+                ? currentLength << 1
+                : MaxChunkCapacity;
+
+            array = CharPool.Rent(minimumCapacity);
+        }
+    }
+
     /// <summary>
     /// Rents a chunk large enough for the expected write while preserving geometric growth for small writes.
     /// </summary>
@@ -271,7 +380,6 @@ public ref struct PooledStringBuilder
         if (minimumCapacity > capacity)
         {
             capacity = minimumCapacity;
-
             if (capacity > MaxChunkCapacity)
             {
                 capacity = MaxChunkCapacity;
@@ -287,7 +395,9 @@ public ref struct PooledStringBuilder
     private void AddSegment(char[] array, int writtenLength)
     {
         var segment = SegmentPool.Rent();
-        segment.Initialize(array, writtenLength);
+        segment.Array = array;
+        segment.WrittenLength = writtenLength;
+        segment.Next = null;
 
         var last = this.lastSegment;
         if (last is null)
@@ -302,26 +412,10 @@ public ref struct PooledStringBuilder
         this.lastSegment = segment;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int GetNextChunkCapacity(int currentCapacity)
-    {
-        if (currentCapacity >= MaxChunkCapacity / 2)
-        {
-            return MaxChunkCapacity;
-        }
-
-        return currentCapacity << 1;
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowStringTooLong()
-        => throw new InvalidOperationException(            "The number of characters exceeds the maximum string length.");
-
     private readonly struct StringCreationState
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringCreationState(            Segment firstSegment,            char[]? currentArray,            int currentIndex)
+        public StringCreationState(Segment firstSegment, char[]? currentArray, int currentIndex)
         {
             this.FirstSegment = firstSegment;
             this.CurrentArray = currentArray;
@@ -340,21 +434,5 @@ public ref struct PooledStringBuilder
         internal char[]? Array;
         internal Segment? Next;
         internal int WrittenLength;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Initialize(char[] array, int writtenLength)
-        {
-            this.Array = array;
-            this.WrittenLength = writtenLength;
-            this.Next = null;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Reset()
-        {
-            this.Array = null;
-            this.Next = null;
-            this.WrittenLength = 0;
-        }
     }
 }
