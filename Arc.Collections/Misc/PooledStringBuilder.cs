@@ -95,14 +95,27 @@ public ref struct PooledStringBuilder
     public void Append<T>(T value)
         where T : ISpanFormattable
     {
+        this.Append<T>(value, default, DefaultFormatProvider);
+    }
+
+    /// <summary>
+    /// Appends the formatted representation of a value using the specified format and format provider.
+    /// </summary>
+    /// <typeparam name="T">The type of value to append.</typeparam>
+    /// <param name="value">The value to format and append.</param>
+    /// <param name="format">The optional format string to apply during formatting.</param>
+    /// <param name="formatProvider">The format provider that supplies culture-specific formatting information.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Append<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider)
+        where T : ISpanFormattable
+    {
         var array = this.currentArray;
         var index = this.currentIndex;
 
         if (array is not null)
         {
             var destination = array.AsSpan(index);
-
-            if (value.TryFormat(destination, out var charsWritten, default, DefaultFormatProvider))
+            if (value.TryFormat(destination, out var charsWritten, format, formatProvider))
             {
                 this.currentIndex = index + charsWritten;
                 this.length += charsWritten;
@@ -110,7 +123,7 @@ public ref struct PooledStringBuilder
             }
         }
 
-        this.AppendFormattedSlow(value, array, index);
+        this.AppendFormattedSlow(value, format, formatProvider, array, index);
     }
 
     /// <summary>
@@ -146,9 +159,13 @@ public ref struct PooledStringBuilder
         this.AppendSlow(value, array, index);
     }
 
+    /// <summary>
+    /// Appends the invariant string representation of a Boolean value.
+    /// </summary>
+    /// <param name="value">The Boolean value to append.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(bool value)
-    => this.Append(value ? "True" : "False");
+        => this.Append(value ? "True" : "False");
 
     /// <summary>
     /// Creates a string containing all characters written to this builder.
@@ -156,21 +173,11 @@ public ref struct PooledStringBuilder
     /// <returns>
     /// A newly allocated string containing the builder's current contents.
     /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// The number of characters exceeds the maximum string length.
-    /// </exception>
     public override readonly string ToString()
     {
-        var totalLength = this.length;
-
-        if (totalLength == 0)
+        if (this.length == 0)
         {
             return string.Empty;
-        }
-
-        if ((ulong)totalLength > int.MaxValue)
-        {
-            throw new InvalidOperationException("The number of characters exceeds the maximum string length.");
         }
 
         var array = this.currentArray;
@@ -184,7 +191,7 @@ public ref struct PooledStringBuilder
         }
 
         return string.Create(
-            (int)totalLength,
+            this.length,
             new StringCreationState(first, array, index),
             static (destination, state) =>
             {
@@ -254,22 +261,6 @@ public ref struct PooledStringBuilder
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void AppendFormattedFallback<T>(
-        ref PooledStringBuilder builder,
-        T value)
-        where T : ISpanFormattable
-    {
-        // An arbitrary ISpanFormattable implementation may require more than
-        // MaxChunkCapacity characters. Fall back to its string representation.
-        var text = value.ToString(default, DefaultFormatProvider);
-
-        if (text is not null)
-        {
-            builder.Append(text.AsSpan());
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
     private void AppendSlow(ReadOnlySpan<char> value, char[]? array, int index)
     {
         var totalLength = this.length;
@@ -309,19 +300,19 @@ public ref struct PooledStringBuilder
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private void AppendFormattedSlow<T>(T value, char[]? array, int index)
-        where T : ISpanFormattable
+    private void AppendFormattedSlow<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider, char[]? array, int index)
+    where T : ISpanFormattable
     {
-        // Preserve the contents already written to the current chunk.
-        if (array is not null && index != 0)
+        if (array is not null)
         {
-            this.AddSegment(array, index);
-            array = null;
-        }
-        else if (array is not null)
-        {
-            // The empty current array is reused for the first formatting attempt.
-            index = 0;
+            if (index != 0)
+            {
+                this.AddSegment(array, index);
+                array = null;
+            }
+
+            this.currentArray = null;
+            this.currentIndex = 0;
         }
 
         while (true)
@@ -331,7 +322,20 @@ public ref struct PooledStringBuilder
                 array = this.RentChunk(DefaultInitialCapacity);
             }
 
-            if (value.TryFormat(array, out var charsWritten, default, DefaultFormatProvider))
+            bool succeeded;
+            int charsWritten;
+
+            try
+            {
+                succeeded = value.TryFormat(array, out charsWritten, format, formatProvider);
+            }
+            catch
+            {
+                CharPool.Return(array);
+                throw;
+            }
+
+            if (succeeded)
             {
                 this.currentArray = array;
                 this.currentIndex = charsWritten;
@@ -346,21 +350,12 @@ public ref struct PooledStringBuilder
 
             if (currentLength >= MaxChunkCapacity)
             {
-                var text = value.ToString(default, DefaultFormatProvider);
-                if (text is not null)
-                {
-                    this.Append(text.AsSpan());
-                }
-
-                AppendFormattedFallback(ref this, value);
+                var formatString = format.IsEmpty ? null : format.ToString();
+                this.Append(value.ToString(formatString, formatProvider));
                 return;
             }
 
-            var minimumCapacity = currentLength <= MaxChunkCapacity / 2
-                ? currentLength << 1
-                : MaxChunkCapacity;
-
-            array = CharPool.Rent(minimumCapacity);
+            array = this.RentChunk(GetNextChunkCapacity(currentLength));
         }
     }
 
