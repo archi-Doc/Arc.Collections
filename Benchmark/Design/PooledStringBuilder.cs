@@ -11,19 +11,7 @@ using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
-/// <summary>
-/// Builds a <see cref="ReadOnlySequence{Char}"/> backed by pooled character arrays.
-/// </summary>
-/// <remarks>
-/// The returned sequence directly references pooled arrays owned by this builder.
-/// It is valid only until <see cref="Dispose"/> is called.
-///
-/// <para>
-/// <see cref="ToString"/> creates an independent string and therefore remains valid
-/// after this builder is disposed.
-/// </para>
-/// </remarks>
-public ref struct RefStringBuilder2
+public ref struct PooledStringBuilder
 {
     /// <summary>
     /// The default size, in characters, of the first rented chunk.
@@ -56,7 +44,7 @@ public ref struct RefStringBuilder2
     private ReadOnlySequence<char> sequence;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RefStringBuilder2"/> struct.
+    /// Initializes a new instance of the <see cref="PooledStringBuilder"/> struct.
     /// </summary>
     /// <param name="initialCapacity">
     /// The initial chunk size to request from <see cref="ArrayPool{Char}"/>.
@@ -65,7 +53,7 @@ public ref struct RefStringBuilder2
     /// <paramref name="initialCapacity"/> is less than or equal to zero,
     /// or greater than <see cref="MaxChunkCapacity"/>.
     /// </exception>
-    public RefStringBuilder2(int initialCapacity)
+    public PooledStringBuilder(int initialCapacity)
     {
         if ((uint)(initialCapacity - 1) >= MaxChunkCapacity)
         {
@@ -86,10 +74,10 @@ public ref struct RefStringBuilder2
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RefStringBuilder2"/> struct
+    /// Initializes a new instance of the <see cref="PooledStringBuilder"/> struct
     /// with the default initial capacity.
     /// </summary>
-    public RefStringBuilder2()
+    public PooledStringBuilder()
         : this(DefaultInitialCapacity)
     {
     }
