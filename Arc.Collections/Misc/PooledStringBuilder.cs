@@ -249,6 +249,69 @@ public ref struct PooledStringBuilder
         this = default;
     }
 
+    /// <summary>
+    /// Gets the last character and the character immediately preceding it.
+    /// </summary>
+    /// <param name="previous">
+    /// The character immediately preceding the last character,
+    /// or <c>'\0'</c> if none exists.
+    /// </param>
+    /// <param name="last">The last character, or <c>'\0'</c> if none exists.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void GetLastTwoChars(out char previous, out char last)
+    {
+        var array = this.currentArray;
+        var index = this.currentIndex;
+
+        // Common case: both characters are in the current array.
+        if (index >= 2)
+        {
+            previous = array![index - 2];
+            last = array![index - 1];
+            return;
+        }
+
+        var lastSegment = this.lastSegment;
+        if (lastSegment is null)
+        {
+            last = default;
+            previous = default;
+            return;
+        }
+
+        if (index == 1)
+        {
+            previous = lastSegment.Array![lastSegment.WrittenLength - 1];
+            last = array![0];
+            return;
+        }
+
+        var writtenLength = lastSegment.WrittenLength;
+        var lastSegmentArray = lastSegment.Array!;
+        last = lastSegmentArray[writtenLength - 1];
+        if (writtenLength >= 2)
+        {
+            previous = lastSegmentArray[writtenLength - 2];
+            return;
+        }
+
+        // The last segment contains only one character.
+        // Find the preceding non-empty segment.
+        Segment? precedingSegment = null;
+        var segment = this.firstSegment;
+        while (segment != lastSegment)
+        {
+            if (segment!.WrittenLength != 0)
+            {
+                precedingSegment = segment;
+            }
+
+            segment = segment.Next;
+        }
+
+        previous = precedingSegment is null ? default : precedingSegment.Array![precedingSegment.WrittenLength - 1];
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetNextChunkCapacity(int currentCapacity)
     {
