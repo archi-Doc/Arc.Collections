@@ -387,8 +387,7 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Ensures that the builder ends with a space unless it already ends with
-    /// a space or line feed.
+    /// Ensures that the builder ends with a space unless it already ends with a space or line feed.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureTrailingSpace()
