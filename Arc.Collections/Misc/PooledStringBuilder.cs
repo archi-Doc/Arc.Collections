@@ -2,10 +2,12 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1401 // Fields should be private
+#pragma warning disable SA1405 // Debug.Assert should provide message text
 
 namespace Arc.Collections;
 
@@ -50,11 +52,7 @@ public ref struct PooledStringBuilder
     /// <summary>
     /// Gets the number of characters written to this builder.
     /// </summary>
-    public readonly int Length
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => this.length;
-    }
+    public readonly int Length => this.length;
 
     /// <summary>
     /// Appends a character.
@@ -166,6 +164,56 @@ public ref struct PooledStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(bool value)
         => this.Append(value ? "True" : "False");
+
+    /// <summary>
+    /// Appends a line feed character.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AppendLine()
+        => this.Append(BaseHelper.LfChar);
+
+    /// <summary>
+    /// Appends a contiguous range of characters followed by a line feed character.
+    /// </summary>
+    /// <param name="value">The characters to append.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AppendLine(ReadOnlySpan<char> value)
+    {
+        this.Append(value);
+        this.Append(BaseHelper.LfChar);
+    }
+
+    /// <summary>
+    /// Appends the formatted representation of a value followed by a line feed
+    /// character.
+    /// </summary>
+    /// <typeparam name="T">The type of value to append.</typeparam>
+    /// <param name="value">The value to format and append.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AppendLine<T>(T value)
+        where T : ISpanFormattable
+    {
+        this.Append(value);
+        this.Append(BaseHelper.LfChar);
+    }
+
+    /// <summary>
+    /// Appends the formatted representation of a value using the specified format
+    /// and format provider, followed by a line feed character.
+    /// </summary>
+    /// <typeparam name="T">The type of value to append.</typeparam>
+    /// <param name="value">The value to format and append.</param>
+    /// <param name="format">The optional format string to apply during formatting.</param>
+    /// <param name="formatProvider">
+    /// The format provider that supplies culture-specific formatting information.
+    /// </param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AppendLine<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider)
+        where T : ISpanFormattable
+    {
+        this.Append(value, format, formatProvider);
+        this.Append('\n');
+    }
 
     /// <summary>
     /// Creates a string containing all characters written to this builder.
@@ -364,7 +412,7 @@ public ref struct PooledStringBuilder
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void AppendFormattedSlow<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider, char[]? array, int index)
-    where T : ISpanFormattable
+        where T : ISpanFormattable
     {
         if (array is not null)
         {
@@ -452,6 +500,9 @@ public ref struct PooledStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void AddSegment(char[] array, int writtenLength)
     {
+        Debug.Assert(writtenLength > 0);
+        Debug.Assert(writtenLength <= array.Length);
+
         var segment = SegmentPool.Rent();
         segment.Array = array;
         segment.WrittenLength = writtenLength;
