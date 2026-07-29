@@ -2,6 +2,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -296,6 +297,32 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
+    /// Gets the last character written to this builder.
+    /// </summary>
+    /// <param name="last">
+    /// The last character, or <c>'\0'</c> if the builder is empty.
+    /// </param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void GetLastChar(out char last)
+    {
+        var index = this.currentIndex;
+        if (index != 0)
+        {
+            last = this.currentArray![index - 1];
+            return;
+        }
+
+        var segment = this.lastSegment;
+        if (segment is not null)
+        {
+            last = segment.Array![segment.WrittenLength - 1];
+            return;
+        }
+
+        last = default;
+    }
+
+    /// <summary>
     /// Gets the last character and the character immediately preceding it.
     /// </summary>
     /// <param name="previous">
@@ -357,6 +384,55 @@ public ref struct PooledStringBuilder
         }
 
         previous = precedingSegment is null ? default : precedingSegment.Array![precedingSegment.WrittenLength - 1];
+    }
+
+    /// <summary>
+    /// Ensures that the builder ends with a space unless it already ends with
+    /// a space or line feed.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EnsureTrailingSpace()
+    {
+        char last;
+
+        if (this.currentIndex != 0)
+        {
+            last = this.currentArray![this.currentIndex - 1];
+        }
+        else
+        {
+            var segment = this.lastSegment;
+            if (segment is null)
+            {
+                return;
+            }
+
+            last = segment.Array![segment.WrittenLength - 1];
+        }
+
+        if (last != BaseHelper.SpaceChar && last != BaseHelper.LfChar)
+        {
+            this.Append(BaseHelper.SpaceChar);
+        }
+    }
+
+    /// <summary>
+    /// Ensures that the builder ends with a blank line represented by two consecutive line feed characters.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EnsureTrailingBlankLine()
+    {
+        this.GetLastTwoChars(out char previous, out char last);
+
+        if (last != BaseHelper.LfChar)
+        {
+            this.Append(BaseHelper.LfChar);
+            this.Append(BaseHelper.LfChar);
+        }
+        else if (previous != BaseHelper.LfChar)
+        {
+            this.Append(BaseHelper.LfChar);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
