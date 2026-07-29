@@ -266,6 +266,20 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
+    /// Removes all characters from this builder while retaining the current
+    /// character array for subsequent writes.
+    /// </summary>
+    public void Clear()
+    {
+        this.ReturnSegments();
+
+        this.firstSegment = null;
+        this.lastSegment = null;
+        this.currentIndex = 0;
+        this.length = 0;
+    }
+
+    /// <summary>
     /// Returns all rented character arrays and segments to their pools.
     /// </summary>
     public void Dispose()
@@ -276,23 +290,7 @@ public ref struct PooledStringBuilder
             CharPool.Return(this.currentArray);
         }
 
-        var segment = this.firstSegment;
-        while (segment is not null)
-        {
-            var next = segment.Next;
-            var array = segment.Array;
-
-            if (array is not null)
-            {
-                CharPool.Return(array);
-            }
-
-            segment.Array = null;
-            segment.Next = null;
-            segment.WrittenLength = 0;
-
-            SegmentPool.Return(segment);
-        }
+        this.ReturnSegments();
 
         this = default;
     }
@@ -311,31 +309,36 @@ public ref struct PooledStringBuilder
         var array = this.currentArray;
         var index = this.currentIndex;
 
-        // Common case: both characters are in the current array.
+        // Both characters are in the current array.
         if (index >= 2)
         {
             previous = array![index - 2];
-            last = array![index - 1];
+            last = array[index - 1];
             return;
         }
 
         var lastSegment = this.lastSegment;
-        if (lastSegment is null)
-        {
-            last = default;
-            previous = default;
-            return;
-        }
 
+        // The current array contains exactly one character.
         if (index == 1)
         {
-            previous = lastSegment.Array![lastSegment.WrittenLength - 1];
             last = array![0];
+            previous = lastSegment is null ? default : lastSegment.Array![lastSegment.WrittenLength - 1];
             return;
         }
 
+        // The builder is empty.
+        if (lastSegment is null)
+        {
+            previous = default;
+            last = default;
+            return;
+        }
+
+        // The current array is empty, so read from the last segment.
         var writtenLength = lastSegment.WrittenLength;
         var lastSegmentArray = lastSegment.Array!;
+
         last = lastSegmentArray[writtenLength - 1];
         if (writtenLength >= 2)
         {
@@ -344,17 +347,13 @@ public ref struct PooledStringBuilder
         }
 
         // The last segment contains only one character.
-        // Find the preceding non-empty segment.
+        // Find the segment immediately preceding it.
         Segment? precedingSegment = null;
         var segment = this.firstSegment;
         while (segment != lastSegment)
         {
-            if (segment!.WrittenLength != 0)
-            {
-                precedingSegment = segment;
-            }
-
-            segment = segment.Next;
+            precedingSegment = segment;
+            segment = segment!.Next;
         }
 
         previous = precedingSegment is null ? default : precedingSegment.Array![precedingSegment.WrittenLength - 1];
@@ -519,6 +518,28 @@ public ref struct PooledStringBuilder
         }
 
         this.lastSegment = segment;
+    }
+
+    private void ReturnSegments()
+    {
+        var segment = this.firstSegment;
+        while (segment is not null)
+        {
+            var next = segment.Next;
+            var array = segment.Array;
+
+            if (array is not null)
+            {
+                CharPool.Return(array);
+            }
+
+            segment.Array = null;
+            segment.Next = null;
+            segment.WrittenLength = 0;
+
+            SegmentPool.Return(segment);
+            segment = next;
+        }
     }
 
     private readonly struct StringCreationState
