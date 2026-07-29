@@ -266,6 +266,20 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
+    /// Removes all characters from this builder while retaining the current
+    /// character array for subsequent writes.
+    /// </summary>
+    public void Clear()
+    {
+        this.ReturnSegments();
+
+        this.firstSegment = null;
+        this.lastSegment = null;
+        this.currentIndex = 0;
+        this.length = 0;
+    }
+
+    /// <summary>
     /// Returns all rented character arrays and segments to their pools.
     /// </summary>
     public void Dispose()
@@ -276,23 +290,7 @@ public ref struct PooledStringBuilder
             CharPool.Return(this.currentArray);
         }
 
-        var segment = this.firstSegment;
-        while (segment is not null)
-        {
-            var next = segment.Next;
-            var array = segment.Array;
-
-            if (array is not null)
-            {
-                CharPool.Return(array);
-            }
-
-            segment.Array = null;
-            segment.Next = null;
-            segment.WrittenLength = 0;
-
-            SegmentPool.Return(segment);
-        }
+        this.ReturnSegments();
 
         this = default;
     }
@@ -519,6 +517,28 @@ public ref struct PooledStringBuilder
         }
 
         this.lastSegment = segment;
+    }
+
+    private void ReturnSegments()
+    {
+        var segment = this.firstSegment;
+        while (segment is not null)
+        {
+            var next = segment.Next;
+            var array = segment.Array;
+
+            if (array is not null)
+            {
+                CharPool.Return(array);
+            }
+
+            segment.Array = null;
+            segment.Next = null;
+            segment.WrittenLength = 0;
+
+            SegmentPool.Return(segment);
+            segment = next;
+        }
     }
 
     private readonly struct StringCreationState
