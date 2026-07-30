@@ -387,8 +387,7 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Ensures that the builder ends with a space unless it already ends with
-    /// a space or line feed.
+    /// Ensures that the builder ends with a space unless it already ends with a space or line feed.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureTrailingSpace()
@@ -424,6 +423,26 @@ public ref struct PooledStringBuilder
     {
         this.GetLastTwoChars(out char previous, out char last);
 
+        if (last == 0)
+        {// Empty
+            return;
+        }
+
+        if (last != BaseHelper.LfChar)
+        {// Text
+            this.Append(BaseHelper.LfChar);
+            this.Append(BaseHelper.LfChar);
+        }
+        else if (previous == 0)
+        {// \n
+        }
+        else if (previous != BaseHelper.LfChar)
+        {// A\n
+            this.Append(BaseHelper.LfChar);
+        }
+
+        /*this.GetLastTwoChars(out char previous, out char last);
+
         if (last != BaseHelper.LfChar)
         {
             this.Append(BaseHelper.LfChar);
@@ -432,7 +451,7 @@ public ref struct PooledStringBuilder
         else if (previous != BaseHelper.LfChar)
         {
             this.Append(BaseHelper.LfChar);
-        }
+        }*/
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
