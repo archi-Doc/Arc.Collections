@@ -29,7 +29,8 @@ public ref struct SequenceBuilder<T>
     public const int DefaultInitialCapacity = 256;
 
     /// <summary>
-    /// The maximum requested size for a rented chunk.
+    /// The target maximum chunk size (in elements).
+    /// Rented arrays may be larger depending on <see cref="ArrayPool{T}"/>.
     /// </summary>
     public const int MaxChunkCapacity = 32 * 1024;
 
@@ -93,7 +94,7 @@ public ref struct SequenceBuilder<T>
         {
             true => ClearArrayEnabled,
             false => ClearArrayDisabled,
-            _ => RuntimeHelpers.IsReferenceOrContainsReferences<T>() ? ClearArrayEnabled : ClearArrayDisabled,
+            _ => ClearArrayInfer,
         };
     }
 
