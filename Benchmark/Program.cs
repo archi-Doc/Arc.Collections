@@ -23,6 +23,7 @@ public class Program
         var switcher = new BenchmarkSwitcher(new[]
         {
             typeof(CircularQueueBenchmark),
+            typeof(CircularQueueBenchmark2),
             typeof(SequenceBuilderAddBenchmark),
             typeof(StringBuilderBenchmark),
             typeof(HashCombinerBenchmark),
