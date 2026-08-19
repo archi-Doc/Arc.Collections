@@ -22,6 +22,7 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(CircularQueueBenchmark),
             typeof(SequenceBuilderAddBenchmark),
             typeof(StringBuilderBenchmark),
             typeof(HashCombinerBenchmark),
