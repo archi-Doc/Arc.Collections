@@ -4,7 +4,6 @@
   </Folder>
   <Project Path="Arc.Collections/Arc.Collections.csproj" />
   <Project Path="Benchmark/Benchmark.csproj" />
-  <Project Path="ConsoleApp1/ConsoleApp1.csproj" />
   <Project Path="Sandbox/Sandbox.csproj" />
   <Project Path="xUnitTest/xUnitTest.csproj" />
 </Solution>

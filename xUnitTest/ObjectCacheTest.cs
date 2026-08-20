@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public record ObjectCacheClass(int Id, string Name);
 

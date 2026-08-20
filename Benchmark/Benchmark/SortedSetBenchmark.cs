@@ -62,7 +62,7 @@ public class SortedSetBenchmark
         return sum;
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public long Sum_OrderedSet()
     {
         long sum = 0;
@@ -72,13 +72,13 @@ public class SortedSetBenchmark
         }
 
         return sum;
-    }
+    }*/
 
     [Benchmark]
     public long Sum_OrderedSet2()
     {
         long sum = 0;
-        var node = this.orderedSet.First;
+        var node = this.orderedSet.FirstNode;
         while (node is not null)
         {
             sum += node.Key;

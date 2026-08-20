@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using Arc;
 using Xunit;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class SumTest
 {

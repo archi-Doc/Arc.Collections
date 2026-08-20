@@ -3,168 +3,258 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
-#pragma warning disable SA1124 // Do not use regions
+using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
+
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order (ascending by default).
-/// <br/><see cref="OrderedSet{T}"/> uses Red-Black Tree structure to store objects.
+/// Represents a collection of unique values maintained in sorted order.<br/>
+/// Uses <see cref="OrderedMap{TKey, TValue}"/> as the underlying Red-Black Tree.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
-public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+public class OrderedSet<T> : IEnumerable<T>
 {
+    private const byte DummyValue = 0;
+
+    private readonly OrderedMap<T, byte> map;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+    /// Initializes an empty set.
     /// </summary>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
     public OrderedSet(bool reverse = false)
     {
-        this.map = new(reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
+        this.map = new OrderedMap<T, byte>(reverse);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+    /// Initializes an empty set with the specified comparer.
     /// </summary>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedSet(IComparer<T> comparer, bool reverse = false)
+    public OrderedSet(IComparer<T>? comparer, bool reverse = false)
     {
-        this.map = new(comparer, reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
+        this.map = new OrderedMap<T, byte>(comparer, reverse);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+    /// Initializes a set from the specified collection.
     /// </summary>
-    /// <param name="collection">The enumerable collection to be copied.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
     public OrderedSet(IEnumerable<T> collection, bool reverse = false)
         : this(collection, Comparer<T>.Default, reverse)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedSet{T}"/> class.
+    /// Initializes a set from the specified collection and comparer.
     /// </summary>
-    /// <param name="collection">The enumerable collection to be copied.</param>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedSet(IEnumerable<T> collection, IComparer<T> comparer, bool reverse = false)
+    public OrderedSet(IEnumerable<T> collection, IComparer<T>? comparer, bool reverse = false)
     {
-        this.map = new(comparer, reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
+        ArgumentNullException.ThrowIfNull(collection);
 
-        foreach (var x in collection)
+        this.map = new OrderedMap<T, byte>(comparer, reverse);
+
+        foreach (var item in collection)
         {
-            this.Add(x);
+            this.map.Add(item, DummyValue);
         }
     }
 
-    private OrderedMap<T, int> map;
-
-    /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
-    public class Node : OrderedMap<T, int>.Node
-    {
-        internal Node(T key, NodeColor color)
-            : base(key, 0, color)
-        {
-        }
-    }*/
-
-    #region Main
-
     /// <summary>
-    /// Gets the number of nodes actually contained in the <see cref="OrderedSet{T}"/>.
+    /// Gets the number of elements in the set.
     /// </summary>
     public int Count => this.map.Count;
 
     /// <summary>
-    /// Gets the first node in the <see cref="OrderedSet{T}"/>.
+    /// Gets the comparer used to order elements.
     /// </summary>
-    public OrderedMap<T, int>.Node? First => this.map.First;
+    public IComparer<T> Comparer => this.map.Comparer;
 
     /// <summary>
-    /// Gets the last node in the <see cref="OrderedSet{T}"/>.
+    /// Gets the first node in sort order.
     /// </summary>
-    public OrderedMap<T, int>.Node? Last => this.map.Last;
-
-    /*public bool UnsafePresearchForStructKey
+    public OrderedMap<T, byte>.Node? FirstNode
     {
-        get => this.map.UnsafePresearchForStructKey;
-        set => this.map.UnsafePresearchForStructKey = value;
-    }*/
-
-    /// <summary>
-    /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="value">The value of the element to add.</param>
-    /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the node is created.</returns>
-    public (OrderedMap<T, int>.Node Node, bool NewlyAdded) Add(T value)
-    {
-        var result = this.map.Add(value, 0);
-        return result;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.map.First;
     }
 
     /// <summary>
-    /// Determines whether a collection contains a specific value.
-    /// <br/>O(log n) operation.
+    /// Gets the last node in sort order.
     /// </summary>
-    /// <param name="value">The value to locate in the collection.</param>
-    /// <returns>true if the collection contains an element with the specified value; otherwise, false.</returns>
-    public bool Contains(T value) => this.map.ContainsKey(value);
+    public OrderedMap<T, byte>.Node? LastNode
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.map.Last;
+    }
 
     /// <summary>
-    /// Removes a specified value from the collection."/>.
-    /// <br/>O(log n) operation.
+    /// Adds an element to the set.
     /// </summary>
-    /// <param name="value">The element to remove.</param>
-    /// <returns>true if the element is found and successfully removed.</returns>
-    public bool Remove(T value) => this.map.Remove(value);
+    /// <returns><see langword="true"/> if the element was newly added.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Add(T item)
+        => this.map.Add(item, DummyValue).NewlyAdded;
 
     /// <summary>
-    /// Removes a specified node from the collection.
-    /// <br/>O(log n) operation.
+    /// Adds an element and returns its node.
     /// </summary>
-    /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
-    public void RemoveNode(OrderedMap<T, int>.Node node) => this.map.RemoveNode(node);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (OrderedMap<T, byte>.Node Node, bool NewlyAdded) AddNode(T item)
+        => this.map.Add(item, DummyValue);
 
     /// <summary>
-    /// Removes all elements from a collection.
+    /// Adds an element, optionally reusing an unused node.
     /// </summary>
-    public void Clear() => this.map.Clear();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (OrderedMap<T, byte>.Node Node, bool NewlyAdded) AddNode(T item, OrderedMap<T, byte>.Node reuse)
+        => this.map.Add(item, DummyValue, reuse);
 
     /// <summary>
-    /// Validate Red-Black Tree.
+    /// Determines whether the set contains the specified element.
     /// </summary>
-    /// <returns>true if the tree is valid.</returns>
-    public bool Validate() => this.map.Validate();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Contains(T? item)
+        => this.map.ContainsKey(item);
 
-    #endregion
+    /// <summary>
+    /// Finds the node containing the specified element.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMap<T, byte>.Node? FindNode(T? item)
+        => this.map.FindNode(item);
 
-    #region Interface
+    /// <summary>
+    /// Removes the specified element.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(T? item)
+        => this.map.Remove(item);
 
-    bool ICollection<T>.IsReadOnly => false;
+    /// <summary>
+    /// Removes the specified node.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveNode(OrderedMap<T, byte>.Node node)
+        => this.map.RemoveNode(node);
 
-    bool ICollection.IsSynchronized => false;
+    /// <summary>
+    /// Changes the element stored in the specified node.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool SetNodeValue(OrderedMap<T, byte>.Node node, T value)
+        => this.map.SetNodeKey(node, value);
 
-    object ICollection.SyncRoot => this;
+    /// <summary>
+    /// Removes all elements from the set.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Clear()
+        => this.map.Clear();
 
-    void ICollection<T>.Add(T item) => this.map.Add(item, 0);
+    /// <summary>
+    /// Copies the elements to the specified array.
+    /// </summary>
+    public void CopyTo(T[] array, int index)
+    {
+        ArgumentNullException.ThrowIfNull(array);
 
-    void ICollection<T>.CopyTo(T[] array, int arrayIndex) => this.map.Keys.CopyTo(array, arrayIndex);
+        if ((uint)index > (uint)array.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
 
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)this.map.Keys).CopyTo(array, index);
+        if (array.Length - index < this.Count)
+        {
+            throw new ArgumentException(
+                "The destination array is too small.",
+                nameof(array));
+        }
 
-    public OrderedMap<T, int>.KeyCollection.Enumerator GetEnumerator() => this.map.Keys.GetEnumerator();
+        var enumerator = this.GetEnumerator();
+        while (enumerator.MoveNext())
+        {
+            array[index++] = enumerator.Current;
+        }
+    }
 
-    IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.map.Keys.GetEnumerator();
+    /// <summary>
+    /// Gets the first node equal to or after the specified value in sort order.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMap<T, byte>.Node? GetLowerBound(T? value)
+        => this.map.GetLowerBound(value);
 
-    IEnumerator IEnumerable.GetEnumerator() => this.map.Keys.GetEnumerator();
+    /// <summary>
+    /// Gets the last node equal to or before the specified value in sort order.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMap<T, byte>.Node? GetUpperBound(T? value)
+        => this.map.GetUpperBound(value);
+
+    /// <summary>
+    /// Gets the nodes delimiting the specified range.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (OrderedMap<T, byte>.Node? Lower, OrderedMap<T, byte>.Node? Upper) GetRange(T? lower, T? upper)
+        => this.map.GetRange(lower, upper);
+
+    /// <summary>
+    /// Validates the underlying Red-Black Tree.
+    /// </summary>
+    public bool Validate()
+        => this.map.Validate();
+
+    #region Enumerator
+
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Enumerator GetEnumerator()
+        => new(this.map);
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        => new Enumerator(this.map);
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this.map);
+
+    /// <summary>
+    /// Enumerates the elements in sort order.
+    /// </summary>
+    public struct Enumerator : IEnumerator<T>
+    {
+        private OrderedMap<T, byte>.KeyEnumerable.Enumerator enumerator;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal Enumerator(OrderedMap<T, byte> map)
+        {
+            this.enumerator = map.Keys.GetEnumerator();
+        }
+
+        public readonly T Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.enumerator.Current;
+        }
+
+        object? IEnumerator.Current => this.Current;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+            => this.enumerator.MoveNext();
+
+        public void Dispose()
+        {
+        }
+
+        void IEnumerator.Reset()
+            => throw new NotSupportedException();
+    }
 
     #endregion
 }

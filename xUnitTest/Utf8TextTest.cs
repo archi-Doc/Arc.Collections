@@ -3,7 +3,7 @@ using System.Text;
 using Arc;
 using Xunit;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class Utf8ValidatorTests
 {

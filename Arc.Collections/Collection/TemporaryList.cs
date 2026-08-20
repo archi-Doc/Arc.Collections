@@ -6,8 +6,8 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// A list of temporary objects implemented as a ref struct.<br/>
-/// If the number of objects is 4 or less, the objects are stored on the stack and no heap allocations are made.<br/>
+/// A temporary list implemented as a ref struct.<br/>
+/// Up to four objects are stored inline without an additional heap allocation.<br/>
 /// Use this mainly when you want to modify objects after iterating a collection in a 'for' or 'foreach' loop.
 /// </summary>
 /// <typeparam name="TObject">The type of the objects.</typeparam>
@@ -25,12 +25,12 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
     /// <summary>
     /// Gets the number of objects in the list.
     /// </summary>
-    public int Count => this.count;
+    public readonly int Count => this.count;
 
     /// <summary>
     /// Adds an object to the list.
     /// </summary>
-    /// <param name="obj">The object to add to the queue.</param>
+    /// <param name="obj">The object to add to the list.</param>
     public void Add(TObject obj)
     {
         if (this.count == 0)
@@ -58,9 +58,9 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
             return;
         }
 
-        this.count++;
         this.list ??= new();
         this.list.Add(obj);
+        this.count++;
     }
 
     /// <summary>
@@ -70,49 +70,49 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
     /// A new array containing all items in insertion order.<br/>
     /// Returns an empty array when the list contains no items.
     /// </returns>
-    public TObject[] ToArray()
+    public readonly TObject[] ToArray()
     {
-        if (this.Count == 0)
+        var count = this.count;
+        if (count == 0)
         {
             return [];
         }
 
-        var array = new TObject[this.Count];
-        if (this.Count > 0)
+        var array = new TObject[count];
+        array[0] = this.obj0;
+
+        if (count == 1)
         {
-            array[0] = this.obj0;
+            return array;
         }
 
-        if (this.Count > 1)
+        array[1] = this.obj1;
+
+        if (count == 2)
         {
-            array[1] = this.obj1;
+            return array;
         }
 
-        if (this.Count > 2)
+        array[2] = this.obj2;
+
+        if (count == 3)
         {
-            array[2] = this.obj2;
+            return array;
         }
 
-        if (this.Count > 3)
-        {
-            array[3] = this.obj3;
-        }
+        array[3] = this.obj3;
 
-        for (var i = StackObjectCount; i < this.Count; i++)
+        if (count > StackObjectCount)
         {
-            array[i] = this.list![i - StackObjectCount];
+            this.list!.CopyTo(array, StackObjectCount);
         }
 
         return array;
     }
 
-    public Enumerator GetEnumerator() => new Enumerator(this);
+    public readonly Enumerator GetEnumerator() => new(this);
 
-    // IEnumerator<TObject> IEnumerable<TObject>.GetEnumerator() => new Enumerator(this);
-
-    // IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
-
-    public ref struct Enumerator : IEnumerator<TObject>
+    public ref struct Enumerator
     {
         private readonly TemporaryList<TObject> temporaryList;
         private int index;
@@ -126,8 +126,6 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
         }
 
         public TObject Current => this.current!;
-
-        object IEnumerator.Current => this.Current!;
 
         public void Dispose()
         {

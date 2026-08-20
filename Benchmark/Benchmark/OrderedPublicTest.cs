@@ -8,7 +8,8 @@ namespace Benchmark;
 [Config(typeof(BenchmarkConfig))]
 public class OrderedPublicTest
 {
-    [Params(100, 10_000)]
+    [Params(100)]
+    // [Params(100, 10_000)]
     public int Length;
 
     public int[] IntArray = default!;

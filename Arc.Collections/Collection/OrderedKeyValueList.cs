@@ -3,20 +3,23 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Arc.Collections.HotMethod;
 
 #pragma warning disable SA1202 // Elements should be ordered by access
 #pragma warning disable SA1401
-#pragma warning disable SA1405 // Debug.Assert should provide message text
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a list of key-value pairs that can be accessed by index and maintained in sorted order (ascending by default).
+/// Represents a sorted list of key-value pairs that allows duplicate keys.
+/// Dictionary-style lookup returns the first value for a key, while assignment adds a new entry.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
@@ -24,6 +27,11 @@ public class OrderedKeyValueList<TKey, TValue> :
     IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>
     where TKey : notnull
 {
+    private const int DefaultCapacity = 4;
+
+    // Cached so hot paths can select a comparison strategy without a ReferenceEquals per call.
+    private readonly bool comparerIsDefault;
+
     protected TKey[] keys;
     protected TValue[] values;
     protected KeyList? keyList;
@@ -31,21 +39,16 @@ public class OrderedKeyValueList<TKey, TValue> :
     protected int size;
     protected int version;
 
-    private const int DefaultCapacity = 4;
+    public IComparer<TKey> Comparer { get; }
 
-    public IComparer<TKey> Comparer { get; private set; }
-
-    public IHotMethod<TKey>? HotMethod { get; private set; }
+    public IHotMethod<TKey>? HotMethod { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
     public OrderedKeyValueList()
+        : this(0, null)
     {
-        this.keys = Array.Empty<TKey>();
-        this.values = Array.Empty<TValue>();
-        this.Comparer = Comparer<TKey>.Default;
-        this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
     }
 
     /// <summary>
@@ -53,330 +56,114 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
     public OrderedKeyValueList(int capacity)
+        : this(capacity, null)
     {
-        if (capacity < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(capacity));
-        }
-
-        this.keys = new TKey[capacity];
-        this.values = new TValue[capacity];
-        this.Comparer = Comparer<TKey>.Default;
-        this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
-    /// <param name="comparer">The default comparer to use for comparing keys.</param>
-    public OrderedKeyValueList(IComparer<TKey> comparer)
-        : this()
+    /// <param name="comparer">The comparer to use for comparing keys.</param>
+    public OrderedKeyValueList(IComparer<TKey>? comparer)
+        : this(0, comparer)
     {
-        this.Comparer = comparer ?? Comparer<TKey>.Default;
-        this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
-    /// <param name="comparer">The default comparer to use for comparing keys.</param>
-    public OrderedKeyValueList(int capacity, IComparer<TKey> comparer)
-        : this(comparer)
+    /// <param name="comparer">The comparer to use for comparing keys.</param>
+    public OrderedKeyValueList(int capacity, IComparer<TKey>? comparer)
     {
-        this.Capacity = capacity;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new list.</param>
-    public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary)
-        : this(dictionary, null!)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new list.</param>
-    /// <param name="comparer">The default comparer to use for comparing keys.</param>
-    public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
-        : this(dictionary != null ? dictionary.Count : 0, comparer)
-    {
-        if (dictionary == null)
+        if (capacity < 0)
         {
-            throw new ArgumentNullException(nameof(dictionary));
+            throw new ArgumentOutOfRangeException(nameof(capacity));
         }
 
-        int count = dictionary.Count;
+        if (capacity == 0)
+        {
+            this.keys = Array.Empty<TKey>();
+            this.values = Array.Empty<TValue>();
+        }
+        else
+        {
+            this.keys = new TKey[capacity];
+            this.values = new TValue[capacity];
+        }
+
+        this.Comparer = comparer ?? Comparer<TKey>.Default;
+        this.comparerIsDefault = ReferenceEquals(this.Comparer, Comparer<TKey>.Default);
+        this.HotMethod = HotMethodResolver.Get<TKey>(this.Comparer);
+    }
+
+    /// <summary>
+    /// Initializes a new instance by copying the specified dictionary.
+    /// </summary>
+    /// <param name="dictionary">The dictionary to copy.</param>
+    public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary)
+        : this(dictionary, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance by copying the specified dictionary.
+    /// </summary>
+    /// <param name="dictionary">The dictionary to copy.</param>
+    /// <param name="comparer">The comparer to use for comparing keys.</param>
+    public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary, IComparer<TKey>? comparer)
+        : this(dictionary is null ? 0 : dictionary.Count, comparer)
+    {
+        ArgumentNullException.ThrowIfNull(dictionary);
+
+        var count = dictionary.Count;
         if (count != 0)
         {
+            // Bulk copy is considerably faster than enumerating pairs one by one.
             dictionary.Keys.CopyTo(this.keys, 0);
             dictionary.Values.CopyTo(this.values, 0);
-            Debug.Assert(count == this.keys.Length);
             if (count > 1)
             {
-                Array.Sort<TKey, TValue>(this.keys, this.values, this.Comparer);
+                Array.Sort(this.keys, this.values, 0, count, this.Comparer);
             }
         }
 
         this.size = count;
     }
 
-    /// <summary>
-    /// Searches a list for the specific value.
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-    public int BinarySearch(TKey key) // => Array.BinarySearch(this.items, 0, this.size, value, this.Comparer);
-    {
-        if (this.HotMethod != null)
-        {
-            return this.HotMethod.BinarySearch(this.keys, 0, this.size, key);
-        }
-
-        var min = 0;
-        var max = this.size - 1;
-
-        if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-        {// IComparable<T>
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                var cmp = ic.CompareTo(this.keys[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (cmp > 0)
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-        }
-        else
-        {// IComparer<T>
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                var cmp = this.Comparer.Compare(key, this.keys[mid]); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                if (cmp < 0)
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (cmp > 0)
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-        }
-
-        return ~min;
-    }
-
-    /// <summary>
-    /// Get the index of the first element equal to or greater than the specified key (-1: all elements are less than the specified key).
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The index of the first element equal to or greater than the specified key (-1: all elements are less than the specified key).</returns>
-    public int GetLowerBound(TKey key)
-    {
-        var index = this.BinarySearch(key);
-        if (index >= 0)
-        {
-            if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (index > 0 &&
-                ic.CompareTo(this.keys[index - 1]) == 0)
-                {
-                    index--;
-                }
-            }
-            else
-            {
-                while (index > 0 &&
-                this.Comparer.Compare(key, this.keys[index - 1]) == 0)
-                {
-                    index--;
-                }
-            }
-
-            return index;
-        }
-        else
-        {
-            return ~index < this.keys.Length ? ~index : -1;
-        }
-    }
-
-    /// <summary>
-    /// Get the index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified key).
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The index of the last element equal to or lower than the specified key (-1: all elements are greater than the specified key).</returns>
-    public int GetUpperBound(TKey key)
-    {
-        var index = this.BinarySearch(key);
-        if (index >= 0)
-        {
-            if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<T>
-                while (index < this.keys.Length - 1 &&
-                ic.CompareTo(this.keys[index + 1]) == 0)
-                {
-                    index++;
-                }
-            }
-            else
-            {
-                while (index < this.keys.Length - 1 &&
-                this.Comparer.Compare(key, this.keys[index + 1]) == 0)
-                {
-                    index++;
-                }
-            }
-
-            return index;
-        }
-        else
-        {
-            return ~index - 1;
-        }
-    }
-
-    #region IDictionary
-
-    public void Add(TKey key, TValue value)
-    {
-        if (key == null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
-
-        var pos = this.BinarySearch(key);
-        if (pos < 0)
-        {
-            this.Insert(~pos, key, value);
-        }
-        else
-        {// Adds to the end of the same keys.
-            pos++;
-            while (pos < this.size && this.Comparer.Compare(this.keys[pos], key) == 0)
-            {
-                pos++;
-            }
-
-            this.Insert(pos, key, value);
-        }
-    }
-
-    void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> keyValuePair) => this.Add(keyValuePair.Key, keyValuePair.Value);
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> keyValuePair)
-    {
-        var range = this.RangeOfKey(keyValuePair.Key);
-        for (var n = range.Start; n < range.End; n++)
-        {
-            if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> keyValuePair)
-    {
-        var range = this.RangeOfKey(keyValuePair.Key);
-        for (var n = range.Start; n < range.End; n++)
-        {
-            if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], keyValuePair.Value))
-            {
-                this.RemoveAt(n);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    #endregion
-
     public int Capacity
     {
-        get
-        {
-            return this.keys.Length;
-        }
-
+        get => this.keys.Length;
         set
         {
-            if (value != this.keys.Length)
+            if (value == this.keys.Length)
             {
-                if (value < this.size)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value));
-                }
-
-                if (value > 0)
-                {
-                    var newKeys = new TKey[value];
-                    var newValues = new TValue[value];
-                    if (this.size > 0)
-                    {
-                        Array.Copy(this.keys, newKeys, this.size);
-                        Array.Copy(this.values, newValues, this.size);
-                    }
-
-                    this.keys = newKeys;
-                    this.values = newValues;
-                }
-                else
-                {
-                    this.keys = Array.Empty<TKey>();
-                    this.values = Array.Empty<TValue>();
-                }
+                return;
             }
-        }
-    }
 
-    void IDictionary.Add(object key, object? value)
-    {
-        if (key == null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+            if (value < this.size)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
 
-        if (value == null && !(default(TValue) == null))
-        {// null is an invalid value for Value types
-            throw new ArgumentNullException(nameof(value));
-        }
+            if (value == 0)
+            {
+                this.keys = Array.Empty<TKey>();
+                this.values = Array.Empty<TValue>();
+                return;
+            }
 
-        if (!(key is TKey))
-        {
-            throw new ArgumentException(nameof(key));
-        }
+            var newKeys = new TKey[value];
+            var newValues = new TValue[value];
+            if (this.size != 0)
+            {
+                Array.Copy(this.keys, newKeys, this.size);
+                Array.Copy(this.values, newValues, this.size);
+            }
 
-        if (!(value is TValue) && value != null)
-        {// null is a valid value for Reference Types
-            throw new ArgumentException(nameof(value));
+            this.keys = newKeys;
+            this.values = newValues;
         }
-
-        this.Add((TKey)key, (TValue)value!);
     }
 
     public int Count => this.size;
@@ -397,16 +184,6 @@ public class OrderedKeyValueList<TKey, TValue> :
 
     IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => this.GetValueListHelper();
 
-    private KeyList GetKeyListHelper()
-    {
-        return this.keyList != null ? this.keyList : (this.keyList = new KeyList(this));
-    }
-
-    private ValueList GetValueListHelper()
-    {
-        return this.valueList != null ? this.valueList : (this.valueList = new ValueList(this));
-    }
-
     bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
     bool IDictionary.IsReadOnly => false;
@@ -416,6 +193,120 @@ public class OrderedKeyValueList<TKey, TValue> :
     bool ICollection.IsSynchronized => false;
 
     object ICollection.SyncRoot => this;
+
+    /// <summary>
+    /// Searches for the specified key.
+    /// </summary>
+    /// <param name="key">The key to search for.</param>
+    /// <returns>
+    /// The index of the first matching key, or the bitwise complement of the insertion index if no match exists.
+    /// </returns>
+    public int BinarySearch(TKey key)
+    {
+        if (key is null)
+        {
+            ThrowArgumentNullKey();
+        }
+
+        return this.IndexOfFirstCore(key);
+    }
+
+    /// <summary>
+    /// Gets the index of the first element equal to or greater than the specified key.
+    /// </summary>
+    /// <param name="key">The key to search for.</param>
+    /// <returns>The matching index, or -1 if all elements are less than the key.</returns>
+    public int GetLowerBound(TKey key)
+    {
+        if (key is null)
+        {
+            ThrowArgumentNullKey();
+        }
+
+        var index = this.LowerBoundCore(key);
+        return index < this.size ? index : -1;
+    }
+
+    /// <summary>
+    /// Gets the index of the last element equal to or less than the specified key.
+    /// </summary>
+    /// <param name="key">The key to search for.</param>
+    /// <returns>The matching index, or -1 if all elements are greater than the key.</returns>
+    public int GetUpperBound(TKey key)
+    {
+        if (key is null)
+        {
+            ThrowArgumentNullKey();
+        }
+
+        return this.UpperBoundExclusiveCore(key, 0) - 1;
+    }
+
+    public void Add(TKey key, TValue value)
+    {
+        if (key is null)
+        {
+            ThrowArgumentNullKey();
+        }
+
+        // A single upper-bound search yields the insertion index directly and
+        // inserts after all existing entries with the same key.
+        this.Insert(this.UpperBoundExclusiveCore(key, 0), key, value);
+    }
+
+    void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item)
+        => this.Add(item.Key, item.Value);
+
+    bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
+    {
+        var (start, end) = this.RangeOfKey(item.Key);
+        if (start < 0)
+        {
+            return false;
+        }
+
+        var values = this.values;
+        var comparer = EqualityComparer<TValue>.Default;
+        for (var i = start; i < end; i++)
+        {
+            if (comparer.Equals(values[i], item.Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
+        => this.Remove(item.Key, item.Value);
+
+    void IDictionary.Add(object key, object? value)
+    {
+        if (key is null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
+        if (key is not TKey typedKey)
+        {
+            throw new ArgumentException("The key has an incompatible type.", nameof(key));
+        }
+
+        if (value is TValue typedValue)
+        {
+            this.Add(typedKey, typedValue);
+            return;
+        }
+
+        if (value is null && default(TValue) is null)
+        {
+            this.Add(typedKey, default!);
+            return;
+        }
+
+        throw new ArgumentException("The value has an incompatible type.", nameof(value));
+    }
 
     public void Clear()
     {
@@ -429,23 +320,23 @@ public class OrderedKeyValueList<TKey, TValue> :
             Array.Clear(this.values, 0, this.size);
         }
 
-        this.version++;
         this.size = 0;
+        this.version++;
     }
 
     bool IDictionary.Contains(object key)
     {
-        if (IsCompatibleKey(key))
-        {
-            return this.ContainsKey((TKey)key);
-        }
-
-        return false;
+        return IsCompatibleKey(key) && this.ContainsKey((TKey)key);
     }
 
     public bool ContainsKey(TKey key)
     {
-        return this.IndexOfKey(key) >= 0;
+        if (key is null)
+        {
+            ThrowArgumentNullKey();
+        }
+
+        return this.IndexOfFirstCore(key) >= 0;
     }
 
     public bool ContainsValue(TValue value)
@@ -453,150 +344,111 @@ public class OrderedKeyValueList<TKey, TValue> :
         return this.IndexOfValue(value) >= 0;
     }
 
-    void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+    void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(
+        KeyValuePair<TKey, TValue>[] array,
+        int arrayIndex)
     {
-        if (array == null)
-        {
-            throw new ArgumentNullException(nameof(array));
-        }
-
-        if (arrayIndex < 0 || arrayIndex > array.Length)
+        ArgumentNullException.ThrowIfNull(array);
+        if ((uint)arrayIndex > (uint)array.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         }
 
-        if (array.Length - arrayIndex < this.Count)
+        if (array.Length - arrayIndex < this.size)
         {
-            throw new ArgumentException();
+            throw new ArgumentException("The destination array is too small.", nameof(array));
         }
 
-        for (int i = 0; i < this.Count; i++)
+        var keys = this.keys;
+        var values = this.values;
+        var size = this.size;
+        for (var i = 0; i < size; i++)
         {
-            var entry = new KeyValuePair<TKey, TValue>(this.keys[i], this.values[i]);
-            array[arrayIndex + i] = entry;
+            array[arrayIndex + i] = new KeyValuePair<TKey, TValue>(keys[i], values[i]);
         }
     }
 
     void ICollection.CopyTo(Array array, int index)
     {
-        if (array == null)
-        {
-            throw new ArgumentNullException(nameof(array));
-        }
-
+        ArgumentNullException.ThrowIfNull(array);
         if (array.Rank != 1)
         {
-            throw new ArgumentException(nameof(array));
+            throw new ArgumentException("Only single-dimensional arrays are supported.", nameof(array));
         }
 
         if (array.GetLowerBound(0) != 0)
         {
-            throw new ArgumentException(nameof(array));
+            throw new ArgumentException("Non-zero lower-bound arrays are not supported.", nameof(array));
         }
 
-        if (index < 0 || index > array.Length)
+        if ((uint)index > (uint)array.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        if (array.Length - index < this.Count)
+        if (array.Length - index < this.size)
         {
-            throw new ArgumentException();
+            throw new ArgumentException("The destination array is too small.", nameof(array));
         }
 
-        KeyValuePair<TKey, TValue>[]? keyValuePairArray = array as KeyValuePair<TKey, TValue>[];
-        if (keyValuePairArray != null)
+        if (array is KeyValuePair<TKey, TValue>[] pairs)
         {
-            for (int i = 0; i < this.Count; i++)
+            ((ICollection<KeyValuePair<TKey, TValue>>)this).CopyTo(pairs, index);
+            return;
+        }
+
+        if (array is not object[] objects)
+        {
+            throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
+        }
+
+        try
+        {
+            var keys = this.keys;
+            var values = this.values;
+            var size = this.size;
+            for (var i = 0; i < size; i++)
             {
-                keyValuePairArray[i + index] = new KeyValuePair<TKey, TValue>(this.keys[i], this.values[i]);
+                objects[index + i] = new KeyValuePair<TKey, TValue>(keys[i], values[i]);
             }
         }
-        else
+        catch (ArrayTypeMismatchException)
         {
-            object[]? objects = array as object[];
-            if (objects == null)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            try
-            {
-                for (int i = 0; i < this.Count; i++)
-                {
-                    objects[i + index] = new KeyValuePair<TKey, TValue>(this.keys[i], this.values[i]);
-                }
-            }
-            catch (ArrayTypeMismatchException)
-            {
-                throw new ArgumentException(nameof(array));
-            }
+            throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
         }
     }
 
-    private const int MaxArrayLength = 0X7FEFFFFF;
+    public Enumerator GetEnumerator()
+        => new(this, Enumerator.KeyValuePair);
 
-    private void EnsureCapacity(int min)
-    {
-        int newCapacity = this.keys.Length == 0 ? DefaultCapacity : this.keys.Length * 2;
+    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+        => new Enumerator(this, Enumerator.KeyValuePair);
 
-        if ((uint)newCapacity > MaxArrayLength)
-        {
-            newCapacity = MaxArrayLength;
-        }
-        else if (newCapacity < min)
-        {
-            newCapacity = min;
-        }
+    IDictionaryEnumerator IDictionary.GetEnumerator()
+        => new Enumerator(this, Enumerator.DictEntry);
 
-        this.Capacity = newCapacity;
-    }
-
-    private TValue GetByIndex(int index)
-    {
-        if (index < 0 || index >= this.size)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
-
-        return this.values[index];
-    }
-
-    public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair); // IEnumerator<KeyValuePair<TKey, TValue>>
-
-    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
-
-    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    private TKey GetKey(int index)
-    {
-        if (index < 0 || index >= this.size)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
-
-        return this.keys[index];
-    }
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this, Enumerator.KeyValuePair);
 
     public TValue this[TKey key]
     {
         get
         {
-            int i = this.IndexOfKey(key);
-            if (i >= 0)
+            if (key is null)
             {
-                return this.values[i];
+                ThrowArgumentNullKey();
+            }
+
+            var index = this.IndexOfFirstCore(key);
+            if (index >= 0)
+            {
+                return this.values[index];
             }
 
             throw new KeyNotFoundException();
         }
 
-        set
-        {
-            this.Add(key, value);
-        }
+        set => this.Add(key, value);
     }
 
     object? IDictionary.this[object key]
@@ -605,120 +457,78 @@ public class OrderedKeyValueList<TKey, TValue> :
         {
             if (IsCompatibleKey(key))
             {
-                int i = this.IndexOfKey((TKey)key);
-                if (i >= 0)
+                var index = this.IndexOfFirstCore((TKey)key);
+                if (index >= 0)
                 {
-                    return this.values[i];
+                    return this.values[index];
                 }
             }
 
             return null;
         }
 
-        set
-        {
-            ((IDictionary)this).Add(key, value);
-        }
+        set => ((IDictionary)this).Add(key, value);
     }
 
     /// <summary>
-    /// Returns the zero-based index of the specified key in a list.
+    /// Returns the index of the first entry with the specified key.
     /// </summary>
-    /// <param name="key">The key to locate in the list.</param>
-    /// <returns>The zero-based index of the key parameter, if key is found in the list; otherwise, -1.</returns>
+    /// <param name="key">The key to locate.</param>
+    /// <returns>The first matching index, or -1 if the key is not found.</returns>
     public int IndexOfKey(TKey key)
     {
-        if (key == null)
+        if (key is null)
         {
-            throw new ArgumentNullException(nameof(key));
+            ThrowArgumentNullKey();
         }
 
-        var ret = this.BinarySearch(key);
-        ret--;
-        while (ret >= 0 && this.Comparer.Compare(this.keys[ret], key) == 0)
-        {
-            ret--;
-        }
-
-        ret++;
-        return ret >= 0 ? ret : -1;
+        var index = this.IndexOfFirstCore(key);
+        return index >= 0 ? index : -1;
     }
 
     /// <summary>
-    /// Returns a range of indexes with the specified key in a list.
+    /// Returns the half-open range containing all entries with the specified key.
     /// </summary>
-    /// <param name="key">The key to locate in the list.</param>
-    /// <returns>The zero-based index of the key parameter, if key is found in the list; otherwise, -1.</returns>
+    /// <param name="key">The key to locate.</param>
+    /// <returns>
+    /// A range in the form [Start, End), or (-1, -1) if the key is not found.
+    /// </returns>
     public (int Start, int End) RangeOfKey(TKey key)
     {
-        if (key == null)
+        if (key is null)
         {
-            throw new ArgumentNullException(nameof(key));
+            ThrowArgumentNullKey();
         }
 
-        var ret = this.BinarySearch(key);
-        if (ret < 0)
+        var start = this.IndexOfFirstCore(key);
+        if (start < 0)
         {
             return (-1, -1);
         }
 
-        ret--;
-        while (ret >= 0 && this.Comparer.Compare(this.keys[ret], key) == 0)
-        {
-            ret--;
-        }
-
-        ret++;
-
-        int n;
-        for (n = ret + 1; n < this.size; n++)
-        {
-            if (this.Comparer.Compare(key, this.keys[n]) != 0)
-            {
-                break;
-            }
-        }
-
-        return (ret, n);
+        // The entry at 'start' is known to be equal, so the search can begin at start + 1.
+        return (start, this.UpperBoundExclusiveCore(key, start + 1));
     }
 
     /// <summary>
-    /// Returns the zero-based index of the first occurrence of the specified value in a list.
+    /// Returns the index of the first occurrence of the specified value.
     /// </summary>
-    /// <param name="value">The value to locate in the list.</param>
-    /// <returns>The zero-based index of the first occurrence of the value parameter, if value is found in the list; otherwise, -1.</returns>
     public int IndexOfValue(TValue value)
     {
         return Array.IndexOf(this.values, value, 0, this.size);
     }
 
-    private void Insert(int index, TKey key, TValue value)
-    {
-        if (this.size == this.keys.Length)
-        {
-            this.EnsureCapacity(this.size + 1);
-        }
-
-        if (index < this.size)
-        {
-            Array.Copy(this.keys, index, this.keys, index + 1, this.size - index);
-            Array.Copy(this.values, index, this.values, index + 1, this.size - index);
-        }
-
-        this.keys[index] = key;
-        this.values[index] = value;
-        this.size++;
-        this.version++;
-    }
-
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
     {
-        var i = this.IndexOfKey(key);
-        if (i >= 0)
+        if (key is null)
         {
-            value = this.values[i];
+            ThrowArgumentNullKey();
+        }
+
+        var index = this.IndexOfFirstCore(key);
+        if (index >= 0)
+        {
+            value = this.values[index];
             return true;
         }
 
@@ -727,60 +537,147 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Removes the element at the specified index of a list.
+    /// Removes the element at the specified index.
     /// </summary>
     /// <param name="index">The zero-based index of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        if (index < 0 || index >= this.size)
+        if ((uint)index >= (uint)this.size)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        if (index < this.size)
+        var newSize = this.size - 1;
+        if (index < newSize)
         {
-            Array.Copy(this.keys, index + 1, this.keys, index, this.size - index);
-            Array.Copy(this.values, index + 1, this.values, index, this.size - index);
+            var count = newSize - index;
+            Array.Copy(this.keys, index + 1, this.keys, index, count);
+            Array.Copy(this.values, index + 1, this.values, index, count);
         }
 
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
         {
-            this.keys[this.size] = default(TKey)!;
+            this.keys[newSize] = default!;
         }
 
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
         {
-            this.values[this.size] = default(TValue)!;
+            this.values[newSize] = default!;
         }
 
+        this.size = newSize;
         this.version++;
-        this.size--;
     }
 
+    /// <summary>
+    /// Removes a range of elements starting at the specified index.
+    /// </summary>
+    /// <param name="index">The zero-based starting index of the range to remove.</param>
+    /// <param name="count">The number of elements to remove.</param>
+    public void RemoveRange(int index, int count)
+    {
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (count < 0 || this.size - index < count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count));
+        }
+
+        if (count == 0)
+        {
+            return;
+        }
+
+        var newSize = this.size - count;
+        if (index < newSize)
+        {
+            Array.Copy(this.keys, index + count, this.keys, index, newSize - index);
+            Array.Copy(this.values, index + count, this.values, index, newSize - index);
+        }
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+        {
+            Array.Clear(this.keys, newSize, count);
+        }
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+        {
+            Array.Clear(this.values, newSize, count);
+        }
+
+        this.size = newSize;
+        this.version++;
+    }
+
+    /// <summary>
+    /// Removes the first entry with the specified key.
+    /// </summary>
     public bool Remove(TKey key)
     {
-        var i = this.IndexOfKey(key);
-        if (i >= 0)
+        if (key is null)
         {
-            this.RemoveAt(i);
+            ThrowArgumentNullKey();
         }
 
-        return i >= 0;
+        var index = this.IndexOfFirstCore(key);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        this.RemoveAt(index);
+        return true;
     }
 
+    /// <summary>
+    /// Removes the first entry matching both the specified key and value.
+    /// </summary>
     public bool Remove(TKey key, TValue value)
     {
-        var range = this.RangeOfKey(key);
-        for (var n = range.Start; n < range.End; n++)
+        if (key is null)
         {
-            if (n >= 0 && EqualityComparer<TValue>.Default.Equals(this.values[n], value))
+            ThrowArgumentNullKey();
+        }
+
+        var (start, end) = this.RangeOfKey(key);
+        if (start < 0)
+        {
+            return false;
+        }
+
+        var values = this.values;
+        var comparer = EqualityComparer<TValue>.Default;
+        for (var i = start; i < end; i++)
+        {
+            if (comparer.Equals(values[i], value))
             {
-                this.RemoveAt(n);
+                this.RemoveAt(i);
                 return true;
             }
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Removes all entries with the specified key.
+    /// </summary>
+    /// <param name="key">The key to remove.</param>
+    /// <returns>The number of entries removed.</returns>
+    public int RemoveAll(TKey key)
+    {
+        var (start, end) = this.RangeOfKey(key);
+        if (start < 0)
+        {
+            return 0;
+        }
+
+        var count = end - start;
+        this.RemoveRange(start, count);
+        return count;
     }
 
     void IDictionary.Remove(object key)
@@ -791,18 +688,341 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
     }
 
+    /// <summary>
+    /// Ensures that the capacity is at least the specified value.
+    /// </summary>
+    /// <param name="capacity">The minimum capacity to ensure.</param>
+    /// <returns>The new capacity.</returns>
+    public int EnsureCapacity(int capacity)
+    {
+        if (capacity < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+        }
+
+        if (this.keys.Length < capacity)
+        {
+            this.Capacity = ComputeNewCapacity(this.keys.Length, capacity);
+        }
+
+        return this.keys.Length;
+    }
+
     public void TrimExcess()
     {
-        int threshold = (int)(((double)this.keys.Length) * 0.9);
+        var threshold = (int)(this.keys.Length * 0.9);
         if (this.size < threshold)
         {
             this.Capacity = this.size;
         }
     }
 
-    private static bool IsCompatibleKey(object key)
+    #region Search core
+
+    // The comparison strategies below let a single generic search implementation be
+    // instantiated per strategy: for value-type keys with the default comparer the JIT
+    // devirtualizes and inlines Comparer<TKey>.Default.Compare (no boxing, no virtual
+    // call); for reference-type comparable keys a single interface call remains; the
+    // custom-comparer path matches the previous behavior.
+    private interface IKeyCompare
     {
-        if (key == null)
+        /// <summary>Returns the sign of Compare(key, element).</summary>
+        int CompareKeyTo(TKey element);
+    }
+
+    private readonly struct DefaultCompare : IKeyCompare
+    {
+        private readonly TKey key;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal DefaultCompare(TKey key) => this.key = key;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareKeyTo(TKey element) => Comparer<TKey>.Default.Compare(this.key, element);
+    }
+
+    private readonly struct ComparableCompare : IKeyCompare
+    {
+        private readonly IComparable<TKey> key;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ComparableCompare(IComparable<TKey> key) => this.key = key;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareKeyTo(TKey element) => this.key.CompareTo(element);
+    }
+
+    private readonly struct ComparerCompare : IKeyCompare
+    {
+        private readonly IComparer<TKey> comparer;
+        private readonly TKey key;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ComparerCompare(IComparer<TKey> comparer, TKey key)
+        {
+            this.comparer = comparer;
+            this.key = key;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareKeyTo(TKey element) => this.comparer.Compare(this.key, element);
+    }
+
+    // Validates the range once so the search loops can use unchecked element access
+    // (removes per-iteration array bounds checks) while remaining memory-safe.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ref TKey ValidateRangeAndGetReference(TKey[] keys, int lo, int hi)
+    {
+        if ((uint)hi > (uint)keys.Length || (uint)lo > (uint)hi)
+        {
+            ThrowInvalidRange();
+        }
+
+        return ref MemoryMarshal.GetArrayDataReference(keys);
+    }
+
+    /// <summary>Returns the first index in [lo, hi) whose key is greater than or equal to the search key, or hi.</summary>
+    private static int LowerBound<TCompare>(TKey[] keys, int lo, int hi, TCompare compare)
+        where TCompare : struct, IKeyCompare
+    {
+        ref var first = ref ValidateRangeAndGetReference(keys, lo, hi);
+        while (lo < hi)
+        {
+            var mid = (int)(((uint)lo + (uint)hi) >> 1);
+            if (compare.CompareKeyTo(Unsafe.Add(ref first, mid)) > 0)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        return lo;
+    }
+
+    /// <summary>Returns the first index in [lo, hi) whose key is greater than the search key, or hi.</summary>
+    private static int UpperBound<TCompare>(TKey[] keys, int lo, int hi, TCompare compare)
+        where TCompare : struct, IKeyCompare
+    {
+        ref var first = ref ValidateRangeAndGetReference(keys, lo, hi);
+        while (lo < hi)
+        {
+            var mid = (int)(((uint)lo + (uint)hi) >> 1);
+            if (compare.CompareKeyTo(Unsafe.Add(ref first, mid)) >= 0)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        return lo;
+    }
+
+    /// <summary>Returns the index of the first entry equal to the key, or the bitwise complement of the insertion index.</summary>
+    private static int FirstIndex<TCompare>(TKey[] keys, int size, TCompare compare)
+        where TCompare : struct, IKeyCompare
+    {
+        var lo = LowerBound(keys, 0, size, compare);
+        if (lo < size && compare.CompareKeyTo(keys[lo]) == 0)
+        {
+            return lo;
+        }
+
+        return ~lo;
+    }
+
+    /// <summary>Returns the index of the first entry equal to the key, or the bitwise complement of the insertion index.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int IndexOfFirstCore(TKey key)
+    {
+        var hotMethod = this.HotMethod;
+        if (hotMethod is not null)
+        {
+            var index = hotMethod.LowerBound(new ReadOnlySpan<TKey>(this.keys, 0, this.size), key);
+            if ((uint)index < (uint)this.size &&
+                this.Comparer.Compare(this.keys[index], key) == 0)
+            {
+                return index;
+            }
+
+            return ~index;
+        }
+
+        if (this.comparerIsDefault)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                return FirstIndex(this.keys, this.size, new DefaultCompare(key));
+            }
+
+            if (key is IComparable<TKey> comparable)
+            {
+                return FirstIndex(this.keys, this.size, new ComparableCompare(comparable));
+            }
+        }
+
+        return FirstIndex(this.keys, this.size, new ComparerCompare(this.Comparer, key));
+    }
+
+    /// <summary>Returns the index of the first key not less than the specified key, or size.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int LowerBoundCore(TKey key)
+    {
+        var hotMethod = this.HotMethod;
+        if (hotMethod is not null)
+        {
+            return hotMethod.LowerBound(new ReadOnlySpan<TKey>(this.keys, 0, this.size), key);
+        }
+
+        if (this.comparerIsDefault)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                return LowerBound(this.keys, 0, this.size, new DefaultCompare(key));
+            }
+
+            if (key is IComparable<TKey> comparable)
+            {
+                return LowerBound(this.keys, 0, this.size, new ComparableCompare(comparable));
+            }
+        }
+
+        return LowerBound(this.keys, 0, this.size, new ComparerCompare(this.Comparer, key));
+    }
+
+    /// <summary>Returns the index of the first key greater than the specified key, searching [start, size), or size.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int UpperBoundExclusiveCore(TKey key, int start)
+    {
+        if ((uint)start >= (uint)this.size)
+        {
+            return this.size;
+        }
+
+        var hotMethod = this.HotMethod;
+        if (hotMethod is not null)
+        {
+            return start + hotMethod.UpperBoundExclusive(
+                new ReadOnlySpan<TKey>(this.keys, start, this.size - start),
+                key);
+        }
+
+        if (this.comparerIsDefault)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                return UpperBound(this.keys, start, this.size, new DefaultCompare(key));
+            }
+
+            if (key is IComparable<TKey> comparable)
+            {
+                return UpperBound(this.keys, start, this.size, new ComparableCompare(comparable));
+            }
+        }
+
+        return UpperBound(this.keys, start, this.size, new ComparerCompare(this.Comparer, key));
+    }
+
+    #endregion
+
+    [DoesNotReturn]
+    private static void ThrowArgumentNullKey()
+        => throw new ArgumentNullException("key");
+
+    [DoesNotReturn]
+    private static void ThrowInvalidRange()
+        => throw new InvalidOperationException("The search range is outside the bounds of the internal array.");
+
+    private static int ComputeNewCapacity(int capacity, int min)
+    {
+        int newCapacity;
+        if (capacity == 0)
+        {
+            newCapacity = DefaultCapacity;
+        }
+        else if (capacity > Array.MaxLength / 2)
+        {
+            newCapacity = Array.MaxLength;
+        }
+        else
+        {
+            newCapacity = capacity * 2;
+        }
+
+        return newCapacity < min ? min : newCapacity;
+    }
+
+    private TValue GetByIndex(int index)
+    {
+        if ((uint)index >= (uint)this.size)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        return this.values[index];
+    }
+
+    private TKey GetKey(int index)
+    {
+        if ((uint)index >= (uint)this.size)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        return this.keys[index];
+    }
+
+    private void Insert(int index, TKey key, TValue value)
+    {
+        if (this.size == this.keys.Length)
+        {
+            // Grow and shift in a single copy pass instead of copy-then-shift.
+            this.GrowForInsertion(index);
+        }
+        else if (index < this.size)
+        {
+            var count = this.size - index;
+            Array.Copy(this.keys, index, this.keys, index + 1, count);
+            Array.Copy(this.values, index, this.values, index + 1, count);
+        }
+
+        this.keys[index] = key;
+        this.values[index] = value;
+        this.size++;
+        this.version++;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void GrowForInsertion(int index)
+    {
+        var newCapacity = ComputeNewCapacity(this.keys.Length, this.size + 1);
+        var newKeys = new TKey[newCapacity];
+        var newValues = new TValue[newCapacity];
+        if (index != 0)
+        {
+            Array.Copy(this.keys, newKeys, index);
+            Array.Copy(this.values, newValues, index);
+        }
+
+        if (this.size != index)
+        {
+            Array.Copy(this.keys, index, newKeys, index + 1, this.size - index);
+            Array.Copy(this.values, index, newValues, index + 1, this.size - index);
+        }
+
+        this.keys = newKeys;
+        this.values = newValues;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsCompatibleKey(object? key)
+    {
+        if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
@@ -810,103 +1030,58 @@ public class OrderedKeyValueList<TKey, TValue> :
         return key is TKey;
     }
 
+    private KeyList GetKeyListHelper()
+    {
+        return this.keyList ??= new KeyList(this);
+    }
+
+    private ValueList GetValueListHelper()
+    {
+        return this.valueList ??= new ValueList(this);
+    }
+
     #region Enumerator
 
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
     {
+        internal const int KeyValuePair = 1;
+        internal const int DictEntry = 2;
+
         private readonly OrderedKeyValueList<TKey, TValue> list;
         private readonly int version;
-        private readonly int getEnumeratorRetType;  // What should Enumerator.Current return?
+        private readonly int getEnumeratorRetType;
         private TKey? key;
         private TValue? value;
         private int index;
 
-        internal const int KeyValuePair = 1;
-        internal const int DictEntry = 2;
-
         internal Enumerator(OrderedKeyValueList<TKey, TValue> list, int getEnumeratorRetType)
         {
             this.list = list;
-            this.index = 0;
-            this.version = this.list.version;
+            this.version = list.version;
             this.getEnumeratorRetType = getEnumeratorRetType;
+            this.index = 0;
             this.key = default;
             this.value = default;
         }
 
-        public void Dispose()
-        {
-            this.index = 0;
-            this.key = default;
-            this.value = default;
-        }
+        public KeyValuePair<TKey, TValue> Current
+            => new(this.key!, this.value!);
 
         object IDictionaryEnumerator.Key
         {
             get
             {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
+                this.ValidateCurrent();
                 return this.key!;
             }
-        }
-
-        public bool MoveNext()
-        {
-            if (this.version != this.list.version)
-            {
-                throw new InvalidOperationException();
-            }
-
-            if ((uint)this.index < (uint)this.list.Count)
-            {
-                this.key = this.list.keys[this.index];
-                this.value = this.list.values[this.index];
-                this.index++;
-                return true;
-            }
-
-            this.index = this.list.Count + 1;
-            this.key = default;
-            this.value = default;
-            return false;
         }
 
         DictionaryEntry IDictionaryEnumerator.Entry
         {
             get
             {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
+                this.ValidateCurrent();
                 return new DictionaryEntry(this.key!, this.value);
-            }
-        }
-
-        public KeyValuePair<TKey, TValue> Current => new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-
-        object? IEnumerator.Current
-        {
-            get
-            {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
-                if (this.getEnumeratorRetType == DictEntry)
-                {
-                    return new DictionaryEntry(this.key!, this.value);
-                }
-                else
-                {
-                    return new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-                }
             }
         }
 
@@ -914,13 +1089,50 @@ public class OrderedKeyValueList<TKey, TValue> :
         {
             get
             {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
+                this.ValidateCurrent();
                 return this.value;
             }
+        }
+
+        object? IEnumerator.Current
+        {
+            get
+            {
+                this.ValidateCurrent();
+                return this.getEnumeratorRetType == DictEntry
+                    ? new DictionaryEntry(this.key!, this.value)
+                    : new KeyValuePair<TKey, TValue>(this.key!, this.value!);
+            }
+        }
+
+        public bool MoveNext()
+        {
+            var list = this.list;
+            if (this.version != list.version)
+            {
+                throw new InvalidOperationException();
+            }
+
+            var index = this.index;
+            if ((uint)index < (uint)list.size)
+            {
+                this.key = list.keys[index];
+                this.value = list.values[index];
+                this.index = index + 1;
+                return true;
+            }
+
+            this.index = list.size + 1;
+            this.key = default;
+            this.value = default;
+            return false;
+        }
+
+        public void Dispose()
+        {
+            this.index = 0;
+            this.key = default;
+            this.value = default;
         }
 
         void IEnumerator.Reset()
@@ -934,13 +1146,22 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.key = default;
             this.value = default;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ValidateCurrent()
+        {
+            if (this.index == 0 || this.index == this.list.size + 1)
+            {
+                throw new InvalidOperationException();
+            }
+        }
     }
 
-    private sealed class SortedListKeyEnumerator : IEnumerator<TKey>, IEnumerator
+    private sealed class SortedListKeyEnumerator : IEnumerator<TKey>
     {
         private readonly OrderedKeyValueList<TKey, TValue> list;
+        private readonly int version;
         private int index;
-        private int version;
         private TKey? currentKey;
 
         internal SortedListKeyEnumerator(OrderedKeyValueList<TKey, TValue> list)
@@ -949,10 +1170,19 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.version = list.version;
         }
 
-        public void Dispose()
+        public TKey Current => this.currentKey!;
+
+        object? IEnumerator.Current
         {
-            this.index = 0;
-            this.currentKey = default;
+            get
+            {
+                if (this.index == 0 || this.index == this.list.size + 1)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return this.currentKey;
+            }
         }
 
         public bool MoveNext()
@@ -962,31 +1192,21 @@ public class OrderedKeyValueList<TKey, TValue> :
                 throw new InvalidOperationException();
             }
 
-            if ((uint)this.index < (uint)this.list.Count)
+            if ((uint)this.index < (uint)this.list.size)
             {
-                this.currentKey = this.list.keys[this.index];
-                this.index++;
+                this.currentKey = this.list.keys[this.index++];
                 return true;
             }
 
-            this.index = this.list.Count + 1;
+            this.index = this.list.size + 1;
             this.currentKey = default;
             return false;
         }
 
-        public TKey Current => this.currentKey!;
-
-        object? IEnumerator.Current
+        public void Dispose()
         {
-            get
-            {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
-                return this.currentKey;
-            }
+            this.index = 0;
+            this.currentKey = default;
         }
 
         void IEnumerator.Reset()
@@ -1001,11 +1221,11 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
     }
 
-    private sealed class SortedListValueEnumerator : IEnumerator<TValue>, IEnumerator
+    private sealed class SortedListValueEnumerator : IEnumerator<TValue>
     {
         private readonly OrderedKeyValueList<TKey, TValue> list;
+        private readonly int version;
         private int index;
-        private int version;
         private TValue? currentValue;
 
         internal SortedListValueEnumerator(OrderedKeyValueList<TKey, TValue> list)
@@ -1014,10 +1234,19 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.version = list.version;
         }
 
-        public void Dispose()
+        public TValue Current => this.currentValue!;
+
+        object? IEnumerator.Current
         {
-            this.index = 0;
-            this.currentValue = default;
+            get
+            {
+                if (this.index == 0 || this.index == this.list.size + 1)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return this.currentValue;
+            }
         }
 
         public bool MoveNext()
@@ -1027,31 +1256,21 @@ public class OrderedKeyValueList<TKey, TValue> :
                 throw new InvalidOperationException();
             }
 
-            if ((uint)this.index < (uint)this.list.Count)
+            if ((uint)this.index < (uint)this.list.size)
             {
-                this.currentValue = this.list.values[this.index];
-                this.index++;
+                this.currentValue = this.list.values[this.index++];
                 return true;
             }
 
-            this.index = this.list.Count + 1;
+            this.index = this.list.size + 1;
             this.currentValue = default;
             return false;
         }
 
-        public TValue Current => this.currentValue!;
-
-        object? IEnumerator.Current
+        public void Dispose()
         {
-            get
-            {
-                if (this.index == 0 || (this.index == this.list.Count + 1))
-                {
-                    throw new InvalidOperationException();
-                }
-
-                return this.currentValue;
-            }
+            this.index = 0;
+            this.currentValue = default;
         }
 
         void IEnumerator.Reset()
@@ -1083,63 +1302,64 @@ public class OrderedKeyValueList<TKey, TValue> :
 
         object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
-        public void Add(TKey key) => throw new NotSupportedException();
+        public TKey this[int index]
+        {
+            get => this.list.GetKey(index);
+            set => throw new NotSupportedException();
+        }
 
-        public void Clear() => throw new NotSupportedException();
+        public void Add(TKey key)
+            => throw new NotSupportedException();
 
-        public bool Contains(TKey key) => this.list.ContainsKey(key);
+        public void Clear()
+            => throw new NotSupportedException();
+
+        public bool Contains(TKey key)
+            => this.list.ContainsKey(key);
 
         public void CopyTo(TKey[] array, int arrayIndex)
-        {
-            Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.Count);
-        }
+            => Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.size);
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            if (array == null || array.Rank != 1)
+            ArgumentNullException.ThrowIfNull(array);
+            if (array.Rank != 1)
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException("Only single-dimensional arrays are supported.", nameof(array));
             }
 
             try
             {
-                Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.Count);
+                Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.size);
             }
             catch (ArrayTypeMismatchException)
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
             }
         }
 
-        public void Insert(int index, TKey value) => new NotSupportedException();
+        public void Insert(int index, TKey value)
+            => throw new NotSupportedException();
 
-        public TKey this[int index]
-        {
-            get
-            {
-                return this.list.GetKey(index);
-            }
+        public IEnumerator<TKey> GetEnumerator()
+            => new SortedListKeyEnumerator(this.list);
 
-            set
-            {
-                throw new NotSupportedException();
-            }
-        }
+        IEnumerator IEnumerable.GetEnumerator()
+            => new SortedListKeyEnumerator(this.list);
 
-        public IEnumerator<TKey> GetEnumerator() => new SortedListKeyEnumerator(this.list);
+        public int IndexOf(TKey key)
+            => this.list.IndexOfKey(key);
 
-        IEnumerator IEnumerable.GetEnumerator() => new SortedListKeyEnumerator(this.list);
+        public bool Remove(TKey key)
+            => throw new NotSupportedException();
 
-        public int IndexOf(TKey key) => this.list.IndexOfKey(key);
-
-        public bool Remove(TKey key) => throw new NotSupportedException();
-
-        public void RemoveAt(int index) => throw new NotSupportedException();
+        public void RemoveAt(int index)
+            => throw new NotSupportedException();
     }
 
     public sealed class ValueList : IList<TValue>, ICollection
     {
-        private readonly OrderedKeyValueList<TKey, TValue> list; // Do not rename (binary serialization)
+        private readonly OrderedKeyValueList<TKey, TValue> list;
 
         internal ValueList(OrderedKeyValueList<TKey, TValue> list)
         {
@@ -1154,55 +1374,59 @@ public class OrderedKeyValueList<TKey, TValue> :
 
         object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
-        public void Add(TValue key) => throw new NotSupportedException();
+        public TValue this[int index]
+        {
+            get => this.list.GetByIndex(index);
+            set => throw new NotSupportedException();
+        }
 
-        public void Clear() => throw new NotSupportedException();
+        public void Add(TValue value)
+            => throw new NotSupportedException();
 
-        public bool Contains(TValue value) => this.list.ContainsValue(value);
+        public void Clear()
+            => throw new NotSupportedException();
 
-        public void CopyTo(TValue[] array, int arrayIndex) => Array.Copy(this.list.values, 0, array, arrayIndex, this.list.Count);
+        public bool Contains(TValue value)
+            => this.list.ContainsValue(value);
+
+        public void CopyTo(TValue[] array, int arrayIndex)
+            => Array.Copy(this.list.values, 0, array, arrayIndex, this.list.size);
 
         void ICollection.CopyTo(Array array, int index)
         {
-            if (array == null || array.Rank != 1)
+            ArgumentNullException.ThrowIfNull(array);
+            if (array.Rank != 1)
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException("Only single-dimensional arrays are supported.", nameof(array));
             }
 
             try
             {
-                Array.Copy(this.list.values, 0, array, index, this.list.Count);
+                Array.Copy(this.list.values, 0, array, index, this.list.size);
             }
             catch (ArrayTypeMismatchException)
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
             }
         }
 
-        public void Insert(int index, TValue value) => new NotSupportedException();
+        public void Insert(int index, TValue value)
+            => throw new NotSupportedException();
 
-        public TValue this[int index]
-        {
-            get
-            {
-                return this.list.GetByIndex(index);
-            }
+        public IEnumerator<TValue> GetEnumerator()
+            => new SortedListValueEnumerator(this.list);
 
-            set
-            {
-                throw new NotSupportedException();
-            }
-        }
+        IEnumerator IEnumerable.GetEnumerator()
+            => new SortedListValueEnumerator(this.list);
 
-        public IEnumerator<TValue> GetEnumerator() => new SortedListValueEnumerator(this.list);
+        public int IndexOf(TValue value)
+            => Array.IndexOf(this.list.values, value, 0, this.list.size);
 
-        IEnumerator IEnumerable.GetEnumerator() => new SortedListValueEnumerator(this.list);
+        public bool Remove(TValue value)
+            => throw new NotSupportedException();
 
-        public int IndexOf(TValue value) => Array.IndexOf(this.list.values, value, 0, this.list.Count);
-
-        public bool Remove(TValue value) => throw new NotSupportedException();
-
-        public void RemoveAt(int index) => throw new NotSupportedException();
+        public void RemoveAt(int index)
+            => throw new NotSupportedException();
     }
 
     #endregion

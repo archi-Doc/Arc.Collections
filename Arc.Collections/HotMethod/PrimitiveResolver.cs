@@ -12,7 +12,7 @@ namespace Arc.Collections.HotMethod;
 /// <summary>
 /// Default composited resolver.
 /// </summary>
-public sealed class PrimitiveResolver : IHotMethodResolver
+internal sealed class PrimitiveResolver : IHotMethodResolver
 {
     /// <summary>
     /// The singleton instance that can be used.

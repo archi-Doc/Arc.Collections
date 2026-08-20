@@ -8,20 +8,10 @@ using Xunit;
 
 #pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public static class TestHelper
 {
-    public static void ValidateWithOrderedMultiMap<TKey, TValue>(this UnorderedMultiMap<TKey, TValue> um, OrderedMultiMap<TKey, TValue> map)
-    {
-        um.Count.Is(map.Count);
-
-        foreach (var x in map)
-        {
-            um.Contains(x).IsTrue();
-        }
-    }
-
     public static void ValidateWithDictionary<TKey, TValue>(this UnorderedMap<TKey, TValue> um, Dictionary<TKey, TValue> dic)
     {
         um.Count.Is(dic.Count);
@@ -54,9 +44,9 @@ public static class TestHelper
         }
     }
 
-    public static OrderedMap<T, int>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
+    public static OrderedMap<T, byte>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
     {
-        var result = os.Add(value);
+        var result = os.AddNode(value);
         os.Validate().IsTrue();
         return result.Node;
     }

@@ -4,7 +4,7 @@ using System;
 using Arc.Collections;
 using Xunit;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class TemporaryListClass
 {

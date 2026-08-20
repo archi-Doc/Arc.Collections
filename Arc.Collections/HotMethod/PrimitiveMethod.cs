@@ -4,6 +4,8 @@
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -17,30 +19,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(byte[] array, int index, int length, byte value)
+        public int LowerBound(ReadOnlySpan<byte> span, byte value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref byte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<byte> span, byte value)
+        {
+            ref byte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -167,30 +189,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(sbyte[] array, int index, int length, sbyte value)
+        public int LowerBound(ReadOnlySpan<sbyte> span, sbyte value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref sbyte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<sbyte> span, sbyte value)
+        {
+            ref sbyte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -317,30 +359,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(ushort[] array, int index, int length, ushort value)
+        public int LowerBound(ReadOnlySpan<ushort> span, ushort value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref ushort r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<ushort> span, ushort value)
+        {
+            ref ushort r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -467,30 +529,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(short[] array, int index, int length, short value)
+        public int LowerBound(ReadOnlySpan<short> span, short value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref short r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<short> span, short value)
+        {
+            ref short r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -617,30 +699,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(uint[] array, int index, int length, uint value)
+        public int LowerBound(ReadOnlySpan<uint> span, uint value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref uint r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<uint> span, uint value)
+        {
+            ref uint r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -767,30 +869,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(int[] array, int index, int length, int value)
+        public int LowerBound(ReadOnlySpan<int> span, int value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref int r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<int> span, int value)
+        {
+            ref int r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -917,30 +1039,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(ulong[] array, int index, int length, ulong value)
+        public int LowerBound(ReadOnlySpan<ulong> span, ulong value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref ulong r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<ulong> span, ulong value)
+        {
+            ref ulong r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1067,30 +1209,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(long[] array, int index, int length, long value)
+        public int LowerBound(ReadOnlySpan<long> span, long value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref long r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<long> span, long value)
+        {
+            ref long r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1217,30 +1379,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(UInt128[] array, int index, int length, UInt128 value)
+        public int LowerBound(ReadOnlySpan<UInt128> span, UInt128 value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref UInt128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<UInt128> span, UInt128 value)
+        {
+            ref UInt128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1367,30 +1549,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(Int128[] array, int index, int length, Int128 value)
+        public int LowerBound(ReadOnlySpan<Int128> span, Int128 value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref Int128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<Int128> span, Int128 value)
+        {
+            ref Int128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1517,30 +1719,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(float[] array, int index, int length, float value)
+        public int LowerBound(ReadOnlySpan<float> span, float value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref float r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<float> span, float value)
+        {
+            ref float r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1667,30 +1889,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(double[] array, int index, int length, double value)
+        public int LowerBound(ReadOnlySpan<double> span, double value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref double r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<double> span, double value)
+        {
+            ref double r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1817,30 +2059,50 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(DateTime[] array, int index, int length, DateTime value)
+        public int LowerBound(ReadOnlySpan<DateTime> span, DateTime value)
         {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
+            ref DateTime r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
                 {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
+                    lo = mid + 1;
+                    count -= half + 1;
                 }
                 else
-                {// Found
-                    return mid;
+                {
+                    count = half;
                 }
             }
 
-            return ~min;
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<DateTime> span, DateTime value)
+        {
+            ref DateTime r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
+            {
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
+            }
+
+            return (int)lo;
         }
     }
 

@@ -22,17 +22,27 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(OrderedPublicTest),
+            typeof(OrderedMultiMapTest),
+            typeof(UtfHashtableBenchmark),
+            typeof(UnorderedMapSlimTest),
+            typeof(Utf16UnorderedMapBenchmark),
+            typeof(Utf16HashtableBenchmark2),
+            typeof(Utf16HashtableBenchmark),
+            typeof(UInt64HashtableBenchmark),
+            typeof(UnorderedListBenchmark),
+            typeof(UnorderedLinkedListBenchmark),
+            typeof(CircularQueueBenchmark),
+            typeof(CircularQueueBenchmark2),
             typeof(SequenceBuilderAddBenchmark),
             typeof(StringBuilderBenchmark),
             typeof(HashCombinerBenchmark),
-            typeof(Utf16HashtableBenchmark),
             typeof(TemporaryListBenchmark),
             typeof(RemoveCrBenchmark),
             typeof(WhiteSpaceBenchmark),
             typeof(LimitedArrayTest),
             typeof(RemoveCrLfTest),
             typeof(CountDecimalCharsBenchmark),
-            typeof(UnorderedMapSlimTest),
             typeof(FactoryBenchmark),
             typeof(NewInstanceBenchmark),
             typeof(OrderedMapSetKeyBenchmark),
@@ -42,19 +52,15 @@ public class Program
             typeof(SortedSetBenchmark),
             typeof(OrderedMultiMapUnsafe),
             typeof(ObjectCacheBenchmark),
-            typeof(UnorderedMapTest2),
             typeof(ObjectPoolBenchmark),
             typeof(ObjectPoolBenchmark2),
             typeof(ReverseOrderTest),
-            typeof(UnorderedMapTest),
-            typeof(OrderedPublicTest),
             typeof(OrderedListTest2),
             typeof(OrderedListTest),
             typeof(IComparerTest),
             typeof(BinarySearchTest),
             typeof(BinarySearchStringTest),
             typeof(OrderedSetTest),
-            typeof(OrderedMultiMapTest),
         });
 
         switcher.Run(args);
@@ -129,8 +135,8 @@ public class BenchmarkConfig : BenchmarkDotNet.Configs.ManualConfig
 
         // this.AddJob(Job.ShortRun.With(BenchmarkDotNet.Environments.Platform.X64).WithWarmupCount(1).WithIterationCount(1));
         // this.AddJob(BenchmarkDotNet.Jobs.Job.MediumRun.WithGcForce(true).WithId("GcForce medium"));
-        // this.AddJob(BenchmarkDotNet.Jobs.Job.ShortRun);
-        this.AddJob(BenchmarkDotNet.Jobs.Job.MediumRun);
+        this.AddJob(BenchmarkDotNet.Jobs.Job.ShortRun);
+        // this.AddJob(BenchmarkDotNet.Jobs.Job.MediumRun);
         // this.AddJob(BenchmarkDotNet.Jobs.Job.LongRun);
     }
 }

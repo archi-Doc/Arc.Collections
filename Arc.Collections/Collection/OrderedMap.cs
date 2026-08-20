@@ -10,6 +10,10 @@ using Arc.Collections.HotMethod;
 #pragma warning disable SA1124 // Do not use regions
 #pragma warning disable SA1202 // Elements should be ordered by access
 #pragma warning disable SA1602 // Enumeration items should be documented
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 namespace Arc.Collections;
 
@@ -25,19 +29,17 @@ internal enum NodeColor : byte
 }
 
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order (ascending by default).<br/>
-/// <see cref="OrderedMap{TKey, TValue}"/> uses Red-Black Tree structure to store objects.
+/// Represents a key/value collection maintained in sorted order.<br/>
+/// Uses a Red-Black Tree to provide O(log n) lookup, insertion, and removal.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
     #region Node
 
-    // internal Func<TKey, TValue, NodeColor, Node> CreateNode { get; set; } = static (key, value, color) => new Node(key, value, color);
-
     /// <summary>
-    /// Represents a node in a <see cref="OrderedMap{TKey, TValue}"/>.
+    /// Represents a node in the map.
     /// </summary>
     public class Node
     {
@@ -48,130 +50,114 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
             this.Color = color;
         }
 
-        /// <summary>
-        /// Gets the key contained in the node.
-        /// </summary>
         public TKey Key { get; internal set; }
 
-        /// <summary>
-        /// Gets the value contained in the node.
-        /// </summary>
         public TValue Value { get; internal set; }
 
-        /// <summary>
-        /// Gets or sets the parent node in the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// </summary>
         internal Node? Parent { get; set; }
 
-        /// <summary>
-        /// Gets or sets the left node in the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// </summary>
         internal Node? Left { get; set; }
 
-        /// <summary>
-        /// Gets or sets the right node in the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// </summary>
         internal Node? Right { get; set; }
 
-        /// <summary>
-        /// Gets or sets the color of the node.
-        /// </summary>
         internal NodeColor Color { get; set; }
 
         /// <summary>
-        /// Gets the previous node in the <see cref="OrderedMap{TKey, TValue}"/>.
-        /// <br/>O(log n) operation.
+        /// Gets the previous node in sort order.
         /// </summary>
         public Node? Previous
         {
             get
             {
-                Node? node;
-                if (this.Left == null)
+                if (this.Left is not null)
                 {
-                    node = this;
-                    Node? p = this.Parent;
-                    while (p != null && node == p.Left)
-                    {
-                        node = p;
-                        p = p.Parent;
-                    }
-
-                    return p;
-                }
-                else
-                {
-                    node = this.Left;
-                    while (node.Right != null)
+                    var node = this.Left;
+                    while (node.Right is not null)
                     {
                         node = node.Right;
                     }
 
                     return node;
                 }
+
+                var current = this;
+                var parent = this.Parent;
+                while (parent is not null &&
+                       ReferenceEquals(current, parent.Left))
+                {
+                    current = parent;
+                    parent = parent.Parent;
+                }
+
+                return parent;
             }
         }
 
         /// <summary>
-        /// Gets the next node in the <see cref="OrderedMap{TKey, TValue}"/>
-        /// <br/>O(log n) operation.
+        /// Gets the next node in sort order.
         /// </summary>
         public Node? Next
         {
             get
             {
-                Node? node;
-                if (this.Right == null)
+                if (this.Right is not null)
                 {
-                    node = this;
-                    Node? p = this.Parent;
-                    while (p != null && node == p.Right)
-                    {
-                        node = p;
-                        p = p.Parent;
-                    }
-
-                    return p;
-                }
-                else
-                {
-                    node = this.Right;
-                    while (node.Left != null)
+                    var node = this.Right;
+                    while (node.Left is not null)
                     {
                         node = node.Left;
                     }
 
                     return node;
                 }
+
+                var current = this;
+                var parent = this.Parent;
+                while (parent is not null &&
+                       ReferenceEquals(current, parent.Right))
+                {
+                    current = parent;
+                    parent = parent.Parent;
+                }
+
+                return parent;
             }
         }
 
-        public void UnsafeChangeValue(TValue value) => this.Value = value;
+        /// <summary>
+        /// Changes the value without version tracking.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsafeChangeValue(TValue value)
+            => this.Value = value;
 
-        internal static bool IsNonNullBlack(Node? node) => node != null && node.IsBlack;
+        internal static bool IsNonNullRed(Node? node)
+            => node is not null && node.IsRed;
 
-        internal static bool IsNonNullRed(Node? node) => node != null && node.IsRed;
-
-        internal static bool IsNullOrBlack(Node? node) => node == null || node.IsBlack;
+        internal static bool IsNullOrBlack(Node? node)
+            => node is null || node.IsBlack;
 
         internal bool IsBlack => this.Color == NodeColor.Black;
 
         internal bool IsRed => this.Color == NodeColor.Red;
 
-        internal bool IsUnused => this.Color == NodeColor.Unused;
+        public bool IsUnused => this.Color == NodeColor.Unused;
 
-        internal bool IsLinkedList => this.Color == NodeColor.LinkedList;
+        public override string ToString()
+            => this.Color.ToString() + ": " + this.Value?.ToString();
 
-        public override string ToString() => this.Color.ToString() + ": " + this.Value?.ToString();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ColorBlack()
+            => this.Color = NodeColor.Black;
 
-        internal void ColorBlack() => this.Color = NodeColor.Black;
-
-        internal void ColorRed() => this.Color = NodeColor.Red;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ColorRed()
+            => this.Color = NodeColor.Red;
 
         internal void Clear()
         {
-            this.Key = default(TKey)!;
-            this.Value = default(TValue)!;
+            this.Key = default!;
+            this.Value = default!;
             this.Parent = null;
             this.Left = null;
             this.Right = null;
@@ -192,41 +178,29 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     #endregion
 
     private Node? root;
-    // private Node? free;
     private int version;
-    private KeyCollection? keys;
-    private ValueCollection? values;
+    private int count;
 
-    /// <summary>
-    /// Gets the number of nodes actually contained in the <see cref="OrderedMap{TKey, TValue}"/>.
-    /// </summary>
-    public int Count { get; private set; }
+    public int Count => this.count;
 
     public int CompareFactor { get; }
 
-    public IComparer<TKey> Comparer { get; private set; }
+    public IComparer<TKey> Comparer { get; }
 
-    public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
-
-    // public bool UnsafePresearchForStructKey { get; set; } = false;
+    public IHotMethod2<TKey, TValue>? HotMethod2 { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+    /// Initializes an empty map.
     /// </summary>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
     public OrderedMap(bool reverse = false)
+        : this(Comparer<TKey>.Default, reverse)
     {
-        this.CompareFactor = reverse ? -1 : 1;
-        this.Comparer = Comparer<TKey>.Default;
-        this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+    /// Initializes an empty map with the specified comparer.
     /// </summary>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedMap(IComparer<TKey> comparer, bool reverse = false)
+    public OrderedMap(IComparer<TKey>? comparer, bool reverse = false)
     {
         this.CompareFactor = reverse ? -1 : 1;
         this.Comparer = comparer ?? Comparer<TKey>.Default;
@@ -234,349 +208,199 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
+    /// Initializes a map from the specified sequence.
     /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedMap(IDictionary<TKey, TValue> dictionary, bool reverse = false)
-        : this(dictionary, Comparer<TKey>.Default, reverse)
+    public OrderedMap(IEnumerable<KeyValuePair<TKey, TValue>> collection, IComparer<TKey>? comparer = null, bool reverse = false)
+        : this(comparer, reverse)
     {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool reverse = false)
-    {
-        this.CompareFactor = reverse ? -1 : 1;
-        this.Comparer = comparer ?? Comparer<TKey>.Default;
-        this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
-
-        foreach (var x in dictionary)
+        ArgumentNullException.ThrowIfNull(collection);
+        foreach (var item in collection)
         {
-            this.Add(x.Key, x.Value);
+            this.Add(item.Key, item.Value);
         }
     }
 
     /// <summary>
-    /// Gets the first node in the <see cref="OrderedMap{TKey, TValue}"/>.
+    /// Gets the first node in sort order.
     /// </summary>
     public Node? First
     {
-        get
-        {
-            if (this.root == null)
-            {
-                return null;
-            }
-
-            var node = this.root;
-            while (node.Left != null)
-            {
-                node = node.Left;
-            }
-
-            return node;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => GetFirst(this.root);
     }
 
     /// <summary>
-    /// Gets the last node in the <see cref="OrderedMap{TKey, TValue}"/>. O(log n) operation.
+    /// Gets the last node in sort order.
     /// </summary>
     public Node? Last
     {
-        get
-        {
-            if (this.root == null)
-            {
-                return null;
-            }
-
-            var node = this.root;
-            while (node.Right != null)
-            {
-                node = node.Right;
-            }
-
-            return node;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => GetLast(this.root);
     }
 
-    #region Enumerator
-
-    public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
+    /// <summary>
+    /// Gets an allocation-free enumerable over the keys.
+    /// </summary>
+    public KeyEnumerable Keys
     {
-        internal const int KeyValuePair = 1;
-        internal const int DictEntry = 2;
-
-        private readonly OrderedMap<TKey, TValue> map;
-        private readonly int version;
-        private readonly int getEnumeratorRetType;
-        private Node? node;
-        private TKey? key;
-        private TValue? value;
-
-        internal Enumerator(OrderedMap<TKey, TValue> map, int getEnumeratorRetType)
-        {
-            this.map = map;
-            this.version = this.map.version;
-            this.getEnumeratorRetType = getEnumeratorRetType;
-            this.node = this.map.First;
-            this.key = default;
-            this.value = default;
-        }
-
-        public void Dispose()
-        {
-            this.node = null;
-            this.key = default;
-            this.value = default;
-        }
-
-        public bool MoveNext()
-        {
-            if (this.version != this.map.version)
-            {
-                throw ThrowVersionMismatch();
-            }
-
-            if (this.node == null)
-            {
-                this.key = default(TKey)!;
-                this.value = default(TValue)!;
-                return false;
-            }
-
-            this.key = this.node.Key;
-            this.value = this.node.Value;
-            this.node = this.node.Next;
-            return true;
-        }
-
-        DictionaryEntry IDictionaryEnumerator.Entry => new DictionaryEntry(this.key!, this.value!);
-
-        object IDictionaryEnumerator.Key => this.key!;
-
-        object IDictionaryEnumerator.Value => this.value!;
-
-        public KeyValuePair<TKey, TValue> Current => new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-
-        object? IEnumerator.Current
-        {
-            get
-            {
-                if (this.getEnumeratorRetType == DictEntry)
-                {
-                    return new DictionaryEntry(this.key!, this.value!);
-                }
-                else
-                {
-                    return new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-                }
-            }
-        }
-
-        void System.Collections.IEnumerator.Reset() => this.Reset();
-
-        internal void Reset()
-        {
-            if (this.version != this.map.version)
-            {
-                throw ThrowVersionMismatch();
-            }
-
-            this.node = this.map.First;
-            this.key = default;
-            this.value = default;
-        }
-
-        private static Exception ThrowVersionMismatch()
-        {
-            throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(this);
     }
 
-    #endregion
-
-    #region ICollection
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection.CopyTo(Array array, int index)
+    /// <summary>
+    /// Gets an allocation-free enumerable over the values.
+    /// </summary>
+    public ValueEnumerable Values
     {
-        if (array == null)
-        {
-            throw new ArgumentNullException(nameof(array));
-        }
-
-        if (array.Rank != 1)
-        {
-            throw new ArgumentException(nameof(array));
-        }
-
-        if (array.GetLowerBound(0) != 0)
-        {
-            throw new ArgumentException(nameof(array));
-        }
-
-        if (index < 0 || index > array.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
-
-        if (array.Length - index < this.Count)
-        {
-            throw new ArgumentException();
-        }
-
-        var node = this.First;
-        KeyValuePair<TKey, TValue>[]? keyValuePairArray = array as KeyValuePair<TKey, TValue>[];
-        if (keyValuePairArray != null)
-        {
-            for (int i = 0; i < this.Count; i++)
-            {
-                keyValuePairArray[i + index] = new KeyValuePair<TKey, TValue>(node!.Key, node!.Value);
-                node = node.Next;
-            }
-        }
-        else
-        {
-            object[]? objects = array as object[];
-            if (objects == null)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            try
-            {
-                for (int i = 0; i < this.Count; i++)
-                {
-                    objects[i + index] = new KeyValuePair<TKey, TValue>(node!.Key, node!.Value);
-                    node = node.Next;
-                }
-            }
-            catch (ArrayTypeMismatchException)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(this);
     }
 
-    #endregion
-
-    #region IDictionary
-
-    object? IDictionary.this[object key]
+    public TValue this[TKey key]
     {
         get
         {
-            if (key == null)
+            var node = this.FindNode(key);
+            if (node is not null)
             {
-                if (this.TryGetValue(default, out var value))
-                {
-                    return value;
-                }
-            }
-            else if (key is TKey k)
-            {
-                if (this.TryGetValue(k, out var value))
-                {
-                    return value;
-                }
+                return node.Value;
             }
 
-            return null;
+            ThrowKeyNotFound();
+            return default!;
         }
 
         set
         {
-            this[(TKey)key] = (TValue)value!;
+            var result = this.Probe(key, value, null);
+            if (!result.NewlyAdded)
+            {
+                result.Node.Value = value;
+                this.version++;
+            }
         }
     }
 
-    bool IDictionary.IsFixedSize => false;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsKey(TKey? key)
+        => this.FindNode(key) is not null;
 
-    bool IDictionary.IsReadOnly => false;
-
-    ICollection IDictionary.Keys => (ICollection)this.Keys;
-
-    ICollection IDictionary.Values => (ICollection)this.Values;
-
-    void IDictionary.Add(object key, object? value) => this.Add((TKey)key, (TValue)value!);
-
-    bool IDictionary.Contains(object key)
+    public bool ContainsValue(TValue value)
     {
-        if (key == null)
+        var node = this.First;
+        if (value is null)
         {
-            return this.ContainsKey(default);
+            while (node is not null)
+            {
+                if (node.Value is null)
+                {
+                    return true;
+                }
+
+                node = node.Next;
+            }
+
+            return false;
         }
-        else if (key is TKey k)
+
+        var comparer = EqualityComparer<TValue>.Default;
+        while (node is not null)
         {
-            return this.ContainsKey(k);
+            if (comparer.Equals(node.Value, value))
+            {
+                return true;
+            }
+
+            node = node.Next;
         }
 
         return false;
     }
 
-    IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
-
-    void IDictionary.Remove(object key)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
     {
-        if (key == null)
+        var node = this.FindNode(key);
+        if (node is not null)
         {
-            this.Remove(default);
+            value = node.Value;
+            return true;
         }
-        else if (key is TKey k)
+
+        value = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Removes all nodes from the map and invalidates existing node objects.
+    /// </summary>
+    public void Clear()
+    {
+        var node = this.root;
+        if (node is null)
         {
-            this.Remove(k);
+            return;
+        }
+
+        // Destructively walk the tree without allocating a traversal stack.
+        while (node is not null)
+        {
+            if (node.Left is not null)
+            {
+                var next = node.Left;
+                node.Left = null;
+                node = next;
+                continue;
+            }
+
+            if (node.Right is not null)
+            {
+                var next = node.Right;
+                node.Right = null;
+                node = next;
+                continue;
+            }
+
+            var parent = node.Parent;
+            node.Clear();
+            node = parent;
+        }
+
+        this.root = null;
+        this.count = 0;
+        this.version++;
+    }
+
+    /// <summary>
+    /// Copies the elements to the specified array.
+    /// </summary>
+    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+        if ((uint)index > (uint)array.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (array.Length - index < this.count)
+        {
+            throw new ArgumentException("The destination array is too small.", nameof(array));
+        }
+
+        foreach (var item in this)
+        {
+            array[index++] = item;
         }
     }
 
-    #endregion
-
-    #region IDictionary<TKey, TValue>
-
-    IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => this.Keys;
-
-    IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => this.Values;
-
-    ICollection<TKey> IDictionary<TKey, TValue>.Keys => this.Keys;
-
-    ICollection<TValue> IDictionary<TKey, TValue>.Values => this.Values;
-
-    void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => this.Add(key, value);
-
-    #endregion
-
-    #region ICollection<KeyValuePair<TKey,TValue>>
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
-
-    void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
+    /// <summary>
+    /// Removes the element with the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(TKey? key)
     {
-        var node = this.FindNode(item.Key);
-        return node != null && EqualityComparer<TValue>.Default.Equals(node.Value, item.Value);
-    }
-
-    void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
-    {
-        var node = this.FindNode(item.Key);
-        if (node == null || !EqualityComparer<TValue>.Default.Equals(node.Value, item.Value))
+        var node = this.FindNode(key);
+        if (node is null)
         {
             return false;
         }
@@ -585,482 +409,88 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         return true;
     }
 
-    #endregion
-
-    #region KeyValueCollection
-
-    public KeyCollection Keys => this.keys != null ? this.keys : (this.keys = new KeyCollection(this));
-
-    public ValueCollection Values => this.values != null ? this.values : (this.values = new ValueCollection(this));
-
-    public sealed class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>
-    {
-        private readonly OrderedMap<TKey, TValue> map;
-
-        public KeyCollection(OrderedMap<TKey, TValue> map)
-        {
-            if (map == null)
-            {
-                throw new ArgumentNullException(nameof(map));
-            }
-
-            this.map = map;
-        }
-
-        public Enumerator GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
-
-        public void CopyTo(TKey[] array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            var node = this.map.First;
-            while (node != null)
-            {
-                array[index++] = node.Key;
-                node = node.Next;
-            }
-        }
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (array.Rank != 1)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (array.GetLowerBound(0) != 0)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.map.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            TKey[]? keys = array as TKey[];
-            if (keys != null)
-            {
-                this.CopyTo(keys, index);
-            }
-            else
-            {
-                try
-                {
-                    object[] objects = (object[])array;
-                    var node = this.map.First;
-                    while (node != null)
-                    {
-                        objects[index++] = node.Key!;
-                        node = node.Next;
-                    }
-                }
-                catch (ArrayTypeMismatchException)
-                {
-                    throw new ArgumentException(nameof(array));
-                }
-            }
-        }
-
-        public int Count => this.map.Count;
-
-        bool ICollection<TKey>.IsReadOnly => true;
-
-        void ICollection<TKey>.Add(TKey item) => throw new NotSupportedException();
-
-        void ICollection<TKey>.Clear() => throw new NotSupportedException();
-
-        bool ICollection<TKey>.Contains(TKey item) => this.map.ContainsKey(item);
-
-        bool ICollection<TKey>.Remove(TKey item) => throw new NotSupportedException();
-
-        bool ICollection.IsSynchronized => false;
-
-        object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
-
-        public struct Enumerator : IEnumerator<TKey>, IEnumerator
-        {
-            private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
-
-            internal Enumerator(OrderedMap<TKey, TValue> map)
-            {
-                this.mapEnum = map.GetEnumerator();
-            }
-
-            public void Dispose() => this.mapEnum.Dispose();
-
-            public bool MoveNext() => this.mapEnum.MoveNext();
-
-            public TKey Current => this.mapEnum.Current.Key;
-
-            object? IEnumerator.Current => this.Current;
-
-            void IEnumerator.Reset() => this.mapEnum.Reset();
-        }
-    }
-
-    public sealed class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>
-    {
-        private readonly OrderedMap<TKey, TValue> map;
-
-        public ValueCollection(OrderedMap<TKey, TValue> map)
-        {
-            if (map == null)
-            {
-                throw new ArgumentNullException(nameof(map));
-            }
-
-            this.map = map;
-        }
-
-        public Enumerator GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
-
-        public void CopyTo(TValue[] array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            var node = this.map.First;
-            while (node != null)
-            {
-                array[index++] = node.Value;
-                node = node.Next;
-            }
-        }
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (array.Rank != 1)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (array.GetLowerBound(0) != 0)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.map.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            TValue[]? values = array as TValue[];
-            if (values != null)
-            {
-                this.CopyTo(values, index);
-            }
-            else
-            {
-                try
-                {
-                    object?[] objects = (object?[])array;
-                    var node = this.map.First;
-                    while (node != null)
-                    {
-                        objects[index++] = node.Value;
-                        node = node.Next;
-                    }
-                }
-                catch (ArrayTypeMismatchException)
-                {
-                    throw new ArgumentException(nameof(array));
-                }
-            }
-        }
-
-        public int Count => this.map.Count;
-
-        bool ICollection<TValue>.IsReadOnly => true;
-
-        void ICollection<TValue>.Add(TValue item) => throw new NotSupportedException();
-
-        void ICollection<TValue>.Clear() => throw new NotSupportedException();
-
-        bool ICollection<TValue>.Contains(TValue item)
-        {
-            return this.map.ContainsValue(item);
-        }
-
-        bool ICollection<TValue>.Remove(TValue item) => throw new NotSupportedException();
-
-        bool ICollection.IsSynchronized => false;
-
-        object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
-
-        public struct Enumerator : IEnumerator<TValue>, IEnumerator
-        {
-            private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
-
-            internal Enumerator(OrderedMap<TKey, TValue> map)
-            {
-                this.mapEnum = map.GetEnumerator();
-            }
-
-            public void Dispose() => this.mapEnum.Dispose();
-
-            public bool MoveNext() => this.mapEnum.MoveNext();
-
-            public TValue Current => this.mapEnum.Current.Value;
-
-            object? IEnumerator.Current => this.Current;
-
-            void IEnumerator.Reset() => this.mapEnum.Reset();
-        }
-    }
-
-    #endregion
-
-    #region Main
-
-    public TValue this[TKey key]
-    {
-        get
-        {
-            var node = this.FindNode(key);
-            if (node == null)
-            {
-                throw new KeyNotFoundException();
-            }
-
-            return node.Value;
-        }
-
-        set
-        {
-            var node = this.FindNode(key);
-            if (node == null)
-            {
-                this.Add(key, value);
-            }
-            else
-            {
-                node.Value = value;
-            }
-        }
-    }
-
-    public bool ContainsKey(TKey? key) => this.FindNode(key) != null;
-
-    public bool ContainsValue(TValue value)
-    {
-        var found = false;
-
-        if (value == null)
-        {
-            var node = this.First;
-            while (node != null)
-            {
-                if (node.Value == null)
-                {
-                    found = true;
-                    break;
-                }
-
-                node = node.Next;
-            }
-        }
-        else
-        {
-            var comparer = EqualityComparer<TValue>.Default;
-            var node = this.First;
-            while (node != null)
-            {
-                if (comparer.Equals(node.Value, value))
-                {
-                    found = true;
-                    break;
-                }
-
-                node = node.Next;
-            }
-        }
-
-        return found;
-    }
-
-    public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
-    {
-        if (key == null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
-
-        var node = this.FindNode(key);
-        if (node == null)
-        {
-            value = default;
-            return false;
-        }
-
-        value = node.Value;
-        return true;
-    }
+    /// <summary>
+    /// Adds an element if the key does not already exist.
+    /// </summary>
+    public (Node Node, bool NewlyAdded) Add(TKey key, TValue value)
+        => this.Probe(key, value, null);
 
     /// <summary>
-    /// Removes all elements from a collection.
+    /// Adds an element, optionally reusing an unused node.
     /// </summary>
-    public void Clear()
-    {
-        this.root = null;
-        this.version = 0;
-        this.Count = 0;
-    }
+    public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse)
+        => this.Probe(key, value, reuse);
 
     /// <summary>
-    /// Copies the elements of the collection to the specified array of KeyValuePair structures, starting at the specified index.
+    /// Updates a node key while preserving the node when possible.
     /// </summary>
-    /// <param name="array">The one-dimensional array of KeyValuePair structures that is the destination of the elements.</param>
-    /// <param name="index">The zero-based index in array at which copying begins.</param>
-    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
-
-    /// <summary>
-    /// Removes a specified item from a collection.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="key">The element to remove.</param>
-    /// <returns>true if the element is found and successfully removed.</returns>
-    public bool Remove(TKey? key)
-    {
-        var p = this.FindNode(key);
-        if (p == null)
-        {
-            return false;
-        }
-
-        this.RemoveNode(p);
-        return true;
-    }
-
-    /// <summary>
-    /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="key">The key of the element to add.</param>
-    /// <param name="value">The value of the element to add.</param>
-    /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the node is created.</returns>
-    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
-    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
-    public (Node Node, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value, null);
-
-    /// <summary>
-    /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="key">The key of the element to add.</param>
-    /// <param name="value">The value of the element to add.</param>
-    /// <param name="reuse">Reuse a node to avoid memory allocation.</param>
-    /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the node is created.</returns>
-    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
-    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
-    public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse) => this.Probe(key, value, reuse);
-
-    /// <summary>
-    /// Updates the node's key with the specified key. Removes the node and inserts in the correct position if necessary.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the key.</param>
-    /// <param name="key">The key to set.</param>
-    /// <returns>true if the key is changed.</returns>
     public bool SetNodeKey(Node node, TKey key)
     {
-        var cmp = this.Comparer.Compare(node.Key, key);
-        if (cmp == 0)
-        {// Identical
+        if (node.IsUnused)
+        {
             return false;
         }
-        else if (this.CompareFactor > 0)
+
+        var cmp = this.CompareInTreeOrder(node.Key, key);
+        if (cmp == 0)
         {
-            if (cmp < 0)
-            {// node.Key < key
-                if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) > 0)
-                {// node.Next.Key > key
-                    node.Key = key;
-                    return true;
-                }
+            return false;
+        }
+
+        if (cmp < 0)
+        {
+            var next = node.Next;
+            if (next is null)
+            {
+                node.Key = key;
+                this.version++;
+                return true;
             }
-            else
-            {// node.Key > key
-                if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) < 0)
-                {// node.Previous.Key < key
-                    node.Key = key;
-                    return true;
-                }
+
+            var nextCmp = this.CompareInTreeOrder(next.Key, key);
+            if (nextCmp == 0)
+            {
+                return false;
+            }
+
+            if (nextCmp > 0)
+            {
+                node.Key = key;
+                this.version++;
+                return true;
             }
         }
         else
         {
-             if (cmp < 0)
-            {// node.Key < key
-                if (node.Previous is null || this.Comparer.Compare(node.Previous.Key, key) > 0)
-                {// node.Previous.Key > key
-                    node.Key = key;
-                    return true;
-                }
+            var previous = node.Previous;
+            if (previous is null)
+            {
+                node.Key = key;
+                this.version++;
+                return true;
             }
-            else
-            {// node.Key > key
-                if (node.Next is null || this.Comparer.Compare(node.Next.Key, key) < 0)
-                {// node.Next.Key < key
-                    node.Key = key;
-                    return true;
-                }
+
+            var previousCmp = this.CompareInTreeOrder(previous.Key, key);
+            if (previousCmp == 0)
+            {
+                return false;
             }
+
+            if (previousCmp < 0)
+            {
+                node.Key = key;
+                this.version++;
+                return true;
+            }
+        }
+
+        // Check before removing the current node to avoid losing the entry
+        // when the target key already exists.
+        var existing = this.FindNode(key);
+        if (existing is not null &&
+            !ReferenceEquals(existing, node))
+        {
+            return false;
         }
 
         var value = node.Value;
@@ -1070,429 +500,265 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     }
 
     /// <summary>
-    /// Updates the node's value with the specified value.
-    /// <br/>O(1) operation.
+    /// Updates the value of an active node.
     /// </summary>
-    /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to change the value.</param>
-    /// <param name="value">The value to set.</param>
-    public void SetNodeValue(Node node, TValue value) => node.Value = value;
-
-    /// <summary>
-    /// Removes a specified node from the collection"/>.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
-    public void RemoveNode(Node node)
+    public void SetNodeValue(Node node, TValue value)
     {
-        Node? f; // Node to fix.
-        int dir = 0;
-
-        var originalColor = node.Color;
-        if (node.Color == NodeColor.Unused)
-        {// empty
+        if (node.IsUnused)
+        {
             return;
         }
 
-        f = node.Parent;
-        if (node.Parent == null)
+        node.Value = value;
+        this.version++;
+    }
+
+    /// <summary>
+    /// Removes the specified node.
+    /// </summary>
+    public void RemoveNode(Node node)
+    {
+        if (node.IsUnused)
         {
-            dir = 0;
+            return;
         }
-        else if (node.Parent.Left == node)
+
+        var originalColor = node.Color;
+        Node? replacement = null;
+        Node? fixParent = node.Parent;
+        var direction = 0;
+        if (node.Parent is not null)
         {
-            dir = -1;
-        }
-        else if (node.Parent.Right == node)
-        {
-            dir = 1;
+            direction = ReferenceEquals(node.Parent.Left, node) ? -1 : 1;
         }
 
         this.version++;
-        this.Count--;
+        this.count--;
 
-        if (node.Left == null)
+        if (node.Left is null)
         {
+            replacement = node.Right;
             this.TransplantNode(node.Right, node);
         }
-        else if (node.Right == null)
+        else if (node.Right is null)
         {
+            replacement = node.Left;
             this.TransplantNode(node.Left, node);
         }
         else
         {
-            // Minimum
-            Node? m = node.Right;
-            while (m.Left != null)
+            var successor = node.Right;
+            while (successor.Left is not null)
             {
-                m = m.Left;
+                successor = successor.Left;
             }
 
-            originalColor = m.Color;
-            if (m.Parent == node)
+            originalColor = successor.Color;
+            replacement = successor.Right;
+            if (ReferenceEquals(successor.Parent, node))
             {
-                f = m;
-                dir = 1;
+                fixParent = successor;
+                direction = 1;
             }
             else
             {
-                f = m.Parent;
-                dir = -1;
-
-                this.TransplantNode(m.Right, m);
-                m.Right = node.Right;
-                m.Right.Parent = m;
+                fixParent = successor.Parent;
+                direction = -1;
+                this.TransplantNode(successor.Right, successor);
+                successor.Right = node.Right;
+                successor.Right.Parent = successor;
             }
 
-            this.TransplantNode(m, node);
-            m.Left = node.Left;
-            m.Left.Parent = m;
-            m.Color = node.Color;
+            this.TransplantNode(successor, node);
+            successor.Left = node.Left;
+            successor.Left.Parent = successor;
+            successor.Color = node.Color;
         }
 
-        if (originalColor == NodeColor.Red || f == null)
+        if (originalColor == NodeColor.Red)
         {
             node.Clear();
-            // node.Right = this.free; // FreeList
-            // this.free = node;
-
-            if (this.root != null)
-            {
-                this.root.ColorBlack();
-            }
-
+            this.root?.ColorBlack();
             return;
         }
 
-        Node? s;
+        // A non-null replacement of a removed black node must be red in a
+        // valid Red-Black tree. Recoloring it resolves the black-height deficit.
+        if (replacement is not null)
+        {
+            replacement.ColorBlack();
+            node.Clear();
+            this.root?.ColorBlack();
+            return;
+        }
+
+        if (fixParent is null)
+        {
+            node.Clear();
+            this.root?.ColorBlack();
+            return;
+        }
+
+        var parent = fixParent;
         while (true)
         {
-            if (dir < 0)
+            Node? sibling;
+            if (direction < 0)
             {
-                s = f.Right;
-                if (Node.IsNonNullRed(s))
+                sibling = parent.Right;
+                if (Node.IsNonNullRed(sibling))
                 {
-                    s!.ColorBlack();
-                    f.ColorRed();
-                    this.RotateLeft(f);
-                    s = f.Right;
+                    sibling!.ColorBlack();
+                    parent.ColorRed();
+                    this.RotateLeft(parent);
+                    sibling = parent.Right;
                 }
 
-                // s is null or black
-                if (s == null)
+                if (sibling is null)
                 {
-                    // loop
+                    // Propagate the black-height deficit upward.
                 }
-                else if (Node.IsNullOrBlack(s.Left) && Node.IsNullOrBlack(s.Right))
+                else if (Node.IsNullOrBlack(sibling.Left) &&
+                         Node.IsNullOrBlack(sibling.Right))
                 {
-                    s.ColorRed();
-                    // loop
+                    sibling.ColorRed();
                 }
                 else
-                {// s is black and one of children is red.
-                    if (Node.IsNonNullRed(s.Left))
+                {
+                    // Inner rotation only when the far child is black (CLRS);
+                    // when both children are red, go directly to the far-child case.
+                    if (Node.IsNullOrBlack(sibling.Right))
                     {
-                        s.Left!.ColorBlack();
-                        s.ColorRed();
-                        this.RotateRight(s);
-                        s = f.Right;
+                        sibling.Left!.ColorBlack();
+                        sibling.ColorRed();
+                        this.RotateRight(sibling);
+                        sibling = parent.Right;
                     }
 
-                    s!.Color = f.Color;
-                    f.ColorBlack();
-                    s.Right!.ColorBlack();
-                    this.RotateLeft(f);
+                    sibling!.Color = parent.Color;
+                    parent.ColorBlack();
+                    sibling.Right!.ColorBlack();
+                    this.RotateLeft(parent);
                     break;
                 }
             }
             else
             {
-                s = f.Left;
-                if (Node.IsNonNullRed(s))
+                sibling = parent.Left;
+                if (Node.IsNonNullRed(sibling))
                 {
-                    s!.ColorBlack();
-                    f.ColorRed();
-                    this.RotateRight(f);
-                    s = f.Left;
+                    sibling!.ColorBlack();
+                    parent.ColorRed();
+                    this.RotateRight(parent);
+                    sibling = parent.Left;
                 }
 
-                // s is null or black
-                if (s == null)
+                if (sibling is null)
                 {
-                    // loop
+                    // Propagate the black-height deficit upward.
                 }
-                else if (Node.IsNullOrBlack(s.Left) && Node.IsNullOrBlack(s.Right))
+                else if (Node.IsNullOrBlack(sibling.Left) &&
+                         Node.IsNullOrBlack(sibling.Right))
                 {
-                    s.ColorRed();
-                    // loop
+                    sibling.ColorRed();
                 }
                 else
-                {// s is black and one of children is red.
-                    if (Node.IsNonNullRed(s.Right))
+                {
+                    // Inner rotation only when the far child is black (CLRS);
+                    // when both children are red, go directly to the far-child case.
+                    if (Node.IsNullOrBlack(sibling.Left))
                     {
-                        s.Right!.ColorBlack();
-                        s.ColorRed();
-                        this.RotateLeft(s);
-                        s = f.Left;
+                        sibling.Right!.ColorBlack();
+                        sibling.ColorRed();
+                        this.RotateLeft(sibling);
+                        sibling = parent.Left;
                     }
 
-                    s!.Color = f.Color;
-                    f.ColorBlack();
-                    s.Left!.ColorBlack();
-                    this.RotateRight(f);
+                    sibling!.Color = parent.Color;
+                    parent.ColorBlack();
+                    sibling.Left!.ColorBlack();
+                    this.RotateRight(parent);
                     break;
                 }
             }
 
-            if (f.IsRed || f.Parent == null)
+            if (parent.IsRed || parent.Parent is null)
             {
-                f.ColorBlack();
+                parent.ColorBlack();
                 break;
             }
 
-            if (f == f.Parent.Left)
-            {
-                dir = -1;
-            }
-            else
-            {
-                dir = 1;
-            }
-
-            f = f.Parent;
+            var nextParent = parent.Parent;
+            direction = ReferenceEquals(parent, nextParent.Left)
+                ? -1
+                : 1;
+            parent = nextParent;
         }
 
         node.Clear();
-        // node.Right = this.free; // FreeList
-        // this.free = node;
-        return;
+        this.root?.ColorBlack();
     }
 
-    /// <summary>
-    /// Searches a tree for the specific value.
-    /// </summary>
-    /// <param name="target">The node to search.</param>
-    /// <param name="key">The value to search for.</param>
-    /// <returns>cmp: -1 => left, 0 and leaf is not null => found, 1 => right.
-    /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
-    private (int Cmp, Node? Leaf) SearchNode(Node? target, TKey? key)
-    {
-        Node? x = target;
-        Node? p = null;
-        int cmp = 0;
-
-        if (this.CompareFactor > 0)
-        {
-            if (this.HotMethod2 != null)
-            {// HotMethod is available for value type (key is not null).
-                return this.HotMethod2.SearchNode(x, key!);
-            }
-            else if (key == null)
-            {// key is null
-                while (x != null)
-                {
-                    if (x.Key == null)
-                    {// null == null
-                        return (0, x);
-                    }
-                    else
-                    {// null < not null
-                        p = x;
-                        cmp = -1;
-                        x = x.Left;
-                    }
-                }
-            }
-            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (x != null)
-                {
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
-                    {
-                        x = x.Left;
-                    }
-                    else if (cmp > 0)
-                    {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
-                    }
-                }
-            }
-            else
-            {// IComparer<TKey>
-                while (x != null)
-                {
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp < 0)
-                    {
-                        x = x.Left;
-                    }
-                    else if (cmp > 0)
-                    {
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
-                    }
-                }
-            }
-        }
-        else
-        {// Reverse
-            if (this.HotMethod2 != null)
-            {// HotMethod is available for value type (key is not null).
-                return this.HotMethod2.SearchNodeReverse(x, key!);
-            }
-            else if (key == null)
-            {// key is null
-                while (x != null)
-                {
-                    if (x.Key == null)
-                    {// null == null
-                        return (0, x);
-                    }
-                    else
-                    {// null > not null
-                        p = x;
-                        cmp = 1;
-                        x = x.Right;
-                    }
-                }
-            }
-            else if (this.Comparer == Comparer<TKey>.Default && key is IComparable<TKey> ic)
-            {// IComparable<TKey>
-                while (x != null)
-                {
-                    cmp = ic.CompareTo(x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp > 0)
-                    {
-                        cmp = -1;
-                        x = x.Left;
-                    }
-                    else if (cmp < 0)
-                    {
-                        cmp = 1;
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
-                    }
-                }
-            }
-            else
-            {// IComparer<TKey>
-                while (x != null)
-                {
-                    cmp = this.Comparer.Compare(key, x.Key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-                    p = x;
-                    if (cmp > 0)
-                    {
-                        cmp = -1;
-                        x = x.Left;
-                    }
-                    else if (cmp < 0)
-                    {
-                        cmp = 1;
-                        x = x.Right;
-                    }
-                    else
-                    {// Found
-                        return (0, x);
-                    }
-                }
-            }
-        }
-
-        return (cmp, p);
-    }
+    #region Search
 
     /// <summary>
-    /// Searches for a <see cref="OrderedMap{TKey, TValue}.Node"/> with the specified value.
+    /// Searches for a node with the specified key.
     /// </summary>
-    /// <param name="key">The value to search in a collection.</param>
-    /// <returns>The node with the specified value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Node? FindNode(TKey? key)
     {
         var result = this.SearchNode(this.root, key);
-        return result.Cmp == 0 ? result.Leaf : null;
+        return result.Cmp == 0
+            ? result.Leaf
+            : null;
     }
 
     /// <summary>
-    /// Searches for the first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).
+    /// Gets the first node equal to or after the specified key in map order.
     /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The first <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or greater than the specified key (null: all nodes are less than the specified key).</returns>
     public Node? GetLowerBound(TKey? key)
     {
-        var (cmp, p) = this.SearchNode(this.root, key);
-
+        var (cmp, node) = this.SearchNode(this.root, key);
         if (cmp == 0)
-        {// Found
-            return p;
+        {
+            return node;
         }
-        else if (cmp < 0)
-        {// Left leaf < key < p
-            return p;
-        }
-        else
-        {// p < key < Right leaf
-            return p?.Next;
-        }
+
+        return cmp < 0
+            ? node
+            : node?.Next;
     }
 
     /// <summary>
-    /// Searches for the last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).
+    /// Gets the last node equal to or before the specified key in map order.
     /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The last <see cref="OrderedMap{TKey, TValue}.Node"/> with the key equal to or lower than the specified key (null: all nodes are greater than the specified key).</returns>
     public Node? GetUpperBound(TKey? key)
     {
-        var (cmp, p) = this.SearchNode(this.root, key);
-
+        var (cmp, node) = this.SearchNode(this.root, key);
         if (cmp == 0)
-        {// Found
-            return p;
+        {
+            return node;
         }
-        else if (cmp < 0)
-        {// Left leaf < key < p
-            return p?.Previous;
-        }
-        else
-        {// p < key < Right leaf
-            return p;
-        }
+
+        return cmp < 0
+            ? node?.Previous
+            : node;
     }
 
     /// <summary>
-    /// Gets <see cref="Node"/> whose keys are in the range from the lower bound to the upper bound.
+    /// Gets the nodes delimiting the specified range.
     /// </summary>
-    /// <param name="lower">Lower bound key.</param>
-    /// <param name="upper">Upper bound key.</param>
-    /// <returns>The lower and upper <see cref="Node"/>.</returns>
     public (Node? Lower, Node? Upper) GetRange(TKey? lower, TKey? upper)
     {
         var lowerNode = this.GetLowerBound(lower);
-        if (lowerNode == null)
+        if (lowerNode is null)
         {
             return (null, null);
         }
 
         var upperNode = this.GetUpperBound(upper);
-        if (upperNode == null)
-        {
-            return (null, null);
-        }
-
-        if (this.Comparer.Compare(lowerNode.Key, upperNode.Key) > 0)
+        if (upperNode is null ||
+            this.CompareInTreeOrder(lowerNode.Key, upperNode.Key) > 0)
         {
             return (null, null);
         }
@@ -1500,124 +766,611 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
         return (lowerNode, upperNode);
     }
 
-    /// <summary>
-    /// Adds an element to the set. If the element is already in the set, this method returns the stored node without creating a new node.
-    /// <br/>O(log n) operation.
-    /// </summary>
-    /// <param name="key">The element to add to the set.</param>
-    /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the node is created.</returns>
-    private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
+    private (int Cmp, Node? Leaf) SearchNode(Node? target, TKey? key)
     {
-        Node? x = this.root; // Traverses tree looking for insertion point.
-        Node? p = null; // Parent of x; node at which we are rebalancing.
-        int cmp = 0;
+        var node = target;
+        Node? parent = null;
+        var cmp = 0;
+        var comparer = this.Comparer;
+        var hotMethod = this.HotMethod2;
 
-        (cmp, p) = this.SearchNode(this.root, key);
-        if (cmp == 0 && p != null)
-        {// Found
-            return (p, false);
-        }
-
-        this.version++;
-        this.Count++;
-
-        Node n;
-        if (reuse != null && reuse.IsUnused)
+        if (this.CompareFactor > 0)
         {
-            reuse.Reset(key, value, NodeColor.Red);
-            n = reuse;
-        }
-        else
-        {
-            n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
-
-            /* if (this.free is null)
+            if (hotMethod is not null)
             {
-                n = new Node(key, value, NodeColor.Red); // Newly inserted node. // this.CreateNode(key, value, NodeColor.Red);
+                return hotMethod.SearchNode(node, key!);
             }
-            else
-            {// FreeList
-                n = this.free;
-                this.free = this.free.Right;
 
-                n.Key = key;
-                n.Value = value;
-                n.Color = NodeColor.Red;
-                n.Right = default;
-            }*/
-        }
-
-        n.Parent = p;
-        if (p != null)
-        {
-            if (cmp < 0)
+            if (key is null)
             {
-                p.Left = n;
-            }
-            else
-            {
-                p.Right = n;
-            }
-        }
-        else
-        {// Root
-            this.root = n;
-            n.ColorBlack();
-            return (n, true);
-        }
-
-        p = n;
-
-#nullable disable
-        while (p.Parent != null && p.Parent.IsRed)
-        {// p.Parent is not root (root is black), so p.Parent.Parent != null
-            if (p.Parent == p.Parent.Parent.Right)
-            {
-                x = p.Parent.Parent.Left; // uncle
-                if (x != null && x.IsRed)
+                while (node is not null)
                 {
-                    x.ColorBlack();
-                    p.Parent.ColorBlack();
-                    p.Parent.Parent.ColorRed();
-                    p = p.Parent.Parent; // loop
+                    if (node.Key is null)
+                    {
+                        return (0, node);
+                    }
+
+                    parent = node;
+                    cmp = -1;
+                    node = node.Left;
+                }
+
+                return (cmp, parent);
+            }
+
+            if (typeof(TKey).IsValueType &&
+                ReferenceEquals(comparer, Comparer<TKey>.Default))
+            {
+                // Comparer<TKey>.Default.Compare is devirtualized and inlined by the JIT
+                // for value-type instantiations. This path also avoids the boxing that
+                // the IComparable<TKey> pattern below incurs once per search.
+                while (node is not null)
+                {
+                    cmp = Comparer<TKey>.Default.Compare(key, node.Key);
+                    parent = node;
+                    if (cmp < 0)
+                    {
+                        node = node.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
+            if (ReferenceEquals(comparer, Comparer<TKey>.Default) &&
+                key is IComparable<TKey> comparable)
+            {
+                while (node is not null)
+                {
+                    cmp = comparable.CompareTo(node.Key);
+                    parent = node;
+                    if (cmp < 0)
+                    {
+                        node = node.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
+            while (node is not null)
+            {
+                cmp = comparer.Compare(key, node.Key);
+                parent = node;
+                if (cmp < 0)
+                {
+                    node = node.Left;
+                }
+                else if (cmp > 0)
+                {
+                    node = node.Right;
                 }
                 else
                 {
-                    if (p == p.Parent.Left)
+                    return (0, node);
+                }
+            }
+        }
+        else
+        {
+            if (hotMethod is not null)
+            {
+                return hotMethod.SearchNodeReverse(node, key!);
+            }
+
+            if (key is null)
+            {
+                while (node is not null)
+                {
+                    if (node.Key is null)
                     {
-                        p = p.Parent;
-                        this.RotateRight(p);
+                        return (0, node);
                     }
 
-                    p.Parent.ColorBlack();
-                    p.Parent.Parent.ColorRed();
-                    this.RotateLeft(p.Parent.Parent);
+                    parent = node;
+                    cmp = 1;
+                    node = node.Right;
+                }
+
+                return (cmp, parent);
+            }
+
+            if (typeof(TKey).IsValueType &&
+                ReferenceEquals(comparer, Comparer<TKey>.Default))
+            {
+                while (node is not null)
+                {
+                    var c = Comparer<TKey>.Default.Compare(key, node.Key);
+                    parent = node;
+                    if (c > 0)
+                    {
+                        cmp = -1;
+                        node = node.Left;
+                    }
+                    else if (c < 0)
+                    {
+                        cmp = 1;
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
+            if (ReferenceEquals(comparer, Comparer<TKey>.Default) &&
+                key is IComparable<TKey> comparable)
+            {
+                while (node is not null)
+                {
+                    var c = comparable.CompareTo(node.Key);
+                    parent = node;
+                    if (c > 0)
+                    {
+                        cmp = -1;
+                        node = node.Left;
+                    }
+                    else if (c < 0)
+                    {
+                        cmp = 1;
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
+            while (node is not null)
+            {
+                var c = comparer.Compare(key, node.Key);
+                parent = node;
+                if (c > 0)
+                {
+                    cmp = -1;
+                    node = node.Left;
+                }
+                else if (c < 0)
+                {
+                    cmp = 1;
+                    node = node.Right;
+                }
+                else
+                {
+                    return (0, node);
+                }
+            }
+        }
+
+        return (cmp, parent);
+    }
+
+    #endregion
+
+    #region Enumerator
+
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Enumerator GetEnumerator()
+        => new(this);
+
+    IEnumerator<KeyValuePair<TKey, TValue>>
+        IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+        => new Enumerator(this);
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this);
+
+    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+    {
+        private readonly OrderedMap<TKey, TValue> map;
+        private readonly int version;
+        private Node? current;
+        private Node? next;
+
+        internal Enumerator(OrderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+            this.version = map.version;
+            this.current = null;
+            this.next = GetFirst(map.root);
+        }
+
+        public readonly KeyValuePair<TKey, TValue> Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                var node = this.current!;
+                return new(node.Key, node.Value);
+            }
+        }
+
+        object IEnumerator.Current
+        {
+            get
+            {
+                this.ValidateCurrent();
+                return this.Current;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            var node = this.next;
+            if (node is null)
+            {
+                this.current = null;
+                return false;
+            }
+
+            this.current = node;
+            this.next = node.Next;
+            return true;
+        }
+
+        public void Dispose()
+        {
+            this.current = null;
+            this.next = null;
+        }
+
+        void IEnumerator.Reset()
+            => this.ResetCore();
+
+        private void ResetCore()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            this.current = null;
+            this.next = GetFirst(this.map.root);
+        }
+
+        private readonly void ValidateCurrent()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            if (this.current is null)
+            {
+                ThrowInvalidEnumeratorState();
+            }
+        }
+    }
+
+    public readonly struct KeyEnumerable : IEnumerable<TKey>
+    {
+        private readonly OrderedMap<TKey, TValue> map;
+
+        internal KeyEnumerable(OrderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator()
+            => new(this.map);
+
+        IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TKey>
+        {
+            private readonly OrderedMap<TKey, TValue> map;
+            private readonly int version;
+            private Node? current;
+            private Node? next;
+
+            internal Enumerator(OrderedMap<TKey, TValue> map)
+            {
+                this.map = map;
+                this.version = map.version;
+                this.current = null;
+                this.next = GetFirst(map.root);
+            }
+
+            public readonly TKey Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.current!.Key;
+            }
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    this.ValidateCurrent();
+                    return this.current!.Key;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var node = this.next;
+                if (node is null)
+                {
+                    this.current = null;
+                    return false;
+                }
+
+                this.current = node;
+                this.next = node.Next;
+                return true;
+            }
+
+            public void Dispose()
+            {
+                this.current = null;
+                this.next = null;
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.current = null;
+                this.next = GetFirst(this.map.root);
+            }
+
+            private readonly void ValidateCurrent()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.current is null)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+            }
+        }
+    }
+
+    public readonly struct ValueEnumerable : IEnumerable<TValue>
+    {
+        private readonly OrderedMap<TKey, TValue> map;
+
+        internal ValueEnumerable(OrderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator()
+            => new(this.map);
+
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TValue>
+        {
+            private readonly OrderedMap<TKey, TValue> map;
+            private readonly int version;
+            private Node? current;
+            private Node? next;
+
+            internal Enumerator(OrderedMap<TKey, TValue> map)
+            {
+                this.map = map;
+                this.version = map.version;
+                this.current = null;
+                this.next = GetFirst(map.root);
+            }
+
+            public readonly TValue Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.current!.Value;
+            }
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    this.ValidateCurrent();
+                    return this.current!.Value;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var node = this.next;
+                if (node is null)
+                {
+                    this.current = null;
+                    return false;
+                }
+
+                this.current = node;
+                this.next = node.Next;
+                return true;
+            }
+
+            public void Dispose()
+            {
+                this.current = null;
+                this.next = null;
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.current = null;
+                this.next = GetFirst(this.map.root);
+            }
+
+            private readonly void ValidateCurrent()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.current is null)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+            }
+        }
+    }
+
+    #endregion
+
+    #region Insert
+
+    private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
+    {
+        var (cmp, parent) = this.SearchNode(this.root, key);
+        if (cmp == 0 && parent is not null)
+        {
+            return (parent, false);
+        }
+
+        Node node;
+        if (reuse is not null && reuse.IsUnused)
+        {
+            reuse.Reset(key, value, NodeColor.Red);
+            node = reuse;
+        }
+        else
+        {
+            node = new Node(key, value, NodeColor.Red);
+        }
+
+        node.Parent = parent;
+        if (parent is null)
+        {
+            this.root = node;
+            node.ColorBlack();
+            this.count++;
+            this.version++;
+            return (node, true);
+        }
+
+        if (cmp < 0)
+        {
+            parent.Left = node;
+        }
+        else
+        {
+            parent.Right = node;
+        }
+
+        this.count++;
+        this.version++;
+
+        var current = node;
+#nullable disable
+        while (current.Parent is not null &&
+               current.Parent.IsRed)
+        {
+            var grandParent = current.Parent.Parent;
+            if (ReferenceEquals(current.Parent, grandParent.Right))
+            {
+                var uncle = grandParent.Left;
+                if (uncle is not null && uncle.IsRed)
+                {
+                    uncle.ColorBlack();
+                    current.Parent.ColorBlack();
+                    grandParent.ColorRed();
+                    current = grandParent;
+                }
+                else
+                {
+                    if (ReferenceEquals(current, current.Parent.Left))
+                    {
+                        current = current.Parent;
+                        this.RotateRight(current);
+                    }
+
+                    current.Parent.ColorBlack();
+                    current.Parent.Parent.ColorRed();
+                    this.RotateLeft(current.Parent.Parent);
                     break;
                 }
             }
             else
             {
-                x = p.Parent.Parent.Right; // uncle
-
-                if (x != null && x.IsRed)
+                var uncle = grandParent.Right;
+                if (uncle is not null && uncle.IsRed)
                 {
-                    x.ColorBlack();
-                    p.Parent.ColorBlack();
-                    p.Parent.Parent.ColorRed();
-                    p = p.Parent.Parent; // loop
+                    uncle.ColorBlack();
+                    current.Parent.ColorBlack();
+                    grandParent.ColorRed();
+                    current = grandParent;
                 }
                 else
                 {
-                    if (p == p.Parent.Right)
+                    if (ReferenceEquals(current, current.Parent.Right))
                     {
-                        p = p.Parent;
-                        this.RotateLeft(p);
+                        current = current.Parent;
+                        this.RotateLeft(current);
                     }
 
-                    p.Parent.ColorBlack();
-                    p.Parent.Parent.ColorRed();
-                    this.RotateRight(p.Parent.Parent);
+                    current.Parent.ColorBlack();
+                    current.Parent.Parent.ColorRed();
+                    this.RotateRight(current.Parent.Parent);
                     break;
                 }
             }
@@ -1625,7 +1378,7 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
 #nullable enable
 
         this.root!.ColorBlack();
-        return (n, true);
+        return (node, true);
     }
 
     #endregion
@@ -1633,112 +1386,111 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     #region Validation
 
     /// <summary>
-    /// Validate Red-Black Tree.
+    /// Validates the Red-Black Tree.
     /// </summary>
-    /// <returns>true if the tree is valid.</returns>
     public bool Validate()
     {
-        bool result = true;
-        result &= this.ValidateBST(this.root);
-        result &= this.ValidateBlackHeight(this.root) >= 0;
-        result &= this.ValidateColor(this.root) == NodeColor.Black;
+        if (this.root is null)
+        {
+            return this.count == 0;
+        }
 
-        return result;
+        if (!this.root.IsBlack ||
+            this.root.Parent is not null)
+        {
+            return false;
+        }
+
+        Node? previous = null;
+        var actualCount = 0;
+        if (!this.ValidateBST(this.root, ref previous, ref actualCount))
+        {
+            return false;
+        }
+
+        if (actualCount != this.count)
+        {
+            return false;
+        }
+
+        if (!ValidateColors(this.root))
+        {
+            return false;
+        }
+
+        return ValidateBlackHeight(this.root) >= 0;
     }
 
-    private NodeColor ValidateColor(Node? node)
+    private bool ValidateBST(Node? node, ref Node? previous, ref int actualCount)
     {
-        if (node == null)
+        if (node is null)
         {
-            return NodeColor.Black;
+            return true;
         }
 
-        var color = node.Color;
-        var leftColor = this.ValidateColor(node.Left);
-        var rightColor = this.ValidateColor(node.Right);
-        if (leftColor == NodeColor.Unused || rightColor == NodeColor.Unused)
-        { // Error
-            return NodeColor.Unused;
+        if (node.Left is not null &&
+            !ReferenceEquals(node.Left.Parent, node))
+        {
+            return false;
         }
 
-        if (color == NodeColor.Black)
+        if (node.Right is not null &&
+            !ReferenceEquals(node.Right.Parent, node))
         {
-            return color;
-        }
-        else if (color == NodeColor.Red && leftColor == NodeColor.Black && rightColor == NodeColor.Black)
-        {
-            return color;
+            return false;
         }
 
-        return NodeColor.Unused; // Error
+        if (!this.ValidateBST(node.Left, ref previous, ref actualCount))
+        {
+            return false;
+        }
+
+        if (previous is not null &&
+            this.CompareInTreeOrder(previous.Key, node.Key) >= 0)
+        {
+            return false;
+        }
+
+        previous = node;
+        actualCount++;
+        return this.ValidateBST(node.Right, ref previous, ref actualCount);
     }
 
-    private int ValidateBlackHeight(Node? node)
+    private static bool ValidateColors(Node? node)
     {
-        if (node == null)
+        if (node is null)
+        {
+            return true;
+        }
+
+        if (node.IsRed &&
+            (Node.IsNonNullRed(node.Left) ||
+             Node.IsNonNullRed(node.Right)))
+        {
+            return false;
+        }
+
+        return ValidateColors(node.Left) &&
+               ValidateColors(node.Right);
+    }
+
+    private static int ValidateBlackHeight(Node? node)
+    {
+        if (node is null)
         {
             return 0;
         }
 
-        int leftHeight = this.ValidateBlackHeight(node.Left);
-        int rightHeight = this.ValidateBlackHeight(node.Right);
-        if (leftHeight < 0 || rightHeight < 0 || leftHeight != rightHeight)
-        {// Invalid
+        var left = ValidateBlackHeight(node.Left);
+        var right = ValidateBlackHeight(node.Right);
+        if (left < 0 ||
+            right < 0 ||
+            left != right)
+        {
             return -1;
         }
 
-        return leftHeight + (node.IsBlack ? 1 : 0);
-    }
-
-    private bool ValidateBST(Node? node)
-    {// Binary Search Tree
-        if (node == null)
-        {
-            return true;
-        }
-
-        bool result = true;
-
-        if (node.Parent == null)
-        {
-            result &= this.root == node;
-        }
-
-        if (node.Left != null)
-        {
-            result &= node.Left.Parent == node;
-        }
-
-        if (node.Right != null)
-        {
-            result &= node.Right.Parent == node;
-        }
-
-        result &= this.IsSmaller(node.Left, node.Key) && this.IsLarger(node.Right, node.Key);
-        result &= this.ValidateBST(node.Left) && this.ValidateBST(node.Right);
-        return result;
-    }
-
-    private bool IsSmaller(Node? node, TKey key)
-    {// Node value is smaller than TKey value.
-        if (node == null)
-        {
-            return true;
-        }
-
-        var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-        return cmp == -1 && this.IsSmaller(node.Left, key) && this.IsSmaller(node.Right, key);
-    }
-
-    private bool IsLarger(Node? node, TKey key)
-    {// Node value is larger than TKey value.
-        if (node == null)
-        {
-            return true;
-        }
-
-        var cmp = this.Comparer.Compare(node.Key, key); // -1: 1st < 2nd, 0: equals, 1: 1st > 2nd
-        return cmp == 1 && this.IsLarger(node.Left, key) && this.IsLarger(node.Right, key);
+        return left + (node.IsBlack ? 1 : 0);
     }
 
     #endregion
@@ -1746,84 +1498,162 @@ public class OrderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDict
     #region LowLevel
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Node? GetFirst(Node? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        while (node.Left is not null)
+        {
+            node = node.Left;
+        }
+
+        return node;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Node? GetLast(Node? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        while (node.Right is not null)
+        {
+            node = node.Right;
+        }
+
+        return node;
+    }
+
+    private int CompareInTreeOrder(TKey? x, TKey? y)
+    {
+        int cmp;
+        if (x is null)
+        {
+            cmp = y is null ? 0 : -1;
+        }
+        else if (y is null)
+        {
+            cmp = 1;
+        }
+        else
+        {
+            cmp = this.Comparer.Compare(x, y);
+        }
+
+        if (this.CompareFactor > 0)
+        {
+            return cmp;
+        }
+
+        return cmp < 0
+            ? 1
+            : cmp > 0
+                ? -1
+                : 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void TransplantNode(Node? node, Node destination)
-    {// Transplant Node node to Node destination
-        if (destination.Parent == null)
+    {
+        var parent = destination.Parent;
+        if (parent is null)
         {
             this.root = node;
         }
-        else if (destination == destination.Parent.Left)
+        else if (ReferenceEquals(destination, parent.Left))
         {
-            destination.Parent.Left = node;
+            parent.Left = node;
         }
         else
         {
-            destination.Parent.Right = node;
+            parent.Right = node;
         }
 
-        if (node != null)
+        if (node is not null)
         {
-            node.Parent = destination.Parent;
+            node.Parent = parent;
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RotateLeft(Node x)
-    {// checked
-        var y = x.Right!;
-        x.Right = y.Left;
-        if (y.Left != null)
+    private void RotateLeft(Node node)
+    {
+        var right = node.Right!;
+        node.Right = right.Left;
+        if (right.Left is not null)
         {
-            y.Left.Parent = x;
+            right.Left.Parent = node;
         }
 
-        var p = x.Parent; // Parent of x
-        y.Parent = p;
-        if (p == null)
+        var parent = node.Parent;
+        right.Parent = parent;
+        if (parent is null)
         {
-            this.root = y;
+            this.root = right;
         }
-        else if (x == p.Left)
+        else if (ReferenceEquals(node, parent.Left))
         {
-            p.Left = y;
+            parent.Left = right;
         }
         else
         {
-            p.Right = y;
+            parent.Right = right;
         }
 
-        y.Left = x;
-        x.Parent = y;
+        right.Left = node;
+        node.Parent = right;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RotateRight(Node x)
-    {// checked
-        var y = x.Left!;
-        x.Left = y.Right;
-        if (y.Right != null)
+    private void RotateRight(Node node)
+    {
+        var left = node.Left!;
+        node.Left = left.Right;
+        if (left.Right is not null)
         {
-            y.Right.Parent = x;
+            left.Right.Parent = node;
         }
 
-        var p = x.Parent; // Parent of x
-        y.Parent = p;
-        if (p == null)
+        var parent = node.Parent;
+        left.Parent = parent;
+        if (parent is null)
         {
-            this.root = y;
+            this.root = left;
         }
-        else if (x == p.Right)
+        else if (ReferenceEquals(node, parent.Right))
         {
-            p.Right = y;
+            parent.Right = left;
         }
         else
         {
-            p.Left = y;
+            parent.Left = left;
         }
 
-        y.Right = x;
-        x.Parent = y;
+        left.Right = node;
+        node.Parent = left;
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFound()
+        => throw new KeyNotFoundException();
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowVersionMismatch()
+        => throw new InvalidOperationException(
+            "Collection was modified after the enumerator was instantiated.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowInvalidEnumeratorState()
+        => throw new InvalidOperationException(
+            "Enumeration has either not started or has already finished.");
 
     #endregion
 }

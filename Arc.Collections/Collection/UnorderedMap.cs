@@ -4,696 +4,57 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
+
 /// <summary>
-/// Represents a collection of objects. <see cref="UnorderedMap{TKey, TValue}"/> uses a hash table structure to store objects.
+/// Represents a high-performance hash map with optional duplicate and null keys.<br/>
+/// Node indexes remain stable while nodes are active, including across resizing.<br/>
+/// Removed node indexes may be reused.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
+    private const int MinimumCapacity = 4;
+    private const int MaximumCapacity = 1 << 30;
+
+    /// <summary>
+    /// Represents a node in the map.
+    /// </summary>
     public struct Node
     {
         public const int UnusedNode = -2;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
         internal int hashCode;
-        internal int previous;   // Index of previous node, UnusedNode(-2) if the node is not used.
-        internal int next;        // Index of next node
+        internal int previous; // UnusedNode if unused.
+        internal int next;
         internal TKey key;
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
-        public bool IsValid() => this.previous != UnusedNode;
+        public readonly bool IsValid() => this.previous != UnusedNode;
 
-        public bool IsInvalid() => this.previous == UnusedNode;
+        public readonly bool IsInvalid() => this.previous == UnusedNode;
 
-        public TKey Key => this.key;
+        public readonly TKey? Key => this.key;
 
-        public TValue Value => this.value;
+        public readonly TValue Value => this.value;
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    public UnorderedMap()
-        : this(0, null)
-    {
-    }
+    // Null when the default comparer is used.
+    private readonly IEqualityComparer<TKey>? comparer;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="capacity">The initial number of elements that the collection can contain.</param>
-    public UnorderedMap(int capacity)
-        : this(capacity, null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    public UnorderedMap(IEqualityComparer<TKey> comparer)
-        : this(0, comparer)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="capacity">The initial number of elements that the collection can contain.</param>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer)
-    {
-        this.Initialize(capacity);
-        this.Comparer = comparer ?? EqualityComparer<TKey>.Default;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-    public UnorderedMap(IDictionary<TKey, TValue> dictionary)
-        : this(dictionary, null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedMap{TKey, TValue}"/> class.
-    /// </summary>
-    /// <param name="dictionary">The IDictionary implementation to copy to a new collection.</param>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    public UnorderedMap(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
-        : this(dictionary != null ? dictionary.Count : 0, comparer)
-    {
-        if (dictionary == null)
-        {
-            throw new ArgumentNullException(nameof(dictionary));
-        }
-
-        foreach (var pair in dictionary)
-        {
-            this.Add(pair.Key, pair.Value);
-        }
-    }
-
-    public (Node[] Nodes, int Max) UnsafeGetNodes()
-        => (this.nodes, this.nodeCount);
-
-    #region Enumerator
-
-    public Enumerator GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this, Enumerator.KeyValuePair);
-
-    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
-    {
-        internal const int KeyValuePair = 1;
-        internal const int DictEntry = 2;
-
-        private readonly UnorderedMap<TKey, TValue> map;
-        private readonly int version;
-        private readonly int getEnumeratorRetType;
-        private int index;
-        private TKey? key;
-        private TValue? value;
-
-        internal Enumerator(UnorderedMap<TKey, TValue> map, int getEnumeratorRetType)
-        {
-            this.map = map;
-            this.version = this.map.version;
-            this.getEnumeratorRetType = getEnumeratorRetType;
-            this.index = 0;
-            this.key = default;
-            this.value = default;
-        }
-
-        public void Dispose()
-        {
-            this.index = 0;
-            this.key = default;
-            this.value = default;
-        }
-
-        public bool MoveNext()
-        {
-            if (this.version != this.map.version)
-            {
-                throw ThrowVersionMismatch();
-            }
-
-            while ((uint)this.index < (uint)this.map.nodeCount)
-            {
-                if (this.map.nodes[this.index].IsValid())
-                {
-                    this.key = this.map.nodes[this.index].key;
-                    this.value = this.map.nodes[this.index].value;
-                    this.index++;
-                    return true;
-                }
-
-                this.index++;
-            }
-
-            this.index = this.map.nodeCount + 1;
-            this.key = default;
-            this.value = default;
-            return false;
-        }
-
-        DictionaryEntry IDictionaryEnumerator.Entry => new DictionaryEntry(this.key!, this.value!);
-
-        object IDictionaryEnumerator.Key => this.key!;
-
-        object IDictionaryEnumerator.Value => this.value!;
-
-        public KeyValuePair<TKey, TValue> Current => new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-
-        object? IEnumerator.Current
-        {
-            get
-            {
-                if (this.getEnumeratorRetType == DictEntry)
-                {
-                    return new DictionaryEntry(this.key!, this.value!);
-                }
-                else
-                {
-                    return new KeyValuePair<TKey, TValue>(this.key!, this.value!);
-                }
-            }
-        }
-
-        void System.Collections.IEnumerator.Reset() => this.Reset();
-
-        internal void Reset()
-        {
-            if (this.version != this.map.version)
-            {
-                throw ThrowVersionMismatch();
-            }
-
-            this.index = 0;
-            this.key = default;
-            this.value = default;
-        }
-
-        private static Exception ThrowVersionMismatch()
-        {
-            throw new InvalidOperationException("Collection was modified after the enumerator was instantiated.'");
-        }
-    }
-
-    #endregion
-
-    #region ICollection
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection.CopyTo(Array array, int index)
-    {
-        if (array == null)
-        {
-            throw new ArgumentNullException(nameof(array));
-        }
-
-        if (array.Rank != 1)
-        {
-            throw new ArgumentException(nameof(array));
-        }
-
-        if (array.GetLowerBound(0) != 0)
-        {
-            throw new ArgumentException(nameof(array));
-        }
-
-        if (index < 0 || index > array.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
-
-        if (array.Length - index < this.Count)
-        {
-            throw new ArgumentException();
-        }
-
-        uint nodeIndex = 0;
-        KeyValuePair<TKey, TValue>[]? keyValuePairArray = array as KeyValuePair<TKey, TValue>[];
-        if (keyValuePairArray != null)
-        {
-            while (nodeIndex < (uint)this.nodeCount)
-            {
-                if (this.nodes[nodeIndex].IsValid())
-                {
-                    keyValuePairArray[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].key, this.nodes[nodeIndex].value);
-                }
-
-                nodeIndex++;
-            }
-        }
-        else
-        {
-            object[]? objects = array as object[];
-            if (objects == null)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            try
-            {
-                while (nodeIndex < (uint)this.nodeCount)
-                {
-                    if (this.nodes[nodeIndex].IsValid())
-                    {
-                        objects[index + nodeIndex] = new KeyValuePair<TKey, TValue>(this.nodes[nodeIndex].key, this.nodes[nodeIndex].value);
-                    }
-
-                    nodeIndex++;
-                }
-            }
-            catch (ArrayTypeMismatchException)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-        }
-    }
-
-    #endregion
-
-    #region IDictionary
-
-    object? IDictionary.this[object key]
-    {
-        get
-        {
-            if (key == null)
-            {
-                if (this.TryGetValue(default, out var value))
-                {
-                    return value!;
-                }
-            }
-            else if (key is TKey k)
-            {
-                if (this.TryGetValue(k, out var value))
-                {
-                    return value!;
-                }
-            }
-
-            return null!;
-        }
-
-        set
-        {
-            this[(TKey)key] = (TValue)value!;
-        }
-    }
-
-    bool IDictionary.IsFixedSize => false;
-
-    bool IDictionary.IsReadOnly => false;
-
-    ICollection IDictionary.Keys => (ICollection)this.Keys;
-
-    ICollection IDictionary.Values => (ICollection)this.Values;
-
-    void IDictionary.Add(object key, object? value) => this.Add((TKey)key, (TValue)value!);
-
-    bool IDictionary.Contains(object key)
-    {
-        if (key == null)
-        {
-            return this.ContainsKey(default);
-        }
-        else if (key is TKey k)
-        {
-            return this.ContainsKey(k);
-        }
-
-        return false;
-    }
-
-    IDictionaryEnumerator IDictionary.GetEnumerator() => new Enumerator(this, Enumerator.DictEntry);
-
-    void IDictionary.Remove(object key)
-    {
-        if (key == null)
-        {
-            this.Remove(default);
-        }
-        else if (key is TKey k)
-        {
-            this.Remove(k);
-        }
-    }
-
-    #endregion
-
-    #region IDictionary<TKey, TValue>
-
-    IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => this.Keys;
-
-    IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => this.Values;
-
-    ICollection<TKey> IDictionary<TKey, TValue>.Keys => this.Keys;
-
-    ICollection<TValue> IDictionary<TKey, TValue>.Values => this.Values;
-
-    void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => this.Add(key, value);
-
-    #endregion
-
-    #region ICollection<KeyValuePair<TKey,TValue>>
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
-
-    void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => this.Add(item.Key, item.Value);
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => this.FindNode(item.Key, item.Value) != -1;
-
-    void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
-
-    bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
-    {
-        var index = this.FindNode(item.Key, item.Value);
-        if (index == -1)
-        {
-            return false;
-        }
-
-        this.RemoveNode(index);
-        return true;
-    }
-
-    #endregion
-
-    #region KeyValueCollection
-
-    public KeyCollection Keys => this.keys != null ? this.keys : (this.keys = new KeyCollection(this));
-
-    public ValueCollection Values => this.values != null ? this.values : (this.values = new ValueCollection(this));
-
-    public sealed class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>
-    {
-        private readonly UnorderedMap<TKey, TValue> map;
-
-        public KeyCollection(UnorderedMap<TKey, TValue> map)
-        {
-            if (map == null)
-            {
-                throw new ArgumentNullException(nameof(map));
-            }
-
-            this.map = map;
-        }
-
-        public Enumerator GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
-
-        public void CopyTo(TKey[] array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            uint nodeIndex = 0;
-            while (nodeIndex < (uint)this.map.nodeCount)
-            {
-                if (this.map.nodes[nodeIndex].IsValid())
-                {
-                    array[index++] = this.map.nodes[nodeIndex].key;
-                }
-
-                nodeIndex++;
-            }
-        }
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (array.Rank != 1)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (array.GetLowerBound(0) != 0)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.map.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            TKey[]? keys = array as TKey[];
-            if (keys != null)
-            {
-                this.CopyTo(keys, index);
-            }
-            else
-            {
-                try
-                {
-                    object[] objects = (object[])array;
-                    uint nodeIndex = 0;
-                    while (nodeIndex < (uint)this.map.nodeCount)
-                    {
-                        if (this.map.nodes[nodeIndex].IsValid())
-                        {
-                            objects[index++] = this.map.nodes[nodeIndex].key!;
-                        }
-
-                        nodeIndex++;
-                    }
-                }
-                catch (ArrayTypeMismatchException)
-                {
-                    throw new ArgumentException(nameof(array));
-                }
-            }
-        }
-
-        public int Count => this.map.Count;
-
-        bool ICollection<TKey>.IsReadOnly => true;
-
-        void ICollection<TKey>.Add(TKey item) => throw new NotSupportedException();
-
-        void ICollection<TKey>.Clear() => throw new NotSupportedException();
-
-        bool ICollection<TKey>.Contains(TKey item) => this.map.ContainsKey(item);
-
-        bool ICollection<TKey>.Remove(TKey item) => throw new NotSupportedException();
-
-        bool ICollection.IsSynchronized => false;
-
-        object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
-
-        public struct Enumerator : IEnumerator<TKey>, IEnumerator
-        {
-            private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
-
-            internal Enumerator(UnorderedMap<TKey, TValue> map)
-            {
-                this.mapEnum = map.GetEnumerator();
-            }
-
-            public void Dispose() => this.mapEnum.Dispose();
-
-            public bool MoveNext() => this.mapEnum.MoveNext();
-
-            public TKey Current => this.mapEnum.Current.Key;
-
-            object? IEnumerator.Current => this.Current;
-
-            void IEnumerator.Reset() => this.mapEnum.Reset();
-        }
-    }
-
-    public sealed class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>
-    {
-        private readonly UnorderedMap<TKey, TValue> map;
-
-        public ValueCollection(UnorderedMap<TKey, TValue> map)
-        {
-            if (map == null)
-            {
-                throw new ArgumentNullException(nameof(map));
-            }
-
-            this.map = map;
-        }
-
-        public Enumerator GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => new Enumerator(this.map);
-
-        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this.map);
-
-        public void CopyTo(TValue[] array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            uint nodeIndex = 0;
-            while (nodeIndex < (uint)this.map.nodeCount)
-            {
-                if (this.map.nodes[nodeIndex].IsValid())
-                {
-                    array[index++] = this.map.nodes[nodeIndex].value;
-                }
-
-                nodeIndex++;
-            }
-        }
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            if (array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
-
-            if (array.Rank != 1)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (array.GetLowerBound(0) != 0)
-            {
-                throw new ArgumentException(nameof(array));
-            }
-
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (array.Length - index < this.map.Count)
-            {
-                throw new ArgumentException();
-            }
-
-            TValue[]? values = array as TValue[];
-            if (values != null)
-            {
-                this.CopyTo(values, index);
-            }
-            else
-            {
-                try
-                {
-                    object?[] objects = (object?[])array;
-                    uint nodeIndex = 0;
-                    while (nodeIndex < (uint)this.map.nodeCount)
-                    {
-                        if (this.map.nodes[nodeIndex].IsValid())
-                        {
-                            objects[index++] = this.map.nodes[nodeIndex].value;
-                        }
-
-                        nodeIndex++;
-                    }
-                }
-                catch (ArrayTypeMismatchException)
-                {
-                    throw new ArgumentException(nameof(array));
-                }
-            }
-        }
-
-        public int Count => this.map.Count;
-
-        bool ICollection<TValue>.IsReadOnly => true;
-
-        void ICollection<TValue>.Add(TValue item) => throw new NotSupportedException();
-
-        void ICollection<TValue>.Clear() => throw new NotSupportedException();
-
-        bool ICollection<TValue>.Contains(TValue item)
-        {
-            return this.map.ContainsValue(item);
-        }
-
-        bool ICollection<TValue>.Remove(TValue item) => throw new NotSupportedException();
-
-        bool ICollection.IsSynchronized => false;
-
-        object ICollection.SyncRoot => ((ICollection)this.map).SyncRoot;
-
-        public struct Enumerator : IEnumerator<TValue>, IEnumerator
-        {
-            private IEnumerator<KeyValuePair<TKey, TValue>> mapEnum;
-
-            internal Enumerator(UnorderedMap<TKey, TValue> map)
-            {
-                this.mapEnum = map.GetEnumerator();
-            }
-
-            public void Dispose() => this.mapEnum.Dispose();
-
-            public bool MoveNext() => this.mapEnum.MoveNext();
-
-            public TValue Current => this.mapEnum.Current.Value;
-
-            object? IEnumerator.Current => this.Current;
-
-            void IEnumerator.Reset() => this.mapEnum.Reset();
-        }
-    }
-
-    #endregion
-
-    private const int MinLogCapacity = 2;
-    private const int MaxLogCapacity = 31;
     private int version;
-    private KeyCollection? keys;
-    private ValueCollection? values;
     private int hashMask;
     private int[] buckets = default!;
     private Node[] nodes = default!;
@@ -702,137 +63,250 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     private int freeCount;
     private int nullList;
 
-    private void Initialize(int capacity)
+    /// <summary>
+    /// Initializes an empty map.
+    /// </summary>
+    public UnorderedMap()
+        : this(0, null, false)
     {
-        if (capacity < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(capacity));
-        }
-
-        var log = -1;
-        var n = capacity;
-        while (n > 0)
-        {
-            log++;
-            n >>= 1;
-        }
-
-        if (capacity != (1 << log))
-        {
-            log++;
-        }
-
-        if (log < MinLogCapacity)
-        {
-            log = MinLogCapacity;
-        }
-        else if (log > MaxLogCapacity)
-        {
-            log = MaxLogCapacity;
-        }
-
-        var size = 1 << log;
-        this.hashMask = size - 1;
-        this.buckets = new int[size];
-        for (n = 0; n < size; n++)
-        {
-            this.buckets[n] = -1;
-        }
-
-        this.nodes = new Node[size];
-
-        this.nullList = -1;
-        this.freeList = -1;
     }
 
     /// <summary>
-    /// Gets the number of nodes actually contained in the <see cref="UnorderedMap{TKey, TValue}"/>.
+    /// Initializes an empty map with the specified capacity.
+    /// </summary>
+    public UnorderedMap(int capacity)
+        : this(capacity, null, false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified comparer.
+    /// </summary>
+    public UnorderedMap(IEqualityComparer<TKey>? comparer)
+        : this(0, comparer, false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified duplicate-key behavior.
+    /// </summary>
+    public UnorderedMap(bool allowDuplicate)
+        : this(0, null, allowDuplicate)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified capacity and comparer.
+    /// </summary>
+    public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer)
+        : this(capacity, comparer, false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified capacity and duplicate-key behavior.
+    /// </summary>
+    public UnorderedMap(int capacity, bool allowDuplicate)
+        : this(capacity, null, allowDuplicate)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified capacity, comparer, and duplicate-key behavior.
+    /// </summary>
+    public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer, bool allowDuplicate)
+    {
+        this.Initialize(capacity);
+        this.AllowDuplicate = allowDuplicate;
+
+        var defaultComparer = EqualityComparer<TKey>.Default;
+        this.comparer = comparer is null || ReferenceEquals(comparer, defaultComparer)
+            ? null
+            : comparer;
+    }
+
+    /// <summary>
+    /// Gets the number of elements in the map.
     /// </summary>
     public int Count => this.nodeCount - this.freeCount;
 
-    public IEqualityComparer<TKey> Comparer { get; private set; }
+    /// <summary>
+    /// Gets the current node capacity.
+    /// </summary>
+    public int Capacity => this.nodes.Length;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the collection allows duplicate keys.
+    /// Gets the comparer used for keys.
     /// </summary>
-    public bool AllowDuplicate { get; protected set; }
+    public IEqualityComparer<TKey> Comparer
+        => this.comparer ?? EqualityComparer<TKey>.Default;
 
-    #region Main
+    /// <summary>
+    /// Gets a value indicating whether duplicate keys are allowed.
+    /// </summary>
+    public bool AllowDuplicate { get; }
 
-    public TValue this[TKey key]
+    /// <summary>
+    /// Gets an allocation-free enumerable over the keys.
+    /// </summary>
+    public KeyEnumerable Keys
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(this);
+    }
+
+    /// <summary>
+    /// Gets an allocation-free enumerable over the values.
+    /// </summary>
+    public ValueEnumerable Values
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(this);
+    }
+
+    /// <summary>
+    /// Gets or sets the value associated with the specified key.
+    /// </summary>
+    public TValue this[TKey? key]
     {
         get
         {
             var index = this.FindFirstNode(key);
-            if (index == -1)
+            if (index >= 0)
             {
-                throw new KeyNotFoundException();
+                return this.nodes[index].value;
             }
 
-            return this.nodes[index].value;
+            ThrowKeyNotFound();
+            return default!;
         }
 
-        set
-        {
-            var result = this.Add(key, value);
-            if (!result.NewlyAdded)
-            {
-                this.nodes[result.NodeIndex].value = value;
-            }
-        }
+        set => this.SetValue(key, value);
     }
 
-    public bool ContainsKey(TKey? key) => this.FindFirstNode(key) != -1;
+    /// <summary>
+    /// Gets direct access to the internal node array.<br/>
+    /// The returned array may be replaced when the map is resized.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (Node[] Nodes, int Max) UnsafeGetNodes()
+        => (this.nodes, this.nodeCount);
 
+    /// <summary>
+    /// Adds an element, or returns the existing node when duplicate keys are disabled.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (int NodeIndex, bool NewlyAdded) Add(TKey? key, TValue value)
+        => this.Probe(key, value);
+
+    /// <summary>
+    /// Determines whether the specified key exists.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsKey(TKey? key)
+        => this.FindFirstNode(key) >= 0;
+
+    /// <summary>
+    /// Determines whether the specified key and value exist.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Contains(TKey? key, TValue value)
+        => this.FindNode(key, value) >= 0;
+
+    /// <summary>
+    /// Determines whether the specified value exists.
+    /// </summary>
     public bool ContainsValue(TValue value)
     {
-        if (value == null)
+        var nodes = this.nodes;
+        var count = this.nodeCount;
+
+        if (value is null)
         {
-            for (var i = 0; i < this.nodeCount; i++)
+            for (var i = 0; i < count; i++)
             {
-                if (this.nodes[i].IsValid() && this.nodes[i].value == null)
+                ref var node = ref nodes[i];
+
+                if (node.previous != Node.UnusedNode &&
+                    node.value is null)
                 {
                     return true;
                 }
             }
+
+            return false;
         }
-        else
+
+        var comparer = EqualityComparer<TValue>.Default;
+
+        for (var i = 0; i < count; i++)
         {
-            var c = EqualityComparer<TValue>.Default;
-            for (int i = 0; i < this.nodeCount; i++)
+            ref var node = ref nodes[i];
+
+            if (node.previous != Node.UnusedNode &&
+                comparer.Equals(node.value, value))
             {
-                if (this.nodes[i].IsValid() && c.Equals(this.nodes[i].value, value))
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
         return false;
     }
 
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+    /// <summary>
+    /// Attempts to get the value associated with the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
     {
-        if (key == null)
+        if (key is null)
         {
-            if (this.nullList != -1)
+            var index = this.nullList;
+
+            if (index >= 0)
             {
-                value = this.nodes[this.nullList].value;
+                value = this.nodes[index].value;
                 return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
+        {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key))
+                {
+                    value = node.value;
+                    return true;
+                }
+
+                i = node.next;
             }
         }
         else
         {
-            var hashCode = this.Comparer.GetHashCode(key!);
-            var index = hashCode & this.hashMask;
-            var i = this.buckets[index];
-            while (i >= 0)
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                ref Node node = ref this.nodes[i];
-                if (node.hashCode == hashCode && this.Comparer.Equals(node.key, key!))
-                {// Identical
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key))
+                {
                     value = node.value;
                     return true;
                 }
@@ -842,144 +316,58 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
         }
 
         value = default;
-        return false; // Not found
+        return false;
     }
 
     /// <summary>
-    /// Removes all elements from a collection.
+    /// Finds the first node with the specified key.
     /// </summary>
-    public void Clear()
-    {
-        if (this.nodeCount > 0)
-        {
-            for (var i = 0; i < this.buckets.Length; i++)
-            {
-                this.buckets[i] = -1;
-            }
-
-            Array.Clear(this.nodes, 0, this.nodeCount);
-            this.nodeCount = 0;
-            this.freeList = -1;
-            this.freeCount = 0;
-            this.nullList = -1;
-        }
-    }
-
-    /// <summary>
-    /// Copies the elements of the collection to the specified array of KeyValuePair structures, starting at the specified index.
-    /// </summary>
-    /// <param name="array">The one-dimensional array of KeyValuePair structures that is the destination of the elements.</param>
-    /// <param name="index">The zero-based index in array at which copying begins.</param>
-    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => ((ICollection)this).CopyTo(array, index);
-
-    /// <summary>
-    /// Removes the first element with the specified key from a collection.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="key">The key of the element to remove.</param>
-    /// <returns>true if the element is found and successfully removed.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Remove(TKey? key)
-    {
-        var p = this.FindFirstNode(key);
-        if (p == -1)
-        {
-            return false;
-        }
-
-        this.RemoveNode(p);
-        return true;
-    }
-
-    /// <summary>
-    /// Removes the first element with the specified key/value from a collection.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="key">The key of the element to remove.</param>
-    /// <param name="value">The value of the element to remove.</param>
-    /// <returns>true if the element is found and successfully removed.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Remove(TKey? key, TValue value)
-    {
-        var p = this.FindNode(key, value);
-        if (p == -1)
-        {
-            return false;
-        }
-
-        this.RemoveNode(p);
-        return true;
-    }
-
-    /// <summary>
-    /// Searches for the first <see cref="UnorderedMap{TKey, TValue}.Node"/> index with the specified key.
-    /// </summary>
-    /// <param name="key">The key to search in a collection.</param>
-    /// <returns>The first node index with the specified key. -1: not found.</returns>
+    /// <returns>The node index, or -1 if not found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int FindFirstNode(TKey? key)
     {
-        if (key == null)
+        if (key is null)
         {
             return this.nullList;
         }
-        else
+
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
         {
-            var hashCode = this.Comparer.GetHashCode(key!);
-            var index = hashCode & this.hashMask;
-            var i = this.buckets[index];
-            while (i >= 0)
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
-                {// Identical
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key))
+                {
                     return i;
                 }
 
-                i = this.nodes[i].next;
-            }
-
-            return -1; // Not found
-        }
-    }
-
-    /// <summary>
-    /// Searches for the first <see cref="UnorderedMap{TKey, TValue}.Node"/> index with the specified key and value.
-    /// </summary>
-    /// <param name="key">The key to search in a collection.</param>
-    /// <param name="value">The value to search in a collection.</param>
-    /// <returns>The first node index with the specified key and value. -1: not found.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int FindNode(TKey? key, TValue value)
-    {
-        var c = EqualityComparer<TValue>.Default;
-        if (key == null)
-        {
-            var i = this.nullList;
-            while (i >= 0)
-            {
-                if (c.Equals(this.nodes[i].value, value))
-                {// Identical
-                    return i;
-                }
-
-                i = this.nodes[i].next;
+                i = node.next;
             }
         }
         else
         {
-            var hashCode = this.Comparer.GetHashCode(key);
-            var index = hashCode & this.hashMask;
-            var i = this.buckets[index];
-            while (i >= 0)
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                if (this.nodes[i].hashCode == hashCode &&
-                    this.Comparer.Equals(this.nodes[i].key, key) &&
-                    c.Equals(this.nodes[i].value, value))
-                {// Identical
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key))
+                {
                     return i;
                 }
 
-                i = this.nodes[i].next;
+                i = node.next;
             }
         }
 
@@ -987,428 +375,1247 @@ public class UnorderedMap<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDi
     }
 
     /// <summary>
-    /// Determines whether the collection contains a specific key and value.
+    /// Finds the first node with the specified key and value.
     /// </summary>
-    /// <param name="key">The key to search in a collection.</param>
-    /// <param name="value">The value to search in a collection.</param>
-    /// <returns>true if the key and value is found in the collection.</returns>
-    public bool Contains(TKey? key, TValue value) => this.FindNode(key, value) != -1;
-
-    /// <summary>
-    /// Enumerates <see cref="UnorderedMap{TKey, TValue}.Node"/> indexes with the specified key.
-    /// </summary>
-    /// <param name="key">The key to search in a collection.</param>
-    /// <returns>The node indexes with the specified key.</returns>
-    public IEnumerable<int> EnumerateNode(TKey? key)
+    /// <returns>The node index, or -1 if not found.</returns>
+    public int FindNode(TKey? key, TValue value)
     {
-        var i = this.FindFirstNode(key);
-        if (i < 0)
-        {// Not found
-            yield break;
-        }
+        var nodes = this.nodes;
+        var valueComparer = EqualityComparer<TValue>.Default;
 
-        if (key == null)
-        {// Null list
-            while (i >= 0)
-            {
-                yield return i;
-                i = this.nodes[i].next;
-            }
-        }
-        else
+        if (key is null)
         {
-            var hashCode = this.nodes[i].hashCode;
-            while (i >= 0)
+            var i = this.nullList;
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
-                {// Identical
-                    yield return i;
+                ref var node = ref nodes[i];
+
+                if (valueComparer.Equals(node.value, value))
+                {
+                    return i;
                 }
 
-                i = this.nodes[i].next;
+                i = node.next;
             }
-        }
-    }
 
-    /// <summary>
-    /// Enumerates <see cref="UnorderedMap{TKey, TValue}.Node"/> values with the specified key.
-    /// </summary>
-    /// <param name="key">The key to search in a collection.</param>
-    /// <returns>The node values with the specified key.</returns>
-    public IEnumerable<TValue> EnumerateValue(TKey? key)
-    {
-        var i = this.FindFirstNode(key);
-        if (i < 0)
-        {// Not found
-            yield break;
+            return -1;
         }
 
-        if (key == null)
-        {// Null list
-            while (i >= 0)
-            {
-                yield return this.nodes[i].value;
-                i = this.nodes[i].next;
-            }
-        }
-        else
+        var comparer = this.comparer;
+
+        if (comparer is null)
         {
-            var hashCode = this.nodes[i].hashCode;
-            while (i >= 0)
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key!))
-                {// Identical
-                    yield return this.nodes[i].value;
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key) &&
+                    valueComparer.Equals(node.value, value))
+                {
+                    return i;
                 }
 
-                i = this.nodes[i].next;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Adds an element to a collection. If the element is already in the map, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="key">The key of the element to add.</param>
-    /// <param name="value">The value of the element to add.</param>
-    /// <returns>NodeIndex: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded:true if the new key is inserted.</returns>
-    /// <remarks>To optimize Value creation, we considered using a Factory delegate but decided against it due to performance degradation.<br/>
-    /// Instead, consider searching with ContainsKey() or FindNode() first, and if the item does not exist, add the Value using Add().</remarks>
-    public (int NodeIndex, bool NewlyAdded) Add(TKey key, TValue value) => this.Probe(key, value);
-
-    /// <summary>
-    /// Updates the node's key with the specified key. Removes the node and inserts it in the correct position if necessary.
-    /// <br/>O(1) operation.
-    /// </summary>
-    /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to set the key.</param>
-    /// <param name="key">The key to set.</param>
-    /// <returns>true if the node is successfully updated.</returns>
-    public bool SetNodeKey(int nodeIndex, TKey? key)
-    {
-        if (key == null)
-        {
-            if (this.nodes[nodeIndex].key == null)
-            {// Identical
-                return false;
+                i = node.next;
             }
         }
         else
         {
-            if (this.Comparer.Equals(this.nodes[nodeIndex].key, key))
-            {// Identical
-                return false;
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key) &&
+                    valueComparer.Equals(node.value, value))
+                {
+                    return i;
+                }
+
+                i = node.next;
             }
         }
 
-        var value = this.nodes[nodeIndex].value;
-        this.RemoveNode(nodeIndex);
-        var result = this.Probe(key, value); // Reuse nodeIndex from this.freeList
-        return result.NewlyAdded;
+        return -1;
     }
 
     /// <summary>
-    /// Updates the node's value with the specified value.
-    /// <br/>O(1) operation.
+    /// Removes the first element with the specified key.
     /// </summary>
-    /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to set the value.</param>
-    /// <param name="value">The value to set.</param>
-    /// <returns>true if the node is successfully updated.</returns>
-    public bool SetNodeValue(int nodeIndex, TValue value)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(TKey? key)
     {
-        if (this.nodes[nodeIndex].IsInvalid())
+        var index = this.FindFirstNode(key);
+
+        if (index < 0)
         {
             return false;
         }
 
-        if (this.nodes[nodeIndex].key == null)
-        {// Null list
-            if (nodeIndex >= this.nodeCount)
-            {// check node index.
-                return false;
-            }
-        }
-
-        this.nodes[nodeIndex].value = value;
+        this.RemoveNode(index);
         return true;
     }
 
     /// <summary>
-    /// Removes a specified node from the collection.
-    /// <br/>O(1) operation.
+    /// Removes the first element with the specified key and value.
     /// </summary>
-    /// <param name="nodeIndex">The <see cref="UnorderedMap{TKey, TValue}.Node"/> to remove.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(TKey? key, TValue value)
+    {
+        var index = this.FindNode(key, value);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        this.RemoveNode(index);
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the specified node in O(1) time.
+    /// </summary>
     public void RemoveNode(int nodeIndex)
     {
-        if (this.nodes[nodeIndex].IsInvalid())
+        if ((uint)nodeIndex >= (uint)this.nodeCount)
         {
             return;
         }
 
-        var nodePrevious = this.nodes[nodeIndex].previous;
-        var nodeNext = this.nodes[nodeIndex].next;
-        if (this.nodes[nodeIndex].key == null)
-        {// Null list
-            if (nodeIndex >= this.nodeCount)
-            {// check node index.
-                return;
-            }
+        var nodes = this.nodes;
+        ref var node = ref nodes[nodeIndex];
 
-            if (nodePrevious == -1)
+        if (node.previous == Node.UnusedNode)
+        {
+            return;
+        }
+
+        var previous = node.previous;
+        var next = node.next;
+
+        if (node.key is null)
+        {
+            if (previous < 0)
             {
-                this.nullList = nodeNext;
+                this.nullList = next;
             }
             else
             {
-                this.nodes[nodePrevious].next = nodeNext;
-            }
-
-            if (nodeNext != -1)
-            {
-                this.nodes[nodeNext].previous = nodePrevious;
+                nodes[previous].next = next;
             }
         }
         else
         {
-            // node index <= this.nodeCount
-            var index = this.nodes[nodeIndex].hashCode & this.hashMask;
-            if (nodePrevious == -1)
+            var bucketIndex = node.hashCode & this.hashMask;
+
+            if (previous < 0)
             {
-                this.buckets[index] = nodeNext;
+                this.buckets[bucketIndex] = next;
             }
             else
             {
-                this.nodes[nodePrevious].next = nodeNext;
-            }
-
-            if (nodeNext != -1)
-            {
-                this.nodes[nodeNext].previous = nodePrevious;
+                nodes[previous].next = next;
             }
         }
 
-        this.nodes[nodeIndex].hashCode = 0;
-        this.nodes[nodeIndex].previous = Node.UnusedNode;
-        this.nodes[nodeIndex].next = this.freeList;
-        this.nodes[nodeIndex].key = default!;
-        this.nodes[nodeIndex].value = default!;
+        if (next >= 0)
+        {
+            nodes[next].previous = previous;
+        }
+
+        node.previous = Node.UnusedNode;
+        node.next = this.freeList;
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+        {
+            node.key = default!;
+        }
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+        {
+            node.value = default!;
+        }
+
         this.freeList = nodeIndex;
         this.freeCount++;
-
         this.version++;
     }
 
-    public void UnsafeChangeValue(int nodeIndex, TValue value)
+    /// <summary>
+    /// Updates the key of the specified node while preserving its node index.
+    /// </summary>
+    public bool SetNodeKey(int nodeIndex, TKey? key)
     {
-        if (this.nodes[nodeIndex].IsInvalid())
+        if ((uint)nodeIndex >= (uint)this.nodeCount)
+        {
+            return false;
+        }
+
+        var nodes = this.nodes;
+        ref var node = ref nodes[nodeIndex];
+
+        if (node.previous == Node.UnusedNode)
+        {
+            return false;
+        }
+
+        if (key is null)
+        {
+            if (node.key is null)
+            {
+                return false;
+            }
+        }
+        else if (node.key is not null &&
+                 this.KeysEqual(node.key, key))
+        {
+            return false;
+        }
+
+        if (!this.AllowDuplicate)
+        {
+            var existing = this.FindFirstNode(key);
+
+            if (existing >= 0 && existing != nodeIndex)
+            {
+                return false;
+            }
+        }
+
+        var previous = node.previous;
+        var next = node.next;
+
+        if (node.key is null)
+        {
+            if (previous < 0)
+            {
+                this.nullList = next;
+            }
+            else
+            {
+                nodes[previous].next = next;
+            }
+        }
+        else
+        {
+            var bucketIndex = node.hashCode & this.hashMask;
+
+            if (previous < 0)
+            {
+                this.buckets[bucketIndex] = next;
+            }
+            else
+            {
+                nodes[previous].next = next;
+            }
+        }
+
+        if (next >= 0)
+        {
+            nodes[next].previous = previous;
+        }
+
+        if (key is null)
+        {
+            node.hashCode = 0;
+            node.key = default!;
+            node.previous = -1;
+            node.next = this.nullList;
+
+            if (this.nullList >= 0)
+            {
+                nodes[this.nullList].previous = nodeIndex;
+            }
+
+            this.nullList = nodeIndex;
+        }
+        else
+        {
+            var hashCode = this.GetKeyHashCode(key);
+            var bucketIndex = hashCode & this.hashMask;
+            var head = this.buckets[bucketIndex];
+
+            node.hashCode = hashCode;
+            node.key = key;
+            node.previous = -1;
+            node.next = head;
+
+            if (head >= 0)
+            {
+                nodes[head].previous = nodeIndex;
+            }
+
+            this.buckets[bucketIndex] = nodeIndex;
+        }
+
+        this.version++;
+        return true;
+    }
+
+    /// <summary>
+    /// Updates the value of the specified node.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool SetNodeValue(int nodeIndex, TValue value)
+    {
+        if ((uint)nodeIndex >= (uint)this.nodeCount ||
+            this.nodes[nodeIndex].previous == Node.UnusedNode)
+        {
+            return false;
+        }
+
+        this.nodes[nodeIndex].value = value;
+        this.version++;
+        return true;
+    }
+
+    /// <summary>
+    /// Changes a node value without validation or version tracking.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void UnsafeChangeValue(int nodeIndex, TValue value)
+        => this.nodes[nodeIndex].value = value;
+
+    /// <summary>
+    /// Removes all elements from the map.
+    /// </summary>
+    public void Clear()
+    {
+        var count = this.nodeCount;
+
+        if (count == 0)
         {
             return;
         }
 
-        this.nodes[nodeIndex].value = value;
-    }
+        Array.Fill(this.buckets, -1);
 
-    protected (TKey? Key, int Count) TryGetMostDuplicateKeyInternal()
-    {
-        TKey? key = default;
-        int count = 0;
-
-        for (var index = 0; index <= this.hashMask; index++)
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<Node>())
         {
-            var currentIndex = this.buckets[index];
-            if (currentIndex >= 0)
-            {
-                var currentCount = 1;
-                var currentKey = this.nodes[currentIndex].key;
-                var hashCode = currentKey != null ? this.Comparer.GetHashCode(currentKey) : 0;
-
-                currentIndex = this.nodes[currentIndex].next;
-                while (currentIndex >= 0)
-                {
-                    if (this.nodes[currentIndex].hashCode == hashCode &&
-                        this.Comparer.Equals(this.nodes[currentIndex].key, currentKey))
-                    {// Identical
-                        currentCount++;
-                    }
-                    else
-                    {
-                        break;
-                    }
-
-                    currentIndex = this.nodes[currentIndex].next;
-                }
-
-                if (currentCount > count)
-                {
-                    count = currentCount;
-                    key = currentKey;
-                }
-            }
+            Array.Clear(this.nodes, 0, count);
         }
 
-        return (key, count);
+        this.nodeCount = 0;
+        this.freeList = -1;
+        this.freeCount = 0;
+        this.nullList = -1;
+        this.version++;
     }
 
     /// <summary>
-    /// Adds an element to the map. If the element is already in the map, this method returns the stored node without creating a new node.
-    /// <br/>O(1) operation.
+    /// Enumerates node indexes matching the specified key without allocation.
     /// </summary>
-    /// <param name="key">The element to add to the set.</param>
-    /// <returns>NodeIndex: the added <see cref="UnorderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the new key is inserted.</returns>
-    private (int NodeIndex, bool NewlyAdded) Probe(TKey? key, TValue value)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public NodeEnumerable EnumerateNode(TKey? key)
+        => new(this, key);
+
+    /// <summary>
+    /// Enumerates values matching the specified key without allocation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public MatchedValueEnumerable EnumerateValue(TKey? key)
+        => new(this, key);
+
+    #region Enumerator
+
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Enumerator GetEnumerator() => new(this);
+
+    IEnumerator<KeyValuePair<TKey, TValue>>
+        IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+        => new Enumerator(this);
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this);
+
+    /// <summary>
+    /// Enumerates key/value pairs without allocation when used directly.
+    /// </summary>
+    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
-        if (this.nodeCount == this.nodes.Length)
+        private readonly UnorderedMap<TKey, TValue> map;
+        private readonly Node[] nodes;
+        private readonly int version;
+        private readonly int count;
+        private int index;
+
+        internal Enumerator(UnorderedMap<TKey, TValue> map)
         {
-            this.Resize();
+            this.map = map;
+            this.nodes = map.nodes;
+            this.version = map.version;
+            this.count = map.nodeCount;
+            this.index = 0;
         }
 
-        int newIndex;
-        if (key == null)
-        {// Null key
-            if (this.AllowDuplicate == false && this.nullList != -1)
+        public readonly KeyValuePair<TKey, TValue> Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                ref var node = ref this.nodes[this.index - 1];
+                return new(node.key, node.value);
+            }
+        }
+
+        object IEnumerator.Current
+        {
+            get
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.index == 0 || this.index == this.count + 1)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.Current;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            var nodes = this.nodes;
+            var count = this.count;
+            var i = this.index;
+
+            while ((uint)i < (uint)count)
+            {
+                i++;
+
+                if (nodes[i - 1].previous != Node.UnusedNode)
+                {
+                    this.index = i;
+                    return true;
+                }
+            }
+
+            this.index = count + 1;
+            return false;
+        }
+
+        public void Dispose()
+        {
+        }
+
+        void IEnumerator.Reset()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            this.index = 0;
+        }
+    }
+
+    /// <summary>
+    /// Enumerates the keys in the map.
+    /// </summary>
+    public readonly struct KeyEnumerable : IEnumerable<TKey>
+    {
+        private readonly UnorderedMap<TKey, TValue> map;
+
+        internal KeyEnumerable(UnorderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator() => new(this.map);
+
+        IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TKey>
+        {
+            private readonly UnorderedMap<TKey, TValue> map;
+            private readonly Node[] nodes;
+            private readonly int version;
+            private readonly int count;
+            private int index;
+
+            internal Enumerator(UnorderedMap<TKey, TValue> map)
+            {
+                this.map = map;
+                this.nodes = map.nodes;
+                this.version = map.version;
+                this.count = map.nodeCount;
+                this.index = 0;
+            }
+
+            public readonly TKey Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.nodes[this.index - 1].key;
+            }
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.index == 0 || this.index == this.count + 1)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.Current;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var nodes = this.nodes;
+                var count = this.count;
+                var i = this.index;
+
+                while ((uint)i < (uint)count)
+                {
+                    i++;
+
+                    if (nodes[i - 1].previous != Node.UnusedNode)
+                    {
+                        this.index = i;
+                        return true;
+                    }
+                }
+
+                this.index = count + 1;
+                return false;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.index = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates the values in the map.
+    /// </summary>
+    public readonly struct ValueEnumerable : IEnumerable<TValue>
+    {
+        private readonly UnorderedMap<TKey, TValue> map;
+
+        internal ValueEnumerable(UnorderedMap<TKey, TValue> map)
+        {
+            this.map = map;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator() => new(this.map);
+
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TValue>
+        {
+            private readonly UnorderedMap<TKey, TValue> map;
+            private readonly Node[] nodes;
+            private readonly int version;
+            private readonly int count;
+            private int index;
+
+            internal Enumerator(UnorderedMap<TKey, TValue> map)
+            {
+                this.map = map;
+                this.nodes = map.nodes;
+                this.version = map.version;
+                this.count = map.nodeCount;
+                this.index = 0;
+            }
+
+            public readonly TValue Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.nodes[this.index - 1].value;
+            }
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.index == 0 || this.index == this.count + 1)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.Current;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var nodes = this.nodes;
+                var count = this.count;
+                var i = this.index;
+
+                while ((uint)i < (uint)count)
+                {
+                    i++;
+
+                    if (nodes[i - 1].previous != Node.UnusedNode)
+                    {
+                        this.index = i;
+                        return true;
+                    }
+                }
+
+                this.index = count + 1;
+                return false;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.index = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates node indexes matching a key.
+    /// </summary>
+    public readonly struct NodeEnumerable : IEnumerable<int>
+    {
+        private readonly UnorderedMap<TKey, TValue> map;
+        private readonly TKey? key;
+
+        internal NodeEnumerable(UnorderedMap<TKey, TValue> map, TKey? key)
+        {
+            this.map = map;
+            this.key = key;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator() => new(this.map, this.key);
+
+        IEnumerator<int> IEnumerable<int>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<int>
+        {
+            private readonly UnorderedMap<TKey, TValue> map;
+            private readonly Node[] nodes;
+            private readonly IEqualityComparer<TKey>? comparer;
+            private readonly TKey? key;
+            private readonly int version;
+            private readonly int hashCode;
+            private readonly int firstIndex;
+            private int nextIndex;
+            private int currentIndex;
+
+            internal Enumerator(UnorderedMap<TKey, TValue> map, TKey? key)
+            {
+                this.map = map;
+                this.nodes = map.nodes;
+                this.comparer = map.comparer;
+                this.key = key;
+                this.version = map.version;
+                this.currentIndex = -1;
+
+                if (key is null)
+                {
+                    this.hashCode = 0;
+                    this.firstIndex = map.nullList;
+                }
+                else
+                {
+                    var comparer = this.comparer;
+
+                    this.hashCode = comparer is null
+                        ? key.GetHashCode()
+                        : comparer.GetHashCode(key);
+
+                    this.firstIndex =
+                        map.buckets[this.hashCode & map.hashMask];
+                }
+
+                this.nextIndex = this.firstIndex;
+            }
+
+            public readonly int Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.currentIndex;
+            }
+
+            internal readonly TValue CurrentValue
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.nodes[this.currentIndex].value;
+            }
+
+            object IEnumerator.Current
+                => this.GetCurrentIndexChecked();
+
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var nodes = this.nodes;
+                var i = this.nextIndex;
+
+                if (this.key is null)
+                {
+                    if ((uint)i >= (uint)nodes.Length)
+                    {
+                        this.currentIndex = -1;
+                        return false;
+                    }
+
+                    this.currentIndex = i;
+                    this.nextIndex = nodes[i].next;
+                    return true;
+                }
+
+                var comparer = this.comparer;
+
+                if (comparer is null)
+                {
+                    while ((uint)i < (uint)nodes.Length)
+                    {
+                        ref var node = ref nodes[i];
+                        var next = node.next;
+
+                        if (node.hashCode == this.hashCode &&
+                            EqualityComparer<TKey>.Default.Equals(node.key, this.key))
+                        {
+                            this.currentIndex = i;
+                            this.nextIndex = next;
+                            return true;
+                        }
+
+                        i = next;
+                    }
+                }
+                else
+                {
+                    while ((uint)i < (uint)nodes.Length)
+                    {
+                        ref var node = ref nodes[i];
+                        var next = node.next;
+
+                        if (node.hashCode == this.hashCode &&
+                            comparer.Equals(node.key, this.key!))
+                        {
+                            this.currentIndex = i;
+                            this.nextIndex = next;
+                            return true;
+                        }
+
+                        i = next;
+                    }
+                }
+
+                this.nextIndex = -1;
+                this.currentIndex = -1;
+                return false;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+                => this.ResetCore();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal void ResetCore()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.nextIndex = this.firstIndex;
+                this.currentIndex = -1;
+            }
+
+            internal readonly TValue GetCurrentValueChecked()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.currentIndex < 0)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.nodes[this.currentIndex].value;
+            }
+
+            private readonly int GetCurrentIndexChecked()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.currentIndex < 0)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.currentIndex;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates values matching a key.
+    /// </summary>
+    public readonly struct MatchedValueEnumerable : IEnumerable<TValue>
+    {
+        private readonly UnorderedMap<TKey, TValue> map;
+        private readonly TKey? key;
+
+        internal MatchedValueEnumerable(UnorderedMap<TKey, TValue> map, TKey? key)
+        {
+            this.map = map;
+            this.key = key;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator() => new(this.map, this.key);
+
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<TValue>
+        {
+            private NodeEnumerable.Enumerator enumerator;
+
+            internal Enumerator(UnorderedMap<TKey, TValue> map, TKey? key)
+            {
+                this.enumerator = new NodeEnumerable.Enumerator(map, key);
+            }
+
+            public readonly TValue Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.enumerator.CurrentValue;
+            }
+
+            object? IEnumerator.Current
+                => this.enumerator.GetCurrentValueChecked();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+                => this.enumerator.MoveNext();
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+                => this.enumerator.ResetCore();
+        }
+    }
+
+    #endregion
+
+    private void Initialize(int capacity)
+    {
+        if (capacity < 0 || capacity > MaximumCapacity)
+        {
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+        }
+
+        var size = BitOperations.RoundUpToPowerOf2((uint)capacity);
+
+        if (size < MinimumCapacity)
+        {
+            size = MinimumCapacity;
+        }
+
+        var length = (int)size;
+
+        this.hashMask = length - 1;
+
+        this.buckets = new int[length];
+        Array.Fill(this.buckets, -1);
+
+        this.nodes = new Node[length];
+        this.freeList = -1;
+        this.nullList = -1;
+    }
+
+    private void SetValue(TKey? key, TValue value)
+    {
+        if (key is null)
+        {
+            var index = this.nullList;
+
+            if (index >= 0)
+            {
+                this.nodes[index].value = value;
+                this.version++;
+                return;
+            }
+
+            this.InsertNull(value);
+            return;
+        }
+
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
+        {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key))
+                {
+                    node.value = value;
+                    this.version++;
+                    return;
+                }
+
+                i = node.next;
+            }
+
+            this.InsertNew(key, value, hashCode);
+        }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key))
+                {
+                    node.value = value;
+                    this.version++;
+                    return;
+                }
+
+                i = node.next;
+            }
+
+            this.InsertNew(key, value, hashCode);
+        }
+    }
+
+    private (int NodeIndex, bool NewlyAdded) Probe(TKey? key, TValue value)
+    {
+        if (key is null)
+        {
+            if (!this.AllowDuplicate && this.nullList >= 0)
             {
                 return (this.nullList, false);
             }
 
-            newIndex = this.NewNode();
-            this.nodes[newIndex].hashCode = 0;
-            this.nodes[newIndex].key = key!;
-            this.nodes[newIndex].value = value;
-
-            if (this.nullList == -1)
-            {
-                this.nodes[newIndex].previous = -1;
-                this.nodes[newIndex].next = -1;
-                this.nullList = newIndex;
-            }
-            else
-            {
-                this.nodes[newIndex].previous = -1;
-                this.nodes[newIndex].next = this.nullList;
-                this.nodes[this.nullList].previous = newIndex;
-                this.nullList = newIndex;
-            }
-
-            this.version++;
-            return (newIndex, true);
+            return (this.InsertNull(value), true);
         }
-        else
+
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
         {
-            var hashCode = this.Comparer.GetHashCode(key);
-            var index = hashCode & this.hashMask;
+            var hashCode = key.GetHashCode();
+
             if (!this.AllowDuplicate)
             {
-                var i = this.buckets[index];
-                while (i >= 0)
+                var i = this.buckets[hashCode & this.hashMask];
+
+                while ((uint)i < (uint)nodes.Length)
                 {
-                    if (this.nodes[i].hashCode == hashCode && this.Comparer.Equals(this.nodes[i].key, key))
-                    {// Identical
+                    ref var node = ref nodes[i];
+
+                    if (node.hashCode == hashCode &&
+                        EqualityComparer<TKey>.Default.Equals(node.key, key))
+                    {
                         return (i, false);
                     }
 
-                    i = this.nodes[i].next;
+                    i = node.next;
                 }
             }
 
-            newIndex = this.NewNode();
-            this.nodes[newIndex].hashCode = hashCode;
-            this.nodes[newIndex].key = key;
-            this.nodes[newIndex].value = value;
-
-            if (this.buckets[index] == -1)
-            {
-                this.nodes[newIndex].previous = -1;
-                this.nodes[newIndex].next = -1;
-                this.buckets[index] = newIndex;
-            }
-            else
-            {
-                this.nodes[newIndex].previous = -1;
-                this.nodes[newIndex].next = this.buckets[index];
-                this.nodes[this.buckets[index]].previous = newIndex;
-                this.buckets[index] = newIndex;
-            }
-
-            this.version++;
-            return (newIndex, true);
+            return (this.InsertNew(key, value, hashCode), true);
         }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+
+            if (!this.AllowDuplicate)
+            {
+                var i = this.buckets[hashCode & this.hashMask];
+
+                while ((uint)i < (uint)nodes.Length)
+                {
+                    ref var node = ref nodes[i];
+
+                    if (node.hashCode == hashCode &&
+                        comparer.Equals(node.key, key))
+                    {
+                        return (i, false);
+                    }
+
+                    i = node.next;
+                }
+            }
+
+            return (this.InsertNew(key, value, hashCode), true);
+        }
+    }
+
+    private int InsertNull(TValue value)
+    {
+        if (this.nodeCount == this.nodes.Length &&
+            this.freeCount == 0)
+        {
+            this.Resize();
+        }
+
+        var nodes = this.nodes;
+        var index = this.NewNode();
+        ref var node = ref nodes[index];
+
+        node.hashCode = 0;
+        node.key = default!;
+        node.value = value;
+        node.previous = -1;
+        node.next = this.nullList;
+
+        if (this.nullList >= 0)
+        {
+            nodes[this.nullList].previous = index;
+        }
+
+        this.nullList = index;
+        this.version++;
+
+        return index;
+    }
+
+    private int InsertNew(TKey key, TValue value, int hashCode)
+    {
+        if (this.nodeCount == this.nodes.Length &&
+            this.freeCount == 0)
+        {
+            this.Resize();
+        }
+
+        var nodes = this.nodes;
+        var bucketIndex = hashCode & this.hashMask;
+        var head = this.buckets[bucketIndex];
+        var index = this.NewNode();
+
+        ref var node = ref nodes[index];
+
+        node.hashCode = hashCode;
+        node.key = key;
+        node.value = value;
+        node.previous = -1;
+        node.next = head;
+
+        if (head >= 0)
+        {
+            nodes[head].previous = index;
+        }
+
+        this.buckets[bucketIndex] = index;
+        this.version++;
+
+        return index;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int NewNode()
     {
-        int index;
         if (this.freeCount > 0)
-        {// Free list
-            index = this.freeList;
+        {
+            var index = this.freeList;
+
             this.freeList = this.nodes[index].next;
             this.freeCount--;
-        }
-        else
-        {
-            index = this.nodeCount;
-            this.nodeCount++;
+
+            return index;
         }
 
-        return index;
+        return this.nodeCount++;
     }
 
     private void Resize()
     {
-        const int minimumCapacity = 1 << MinLogCapacity;
-        var newSize = this.nodes.Length << 1;
-        if (newSize < minimumCapacity)
+        var oldSize = this.nodes.Length;
+
+        if (oldSize >= MaximumCapacity)
         {
-            newSize = minimumCapacity;
+            ThrowMaximumCapacity();
         }
 
+        // Resize is called only when no reusable nodes remain.
+        var newSize = oldSize << 1;
         var newMask = newSize - 1;
+
         var newBuckets = new int[newSize];
-        for (var i = 0; i < newBuckets.Length; i++)
-        {
-            newBuckets[i] = -1;
-        }
+        Array.Fill(newBuckets, -1);
 
+        var count = this.nodeCount;
         var newNodes = new Node[newSize];
-        Array.Copy(this.nodes, 0, newNodes, 0, this.nodeCount);
 
-        for (var i = 0; i < this.nodeCount; i++)
+        Array.Copy(this.nodes, newNodes, count);
+
+        for (var i = 0; i < count; i++)
         {
-            ref Node newNode = ref newNodes[i];
-            if (newNode.IsValid())
+            ref var node = ref newNodes[i];
+
+            // Null keys use the dedicated chain.
+            if (node.key is null)
             {
-                if (newNode.key == null)
-                {// Null list. No need to modify.
-                }
-                else
-                {
-                    var bucket = newNode.hashCode & newMask;
-                    if (newBuckets[bucket] == -1)
-                    {
-                        newNode.previous = -1;
-                        newNode.next = -1;
-                        newBuckets[bucket] = i;
-                    }
-                    else
-                    {
-                        var newBucket = newBuckets[bucket];
-                        newNode.previous = -1;
-                        newNode.next = newBucket;
-                        newBuckets[bucket] = i;
-                        newNodes[newBucket].previous = i;
-                    }
-                }
+                continue;
             }
+
+            var bucketIndex = node.hashCode & newMask;
+            var head = newBuckets[bucketIndex];
+
+            node.previous = -1;
+            node.next = head;
+
+            if (head >= 0)
+            {
+                newNodes[head].previous = i;
+            }
+
+            newBuckets[bucketIndex] = i;
         }
 
-        // Update
-        this.version++;
         this.hashMask = newMask;
         this.buckets = newBuckets;
         this.nodes = newNodes;
     }
 
-    #endregion
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int GetKeyHashCode(TKey key)
+    {
+        var comparer = this.comparer;
+
+        return comparer is null
+            ? key!.GetHashCode()
+            : comparer.GetHashCode(key!);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool KeysEqual(TKey x, TKey y)
+    {
+        var comparer = this.comparer;
+
+        return comparer is null
+            ? EqualityComparer<TKey>.Default.Equals(x, y)
+            : comparer.Equals(x, y);
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFound()
+        => throw new KeyNotFoundException();
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowVersionMismatch()
+        => throw new InvalidOperationException(
+            "Collection was modified after the enumerator was instantiated.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowInvalidEnumeratorState()
+        => throw new InvalidOperationException(
+            "Enumeration has either not started or has already finished.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowMaximumCapacity()
+        => throw new InvalidOperationException(
+            "The maximum capacity of the collection has been reached.");
 }

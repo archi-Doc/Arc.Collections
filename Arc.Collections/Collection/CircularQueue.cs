@@ -10,10 +10,10 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-///  A thread-safe bounded circular queue.<br/>
+///  A thread-safe bounded circular queue (Vyukov-style bounded MPMC queue).<br/>
 ///  While it can only perform simple <see cref="TryEnqueue(T)"/> and <see cref="TryDequeue(out T)"/> operations <br/>
 ///  and has restrictions such as the queue capacity being a power of 2, <br/>
-///  it processes slightly faster than <see cref="System.Collections.Concurrent.ConcurrentQueue{T}"/> with a bounded limit.<br/>
+///  it processes faster than <see cref="System.Collections.Concurrent.ConcurrentQueue{T}"/> with a bounded limit.<br/>
 ///  Use it for caching and similar purposes.
 /// </summary>
 /// <typeparam name="T">The type of elements in the queue.</typeparam>
@@ -42,12 +42,14 @@ public sealed class CircularQueue<T>
             capacity = 1 << (32 - BitOperations.LeadingZeroCount((uint)capacity - 1));
         }
 
-        this.slotArray = new Slot[capacity];
-        this.slotsMask = capacity - 1;
-        for (var i = 0; i < this.slotArray.Length; i++)
+        var array = new Slot[capacity];
+        for (var i = 0; i < array.Length; i++)
         {
-            this.slotArray[i].SequenceNumber = i;
+            array[i].SequenceNumber = i;
         }
+
+        this.slotArray = array;
+        this.slotsMask = capacity - 1;
     }
 
     /// <summary>Gets the number of elements this queue can store.</summary>
@@ -60,9 +62,9 @@ public sealed class CircularQueue<T>
     {
         get
         {
-            var tail = Volatile.Read(ref this.headAndTail.Tail);
             var head = Volatile.Read(ref this.headAndTail.Head);
-            var count = tail - head;
+            var tail = Volatile.Read(ref this.headAndTail.Tail);
+            var count = unchecked(tail - head);
 
             if ((uint)count > (uint)this.Capacity)
             {
@@ -81,35 +83,43 @@ public sealed class CircularQueue<T>
     public bool TryDequeue([MaybeNullWhen(false)] out T item)
     {
         var array = this.slotArray;
+        var currentHead = Volatile.Read(ref this.headAndTail.Head);
         while (true)
         {
-            var currentHead = Volatile.Read(ref this.headAndTail.Head);
             var slotsIndex = currentHead & this.slotsMask;
             var sequenceNumber = Volatile.Read(ref array[slotsIndex].SequenceNumber);
             var diff = unchecked(sequenceNumber - (currentHead + 1));
             if (diff == 0)
             {
-                if (Interlocked.CompareExchange(ref this.headAndTail.Head, currentHead + 1, currentHead) == currentHead)
-                {
+                var witnessed = Interlocked.CompareExchange(ref this.headAndTail.Head, unchecked(currentHead + 1), currentHead);
+                if (witnessed == currentHead)
+                {// The slot is now owned by this thread.
                     item = array[slotsIndex].Item!;
                     if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                     {
                         array[slotsIndex].Item = default;
                     }
 
+                    // Release the slot for the next enqueue lap.
                     Volatile.Write(ref array[slotsIndex].SequenceNumber, unchecked(currentHead + array.Length));
                     return true;
                 }
+
+                // CAS failed: its return value is the freshest head, so reuse it instead of re-reading.
+                currentHead = witnessed;
+                continue;
             }
             else if (diff < 0)
-            {
-                int currentTail = Volatile.Read(ref this.headAndTail.Tail);
+            {// The slot appears empty; confirm against the tail to distinguish "empty" from "an enqueuer is mid-publish".
+                var currentTail = Volatile.Read(ref this.headAndTail.Tail);
                 if (unchecked(currentTail - currentHead) <= 0)
                 {
                     item = default;
                     return false;
                 }
             }
+
+            currentHead = Volatile.Read(ref this.headAndTail.Head);
         }
     }
 
@@ -118,30 +128,40 @@ public sealed class CircularQueue<T>
     /// </summary>
     /// <param name="item">The item to enqueue.</param>
     /// <returns>
-    /// <see langword="true"/> if the item was successfully enqueued; otherwise, <see langword="false"/>.
+    /// <see langword="true"/> if the item was successfully enqueued; otherwise, <see langword="false"/> (the queue is full,
+    /// or a concurrent dequeue of the target slot is still in flight).
     /// </returns>
     public bool TryEnqueue(T item)
     {
         var array = this.slotArray;
+        var currentTail = Volatile.Read(ref this.headAndTail.Tail);
         while (true)
         {
-            var currentTail = Volatile.Read(ref this.headAndTail.Tail);
             var slotsIndex = currentTail & this.slotsMask;
             var sequenceNumber = Volatile.Read(ref array[slotsIndex].SequenceNumber);
             var diff = unchecked(sequenceNumber - currentTail);
             if (diff == 0)
             {
-                if (Interlocked.CompareExchange(ref this.headAndTail.Tail, unchecked(currentTail + 1), currentTail) == currentTail)
-                {
+                var witnessed = Interlocked.CompareExchange(ref this.headAndTail.Tail, unchecked(currentTail + 1), currentTail);
+                if (witnessed == currentTail)
+                {// The slot is now owned by this thread.
                     array[slotsIndex].Item = item;
+
+                    // Publish the item (release) so that dequeuers observe a fully written Item.
                     Volatile.Write(ref array[slotsIndex].SequenceNumber, unchecked(currentTail + 1));
                     return true;
                 }
+
+                // CAS failed: its return value is the freshest tail, so reuse it instead of re-reading.
+                currentTail = witnessed;
+                continue;
             }
             else if (diff < 0)
-            {
+            {// The slot is still occupied by a previous lap: the queue is full.
                 return false;
             }
+
+            currentTail = Volatile.Read(ref this.headAndTail.Tail);
         }
     }
 
@@ -157,11 +177,11 @@ public sealed class CircularQueue<T>
 [StructLayout(LayoutKind.Explicit, Size = 3 * CacheLineSize)] // padding before/between/after fields
 internal struct PaddedHeadAndTail
 {
-#if TARGET_ARM64
+    // 128 unconditionally: ARM64 (e.g. Apple Silicon) uses 128-byte cache lines, and modern x64 CPUs
+    // prefetch cache lines in 128-byte pairs (adjacent-line prefetcher), so 64 bytes is not enough
+    // to prevent false sharing there either. TARGET_ARM64 is a runtime-repo define and is never set
+    // in ordinary projects, so a #if on it silently picks the wrong value on ARM64.
     public const int CacheLineSize = 128;
-#else
-    public const int CacheLineSize = 64;
-#endif
 
     [FieldOffset(1 * CacheLineSize)]
     public int Head;

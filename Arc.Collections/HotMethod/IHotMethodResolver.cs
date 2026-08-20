@@ -68,11 +68,3 @@ public static class HotMethodResolver
         return method;
     }
 }
-
-public class FormatterNotRegisteredException : Exception
-{
-    public FormatterNotRegisteredException(string message)
-        : base(message)
-    {
-    }
-}
