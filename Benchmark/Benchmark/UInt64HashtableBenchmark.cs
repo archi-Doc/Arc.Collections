@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Arc.Collections;
 using Benchmark;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 
 [Config(typeof(BenchmarkConfig))]
 public class UInt64HashtableBenchmark
@@ -44,7 +43,7 @@ public class UInt64HashtableBenchmark
         return table;
     }
 
-    //[Benchmark]
+    [Benchmark]
     public Dictionary<ulong, int> Dictionary_Add()
     {
         var table = new Dictionary<ulong, int>(Count);
@@ -57,7 +56,7 @@ public class UInt64HashtableBenchmark
         return table;
     }
 
-    //[Benchmark]
+    [Benchmark]
     public ConcurrentDictionary<ulong, int> ConcurrentDictionary_Add()
     {
         var table = new ConcurrentDictionary<ulong, int>();
@@ -85,7 +84,7 @@ public class UInt64HashtableBenchmark
         return sum;
     }
 
-    //[Benchmark]
+    [Benchmark]
     public int Dictionary_Get()
     {
         var sum = 0;
@@ -100,7 +99,7 @@ public class UInt64HashtableBenchmark
         return sum;
     }
 
-    //[Benchmark]
+    [Benchmark]
     public int ConcurrentDictionary_Get()
     {
         var sum = 0;
@@ -115,7 +114,7 @@ public class UInt64HashtableBenchmark
         return sum;
     }
 
-    /*[Benchmark]
+    [Benchmark]
     public bool UInt64Hashtable_GetLast()
         => this.hashtable.TryGetValue(Count - 1, out _);
 
@@ -133,7 +132,7 @@ public class UInt64HashtableBenchmark
 
     [Benchmark]
     public int ConcurrentDictionary_GetOrAddExisting()
-        => this.concurrentDictionary.GetOrAdd(Count / 2, static key => (int)key);*/
+        => this.concurrentDictionary.GetOrAdd(Count / 2, static key => (int)key);
 
     [Benchmark]
     public int UInt64Hashtable_ToArray()
