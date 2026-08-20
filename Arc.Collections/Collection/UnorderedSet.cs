@@ -14,9 +14,9 @@ namespace Arc.Collections;
 /// Represents an unordered collection of unique elements backed by a hash table.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
-public sealed class UnorderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+public sealed class UnorderedSet<T>
 {
-    private readonly UnorderedMap<T, int> map;
+    private readonly UnorderedMap<T, nint> map;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
@@ -59,8 +59,6 @@ public sealed class UnorderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             this.map.Add(item, 0);
         }
     }
-
-    #region Main
 
     /// <summary>
     /// Gets the number of elements contained in the set.
@@ -114,34 +112,4 @@ public sealed class UnorderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// </summary>
     public void Clear()
         => this.map.Clear();
-
-    #endregion
-
-    #region Interface
-
-    bool ICollection<T>.IsReadOnly => false;
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection<T>.Add(T item)
-        => this.map.Add(item, 0);
-
-    void ICollection<T>.CopyTo(T[] array, int arrayIndex)
-        => this.map.Keys.CopyTo(array, arrayIndex);
-
-    void ICollection.CopyTo(Array array, int index)
-        => ((ICollection)this.map.Keys).CopyTo(array, index);
-
-    public UnorderedMap<T, int>.KeyCollection.Enumerator GetEnumerator()
-        => this.map.Keys.GetEnumerator();
-
-    IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        => this.map.Keys.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => this.map.Keys.GetEnumerator();
-
-    #endregion
 }
