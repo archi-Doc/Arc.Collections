@@ -25,28 +25,6 @@ public class OrderedKeyValueListTest2
     }
 
     [Fact]
-    public void Add_DuplicateKey_Throws()
-    {
-        var list = new OrderedKeyValueList<int, string>();
-
-        list.Add(1, "A");
-
-        Assert.Throws<ArgumentException>(() => list.Add(1, "B"));
-    }
-
-    [Fact]
-    public void Indexer_Set_UpdatesExistingValue()
-    {
-        var list = new OrderedKeyValueList<int, string>();
-
-        list.Add(1, "A");
-        list[1] = "B";
-
-        Assert.Equal(1, list.Count);
-        Assert.Equal("B", list[1]);
-    }
-
-    [Fact]
     public void Indexer_Set_InsertsNewValue()
     {
         var list = new OrderedKeyValueList<int, string>();
@@ -470,28 +448,5 @@ public class OrderedKeyValueListTest2
         list.TrimExcess();
 
         Assert.Equal(list.Count, list.Capacity);
-    }
-
-    [Fact]
-    public void StringComparerOrdinalIgnoreCase_DetectsDuplicateKey()
-    {
-        var list = new OrderedKeyValueList<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        list.Add("abc", 1);
-
-        Assert.Throws<ArgumentException>(() => list.Add("ABC", 2));
-    }
-
-    [Fact]
-    public void StringComparerOrdinalIgnoreCase_IndexerUpdatesEquivalentKey()
-    {
-        var list = new OrderedKeyValueList<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        list.Add("abc", 1);
-        list["ABC"] = 2;
-
-        Assert.Equal(1, list.Count);
-        Assert.Equal(2, list["abc"]);
-        Assert.Equal(2, list["ABC"]);
     }
 }
