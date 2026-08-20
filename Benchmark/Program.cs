@@ -22,6 +22,8 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(OrderedPublicTest),
+            typeof(OrderedMultiMapTest),
             typeof(UtfHashtableBenchmark),
             typeof(UnorderedMapSlimTest),
             typeof(Utf16UnorderedMapBenchmark),
@@ -53,14 +55,12 @@ public class Program
             typeof(ObjectPoolBenchmark),
             typeof(ObjectPoolBenchmark2),
             typeof(ReverseOrderTest),
-            typeof(OrderedPublicTest),
             typeof(OrderedListTest2),
             typeof(OrderedListTest),
             typeof(IComparerTest),
             typeof(BinarySearchTest),
             typeof(BinarySearchStringTest),
             typeof(OrderedSetTest),
-            typeof(OrderedMultiMapTest),
         });
 
         switcher.Run(args);
