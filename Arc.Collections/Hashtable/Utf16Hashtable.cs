@@ -143,6 +143,8 @@ public class Utf16Hashtable<TValue>
     /// <summary>
     /// Gets the existing value or adds a newly created value.
     /// </summary>
+    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
+    /// it must not call back into this hashtable.</remarks>
     public TValue GetOrAdd(string key, Func<string, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -159,6 +161,8 @@ public class Utf16Hashtable<TValue>
     /// <summary>
     /// Gets the existing value or adds a newly created value.
     /// </summary>
+    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
+    /// it must not call back into this hashtable.</remarks>
     public TValue GetOrAdd(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -178,7 +182,27 @@ public class Utf16Hashtable<TValue>
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
-        return this.TryGetValue(key.AsSpan(), out value);
+
+        var table = Volatile.Read(ref this.table);
+        var hash = GetHashCode(key.AsSpan());
+        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
+
+        while (item is not null)
+        {
+            // string.Equals short-circuits on reference equality, which the span-based
+            // comparison cannot do; callers that hold the stored string instance
+            // (or interned literals) skip the character comparison entirely.
+            if (item.Hash == hash && string.Equals(key, item.Key))
+            {
+                value = item.Value;
+                return true;
+            }
+
+            item = item.Next;
+        }
+
+        value = default;
+        return false;
     }
 
     /// <summary>
@@ -207,12 +231,98 @@ public class Utf16Hashtable<TValue>
     }
 
     /// <summary>
+    /// Determines whether the hashtable contains the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsKey(string key)
+        => this.TryGetValue(key, out _);
+
+    /// <summary>
+    /// Determines whether the hashtable contains the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsKey(ReadOnlySpan<char> key)
+        => this.TryGetValue(key, out _);
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return this.TryRemove(key.AsSpan(), out _);
+    }
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(string key, [MaybeNullWhen(false)] out TValue value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return this.TryRemove(key.AsSpan(), out value);
+    }
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(ReadOnlySpan<char> key)
+        => this.TryRemove(key, out _);
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out TValue value)
+    {
+        var hash = GetHashCode(key);
+        using (this.lockObject.EnterScope())
+        {
+            var table = this.table;
+            var bucketIndex = hash & (table.Length - 1);
+            var head = table[bucketIndex];
+
+            for (var item = head; item is not null; item = item.Next)
+            {
+                if (item.Hash != hash || !key.SequenceEqual(item.Key))
+                {
+                    continue;
+                }
+
+                value = item.Value;
+
+                // Rebuild the chain without the target, cloning only the prefix,
+                // so that nodes visible to lock-free readers are never mutated.
+                var newHead = item.Next;
+                for (var p = head; !ReferenceEquals(p, item); p = p.Next!)
+                {
+                    newHead = new Item(p!.Key, p.Value, p.Hash, newHead);
+                }
+
+                Volatile.Write(ref table[bucketIndex], newHead);
+                Volatile.Write(ref this.count, this.count - 1);
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Removes all key-value pairs.
     /// </summary>
     public void Clear()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return;
+            }
+
             var table = new Item?[this.table.Length];
 
             Volatile.Write(ref this.table, table);
@@ -223,7 +333,6 @@ public class Utf16Hashtable<TValue>
     private bool AddInternal(string key, TValue value, bool updateValue, out TValue resultingValue)
     {
         var hash = GetHashCode(key.AsSpan());
-
         using (this.lockObject.EnterScope())
         {
             var table = this.table;
@@ -244,6 +353,7 @@ public class Utf16Hashtable<TValue>
                 }
 
                 var newHead = ReplaceValue(head!, item, value);
+
                 Volatile.Write(ref table[bucketIndex], newHead);
 
                 resultingValue = value;
@@ -272,7 +382,6 @@ public class Utf16Hashtable<TValue>
     private bool AddInternal(ReadOnlySpan<char> key, TValue value, bool updateValue, out TValue resultingValue)
     {
         var hash = GetHashCode(key);
-
         using (this.lockObject.EnterScope())
         {
             var table = this.table;
@@ -293,6 +402,7 @@ public class Utf16Hashtable<TValue>
                 }
 
                 var newHead = ReplaceValue(head!, item, value);
+
                 Volatile.Write(ref table[bucketIndex], newHead);
 
                 resultingValue = value;
@@ -308,6 +418,7 @@ public class Utf16Hashtable<TValue>
                 head = table[bucketIndex];
             }
 
+            // Materialize the string only when actually inserting.
             var stringKey = key.ToString();
             var newItem = new Item(stringKey, value, hash, head);
 
@@ -323,7 +434,6 @@ public class Utf16Hashtable<TValue>
     private TValue GetOrAddSlow(string key, Func<string, TValue> valueFactory)
     {
         var hash = GetHashCode(key.AsSpan());
-
         using (this.lockObject.EnterScope())
         {
             var table = this.table;
@@ -360,7 +470,6 @@ public class Utf16Hashtable<TValue>
     private TValue GetOrAddSlow(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
     {
         var hash = GetHashCode(key);
-
         using (this.lockObject.EnterScope())
         {
             var table = this.table;
@@ -430,16 +539,18 @@ public class Utf16Hashtable<TValue>
     /// </summary>
     private static Item ReplaceValue(Item head, Item target, TValue value)
     {
-        Item? newHead = null;
+        // Clone only the prefix that points to the replaced node and reuse the
+        // immutable suffix, instead of cloning the entire chain.
+        var newHead = new Item(target.Key, value, target.Hash, target.Next);
+        var item = head;
 
-        // Reversing the collision chain does not affect lookup semantics.
-        for (var item = head; item is not null; item = item.Next)
+        while (!ReferenceEquals(item, target))
         {
-            var newValue = ReferenceEquals(item, target) ? value : item.Value;
-            newHead = new Item(item.Key, newValue, item.Hash, newHead);
+            newHead = new Item(item.Key, item.Value, item.Hash, newHead);
+            item = item.Next!;
         }
 
-        return newHead!;
+        return newHead;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
