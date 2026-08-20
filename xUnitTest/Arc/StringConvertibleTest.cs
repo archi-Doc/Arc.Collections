@@ -8,7 +8,7 @@ using Xunit;
 #pragma warning disable SA1201
 #pragma warning disable SA1649 // File name should match first type name
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class StringConvertibleClass : IStringConvertible<StringConvertibleClass>
 {// 'a'

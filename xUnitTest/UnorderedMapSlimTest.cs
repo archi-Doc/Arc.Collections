@@ -4,7 +4,7 @@ using Arc.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class UnorderedMapSlimTest
 {

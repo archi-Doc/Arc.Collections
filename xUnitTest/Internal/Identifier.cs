@@ -2,7 +2,7 @@
 
 using System;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public readonly struct Identifier : IEquatable<Identifier>, IComparable<Identifier>
 {

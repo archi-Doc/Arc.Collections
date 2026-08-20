@@ -4,7 +4,7 @@ using System;
 using Arc;
 using Xunit;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class BaseHelperTest
 {

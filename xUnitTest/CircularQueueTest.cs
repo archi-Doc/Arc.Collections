@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Arc.Collections;
 using Xunit;
 
-namespace xUnitTest;
+namespace XunitTest;
 
 public class CircularQueueTest
 {
