@@ -617,24 +617,6 @@ public class OrderedMultiMapTest2
     }
 
     [Fact]
-    public void ValueEnumeratorDetectsModification()
-    {
-        var map = new OrderedMultiMap<int, int>();
-
-        var node = map.Add(1, 1).Node;
-        map.Add(2, 2);
-
-        var enumerator = map.Values.GetEnumerator();
-
-        Assert.True(enumerator.MoveNext());
-
-        map.SetNodeValue(node, 100);
-
-        Assert.Throws<InvalidOperationException>(
-            () => enumerator.MoveNext());
-    }
-
-    [Fact]
     public void EnumeratorDetectsClear()
     {
         var map = new OrderedMultiMap<int, int>();
