@@ -20,7 +20,8 @@ namespace Arc.Collections;
 /// Keys must be non-null.<br/>
 /// <br/>NOT thread-safe:<br/>
 /// Multiple readers are allowed only while the map is immutable.<br/>
-/// If any writer exists, all access must be protected by mutual exclusion.
+/// If any writer exists, all access must be protected by mutual exclusion.<br/>
+/// Modifying the map while enumerating it is undefined behavior (no version check is performed).
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
@@ -42,7 +43,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         // -2: end of free list
         // <= -3: encoded free-list index
         internal int next;
-
         internal TKey key;
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
@@ -56,6 +56,12 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
     private int[] _buckets;
     private Node[] _nodes;
+
+    // _buckets.Length - 1. Kept as a field so the mask loads in parallel with the
+    // buckets pointer instead of as a dependent load through it (the array length
+    // lives inside the array object); this shortens the critical path of every
+    // bucket index computation.
+    private int _hashMask;
     private int _count;
     private int _freeList;
     private int _freeCount;
@@ -71,9 +77,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
 
         var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
-
         this._buckets = new int[capacity];
         this._nodes = new Node[capacity];
+        this._hashMask = (int)capacity - 1;
         this._freeList = -1;
     }
 
@@ -95,7 +101,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         get
         {
             var index = this.FindIndex(key);
-
             if (index >= 0)
             {
                 return this._nodes[index].value;
@@ -107,6 +112,14 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
         set => this.TryInsert(key, value, true);
     }
+
+    /// <summary>
+    /// Gets direct access to the internal node array.<br/>
+    /// Only nodes with <see cref="Node.IsValid"/> are active; the array may be replaced
+    /// when the map is resized.
+    /// </summary>
+    public (Node[] Nodes, int Max) UnsafeGetNodes()
+        => (this._nodes, this._count);
 
     /// <summary>
     /// Adds or updates an element with the specified key.
@@ -152,7 +165,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
 
         var comparer = EqualityComparer<TValue>.Default;
-
         for (var i = 0; i < count; i++)
         {
             if (nodes[i].next >= -1 &&
@@ -172,7 +184,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         var index = this.FindIndex(key);
-
         if (index >= 0)
         {
             value = this._nodes[index].value;
@@ -184,9 +195,86 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     }
 
     /// <summary>
+    /// Gets a reference to the value associated with the specified key, adding a new entry
+    /// with a default value when the key does not exist.<br/>
+    /// This performs the hash computation and chain walk only once, which makes
+    /// read-modify-write patterns (counters, accumulators) roughly twice as fast as
+    /// a TryGetValue/Add pair.
+    /// </summary>
+    /// <param name="key">The key to look up or add.</param>
+    /// <param name="exists"><see langword="true"/> if the key already existed.</param>
+    /// <returns>
+    /// A reference to the value slot. The reference is invalidated by any subsequent
+    /// addition to or removal from the map; do not hold it across mutations.
+    /// </returns>
+    public ref TValue GetValueRefOrAddDefault(TKey key, out bool exists)
+    {
+        if (key is null)
+        {
+            ThrowKeyNull();
+        }
+
+        var nodes = this._nodes;
+        var comparer = EqualityComparer<TKey>.Default;
+        var hashCode = GetHashCode(key);
+        ref var bucket = ref this.GetBucket(hashCode);
+        var index = bucket - 1;
+        while ((uint)index < (uint)nodes.Length)
+        {
+            ref var existing = ref nodes[index];
+            if (existing.hashCode == hashCode &&
+                comparer.Equals(existing.key, key))
+            {
+                exists = true;
+                return ref existing.value;
+            }
+
+            index = existing.next;
+        }
+
+        int newIndex;
+        if (this._freeCount > 0)
+        {
+            newIndex = this._freeList;
+            this._freeList =
+                StartOfFreeList - nodes[newIndex].next;
+            this._freeCount--;
+        }
+        else
+        {
+            var count = this._count;
+            if (count == nodes.Length)
+            {
+                this.Resize();
+                nodes = this._nodes;
+                bucket = ref this.GetBucket(hashCode);
+            }
+
+            newIndex = count;
+            this._count = count + 1;
+        }
+
+        ref var node = ref nodes[newIndex];
+        node.hashCode = hashCode;
+        node.next = bucket - 1;
+        node.key = key;
+        node.value = default!;
+        bucket = newIndex + 1;
+        exists = false;
+        return ref node.value;
+    }
+
+    /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key)
+        => this.Remove(key, out _);
+
+    /// <summary>
+    /// Removes the element with the specified key and returns its value.
+    /// </summary>
+    public bool Remove(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         if (key is null)
         {
@@ -199,11 +287,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var nodes = this._nodes;
         var previous = -1;
         var index = bucket - 1;
-
         while ((uint)index < (uint)nodes.Length)
         {
             ref var node = ref nodes[index];
-
             if (node.hashCode == hashCode &&
                 comparer.Equals(node.key, key))
             {
@@ -216,8 +302,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
                     nodes[previous].next = node.next;
                 }
 
+                value = node.value;
                 node.next = StartOfFreeList - this._freeList;
-
                 if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
                 {
                     node.key = default!;
@@ -230,7 +316,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
                 this._freeList = index;
                 this._freeCount++;
-
                 return true;
             }
 
@@ -238,6 +323,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             index = node.next;
         }
 
+        value = default;
         return false;
     }
 
@@ -247,14 +333,12 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     public void Clear()
     {
         var count = this._count;
-
         if (count == 0)
         {
             return;
         }
 
         Array.Clear(this._buckets);
-
         if (RuntimeHelpers.IsReferenceOrContainsReferences<Node>())
         {
             Array.Clear(this._nodes, 0, count);
@@ -283,12 +367,17 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
-        private readonly UnorderedMapSlim<TKey, TValue> map;
+        // The node array and count are snapshotted; the map performs no version checks,
+        // and mutating it during enumeration is undefined anyway, so this only removes
+        // two dependent field loads per MoveNext.
+        private readonly Node[] nodes;
+        private readonly int count;
         private int index;
 
         internal Enumerator(UnorderedMapSlim<TKey, TValue> map)
         {
-            this.map = map;
+            this.nodes = map._nodes;
+            this.count = map._count;
             this.index = 0;
         }
 
@@ -297,7 +386,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                ref var node = ref this.map._nodes[this.index - 1];
+                ref var node = ref this.nodes[this.index - 1];
                 return new(node.key, node.value);
             }
         }
@@ -307,7 +396,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             get
             {
                 if (this.index == 0 ||
-                    this.index == this.map._count + 1)
+                    this.index == this.count + 1)
                 {
                     ThrowInvalidEnumeratorState();
                 }
@@ -319,14 +408,12 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            var nodes = this.map._nodes;
-            var count = this.map._count;
+            var nodes = this.nodes;
+            var count = this.count;
             var i = this.index;
-
             while ((uint)i < (uint)count)
             {
                 i++;
-
                 if (nodes[i - 1].next >= -1)
                 {
                     this.index = i;
@@ -360,11 +447,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var nodes = this._nodes;
         var comparer = EqualityComparer<TKey>.Default;
         var index = this.GetBucket(hashCode) - 1;
-
         while ((uint)index < (uint)nodes.Length)
         {
             ref var node = ref nodes[index];
-
             if (node.hashCode == hashCode &&
                 comparer.Equals(node.key, key))
             {
@@ -389,11 +474,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var hashCode = GetHashCode(key);
         ref var bucket = ref this.GetBucket(hashCode);
         var index = bucket - 1;
-
         while ((uint)index < (uint)nodes.Length)
         {
             ref var existing = ref nodes[index];
-
             if (existing.hashCode == hashCode &&
                 comparer.Equals(existing.key, key))
             {
@@ -410,7 +493,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
 
         int newIndex;
-
         if (this._freeCount > 0)
         {
             newIndex = this._freeList;
@@ -421,11 +503,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         else
         {
             var count = this._count;
-
             if (count == nodes.Length)
             {
                 this.Resize();
-
                 nodes = this._nodes;
                 bucket = ref this.GetBucket(hashCode);
             }
@@ -435,21 +515,17 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
 
         ref var node = ref nodes[newIndex];
-
         node.hashCode = hashCode;
         node.next = bucket - 1;
         node.key = key;
         node.value = value;
-
         bucket = newIndex + 1;
-
         return true;
     }
 
     private void Resize()
     {
         var oldSize = this._nodes.Length;
-
         if (oldSize >= MaximumCapacity)
         {
             ThrowMaximumCapacity();
@@ -458,7 +534,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         var newSize = oldSize << 1;
         var newMask = newSize - 1;
         var count = this._count;
-
         var newNodes = new Node[newSize];
         Array.Copy(this._nodes, newNodes, count);
 
@@ -469,7 +544,6 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         {
             ref var node = ref newNodes[i];
             var bucketIndex = (int)(node.hashCode & (uint)newMask);
-
             node.next = newBuckets[bucketIndex] - 1;
             newBuckets[bucketIndex] = i + 1;
         }
@@ -477,15 +551,13 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         // Publish only after the new table is completely built.
         this._nodes = newNodes;
         this._buckets = newBuckets;
+        this._hashMask = newMask;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref int GetBucket(uint hashCode)
     {
-        var buckets = this._buckets;
-        var index = (int)(hashCode & (uint)(buckets.Length - 1));
-
-        return ref buckets[index];
+        return ref this._buckets[hashCode & (uint)this._hashMask];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
