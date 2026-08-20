@@ -73,6 +73,8 @@ public class OrderedSet<T> : IEnumerable<T>
     /// </summary>
     public IComparer<T> Comparer => this.map.Comparer;
 
+    public bool Reverse => this.map.Reverse;
+
     /// <summary>
     /// Gets the first node in sort order.
     /// </summary>

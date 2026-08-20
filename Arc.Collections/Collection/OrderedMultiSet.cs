@@ -74,10 +74,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// </summary>
     public IComparer<T> Comparer => this.map.Comparer;
 
-    /// <summary>
-    /// Gets the comparison direction.
-    /// </summary>
-    public int CompareFactor => this.map.CompareFactor;
+    public bool Reverse => this.map.Reverse;
 
     /// <summary>
     /// Gets the first node in sort order.

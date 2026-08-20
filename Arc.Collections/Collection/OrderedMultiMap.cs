@@ -211,7 +211,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     public int Count => this.count;
 
-    public int CompareFactor { get; }
+    public bool Reverse { get; }
 
     public IComparer<TKey> Comparer => this.comparer;
 
@@ -242,7 +242,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     public OrderedMultiMap(IComparer<TKey>? comparer, bool reverse = false)
     {
-        this.CompareFactor = reverse ? -1 : 1;
+        this.Reverse = reverse;
         this.comparer = comparer ?? Comparer<TKey>.Default;
         this.hotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.comparer);
     }
@@ -737,7 +737,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         var comparer = this.comparer;
         var hotMethod = this.hotMethod2;
 
-        if (this.CompareFactor > 0)
+        if (!this.Reverse)
         {
             // Handle null before HotMethod because HotMethod is intended for non-null value keys.
             if (key is null)
@@ -1870,7 +1870,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             cmp = this.comparer.Compare(x, y);
         }
 
-        if (this.CompareFactor > 0)
+        if (!this.Reverse)
         {
             return cmp;
         }
