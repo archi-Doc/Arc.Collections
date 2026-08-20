@@ -44,32 +44,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(<#= t.Simple #>[] array, int index, int length, <#= t.Simple #> value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
         {
             ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);

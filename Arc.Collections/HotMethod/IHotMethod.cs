@@ -19,16 +19,6 @@ public interface IHotMethod
 public interface IHotMethod<T> : IHotMethod
 {
     /// <summary>
-    /// Searches a list for the specific value.
-    /// </summary>
-    /// <param name="array">The sorted one-dimensional, zero-based Array to search.</param>
-    /// <param name="index">The starting index of the range to search.</param>
-    /// <param name="length">The length of the range to search.</param>
-    /// <param name="value">The value to search for.</param>
-    /// <returns>The index of the specified value in list. If the value is not found, the negative number returned is the bitwise complement of the index of the first element that is larger than value.</returns>
-    int BinarySearch(T[] array, int index, int length, T value);
-
-    /// <summary>
     /// Returns the index of the first element that is greater than or equal to the specified value.
     /// </summary>
     /// <param name="span">The sorted span to search.</param>

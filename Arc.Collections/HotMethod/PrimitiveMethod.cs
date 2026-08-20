@@ -19,32 +19,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(byte[] array, int index, int length, byte value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<byte> span, byte value)
         {
             ref byte r = ref MemoryMarshal.GetReference(span);
@@ -213,32 +187,6 @@ namespace Arc.Collections.HotMethod
 
         private Int8Method()
         {
-        }
-
-        public int BinarySearch(sbyte[] array, int index, int length, sbyte value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<sbyte> span, sbyte value)
@@ -411,32 +359,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(ushort[] array, int index, int length, ushort value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<ushort> span, ushort value)
         {
             ref ushort r = ref MemoryMarshal.GetReference(span);
@@ -605,32 +527,6 @@ namespace Arc.Collections.HotMethod
 
         private Int16Method()
         {
-        }
-
-        public int BinarySearch(short[] array, int index, int length, short value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<short> span, short value)
@@ -803,32 +699,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(uint[] array, int index, int length, uint value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<uint> span, uint value)
         {
             ref uint r = ref MemoryMarshal.GetReference(span);
@@ -997,32 +867,6 @@ namespace Arc.Collections.HotMethod
 
         private Int32Method()
         {
-        }
-
-        public int BinarySearch(int[] array, int index, int length, int value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<int> span, int value)
@@ -1195,32 +1039,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(ulong[] array, int index, int length, ulong value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<ulong> span, ulong value)
         {
             ref ulong r = ref MemoryMarshal.GetReference(span);
@@ -1389,32 +1207,6 @@ namespace Arc.Collections.HotMethod
 
         private Int64Method()
         {
-        }
-
-        public int BinarySearch(long[] array, int index, int length, long value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<long> span, long value)
@@ -1587,32 +1379,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(UInt128[] array, int index, int length, UInt128 value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<UInt128> span, UInt128 value)
         {
             ref UInt128 r = ref MemoryMarshal.GetReference(span);
@@ -1781,32 +1547,6 @@ namespace Arc.Collections.HotMethod
 
         private Int128Method()
         {
-        }
-
-        public int BinarySearch(Int128[] array, int index, int length, Int128 value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<Int128> span, Int128 value)
@@ -1979,32 +1719,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(float[] array, int index, int length, float value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<float> span, float value)
         {
             ref float r = ref MemoryMarshal.GetReference(span);
@@ -2175,32 +1889,6 @@ namespace Arc.Collections.HotMethod
         {
         }
 
-        public int BinarySearch(double[] array, int index, int length, double value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
-        }
-
         public int LowerBound(ReadOnlySpan<double> span, double value)
         {
             ref double r = ref MemoryMarshal.GetReference(span);
@@ -2369,32 +2057,6 @@ namespace Arc.Collections.HotMethod
 
         private DateTimeMethod()
         {
-        }
-
-        public int BinarySearch(DateTime[] array, int index, int length, DateTime value)
-        {
-            var min = index;
-            var max = length - 1;
-            while (min <= max)
-            {
-                var mid = min + ((max - min) / 2);
-                if (value < array[mid])
-                {
-                    max = mid - 1;
-                    continue;
-                }
-                else if (value > array[mid])
-                {
-                    min = mid + 1;
-                    continue;
-                }
-                else
-                {// Found
-                    return mid;
-                }
-            }
-
-            return ~min;
         }
 
         public int LowerBound(ReadOnlySpan<DateTime> span, DateTime value)
