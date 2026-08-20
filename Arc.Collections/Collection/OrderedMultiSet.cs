@@ -3,133 +3,301 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
-#pragma warning disable SA1124 // Do not use regions
+using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a collection of objects maintained in sorted order (ascending by default).
-/// <br/><see cref="OrderedMultiSet{T}"/> uses a red-black tree and linked list to store objects.
-/// <br/><see cref="OrderedMultiSet{T}"/> allows duplicate elements.
+/// Represents a sorted collection that allows duplicate elements.<br/>
+/// Uses <see cref="OrderedMultiMap{TKey, TValue}"/> as the underlying Red-Black Tree
+/// and duplicate-group linked-list implementation.
 /// </summary>
-/// <typeparam name="T">The type of elements in the set.</typeparam>
-public class OrderedMultiSet<T>
+/// <typeparam name="T">The type of elements in the collection.</typeparam>
+public class OrderedMultiSet<T> : IEnumerable<T>
 {
-    private readonly OrderedMultiMap<T, int> map;
+    private const byte DummyValue = 0;
+
+    private readonly OrderedMultiMap<T, byte> map;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
+    /// Initializes an empty collection.
     /// </summary>
-    /// <param name="reverse">true to reverse the default comparison order.</param>
     public OrderedMultiSet(bool reverse = false)
     {
-        this.map = new(reverse);
+        this.map = new OrderedMultiMap<T, byte>(reverse);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
+    /// Initializes an empty collection with the specified comparer.
     /// </summary>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
-    /// <param name="reverse">true to reverse the comparison order.</param>
-    public OrderedMultiSet(IComparer<T> comparer, bool reverse = false)
+    public OrderedMultiSet(IComparer<T>? comparer, bool reverse = false)
     {
-        ArgumentNullException.ThrowIfNull(comparer);
-
-        this.map = new(comparer, reverse);
+        this.map = new OrderedMultiMap<T, byte>(comparer, reverse);
     }
 
     /// <summary>
-    /// Initializes a new instance by copying the specified collection.
+    /// Initializes a collection from the specified sequence.
     /// </summary>
-    /// <param name="collection">The collection to copy.</param>
-    /// <param name="reverse">true to reverse the default comparison order.</param>
     public OrderedMultiSet(IEnumerable<T> collection, bool reverse = false)
         : this(collection, Comparer<T>.Default, reverse)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance by copying the specified collection.
+    /// Initializes a collection from the specified sequence and comparer.
     /// </summary>
-    /// <param name="collection">The collection to copy.</param>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
-    /// <param name="reverse">true to reverse the comparison order.</param>
-    public OrderedMultiSet(
-        IEnumerable<T> collection,
-        IComparer<T> comparer,
-        bool reverse = false)
+    public OrderedMultiSet(IEnumerable<T> collection, IComparer<T>? comparer, bool reverse = false)
     {
         ArgumentNullException.ThrowIfNull(collection);
-        ArgumentNullException.ThrowIfNull(comparer);
 
-        this.map = new(comparer, reverse);
+        this.map = new OrderedMultiMap<T, byte>(comparer, reverse);
 
         foreach (var item in collection)
         {
-            this.map.Add(item, 0);
+            this.map.Add(item, DummyValue);
         }
     }
 
-    #region Main
-
     /// <summary>
-    /// Gets the number of elements in the set, including duplicates.
+    /// Gets the number of elements, including duplicates.
     /// </summary>
     public int Count => this.map.Count;
 
     /// <summary>
-    /// Gets the first node in the set.
+    /// Gets the comparer used to order elements.
     /// </summary>
-    public OrderedMultiMap<T, int>.Node? First => this.map.First;
+    public IComparer<T> Comparer => this.map.Comparer;
 
     /// <summary>
-    /// Gets the last node in the set.
+    /// Gets the comparison direction.
     /// </summary>
-    public OrderedMultiMap<T, int>.Node? Last => this.map.Last;
+    public int CompareFactor => this.map.CompareFactor;
 
     /// <summary>
-    /// Adds an element to the set.
-    /// <br/>Duplicate elements are allowed.
-    /// <br/>O(log n) operation.
+    /// Gets the first node in sort order.
     /// </summary>
-    /// <param name="value">The element to add.</param>
-    /// <returns>The added node and the result reported by the underlying map.</returns>
-    public (OrderedMultiMap<T, int>.Node Node, bool NewlyAdded) Add(T value)
-        => this.map.Add(value, 0);
+    public OrderedMultiMap<T, byte>.Node? FirstNode
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.map.First;
+    }
 
     /// <summary>
-    /// Determines whether the set contains the specified value.
-    /// <br/>O(log n) operation.
+    /// Gets the last node in sort order.
     /// </summary>
-    /// <param name="value">The value to locate.</param>
-    /// <returns>true if at least one matching element exists; otherwise, false.</returns>
-    public bool Contains(T value)
-        => this.map.ContainsKey(value);
+    public OrderedMultiMap<T, byte>.Node? LastNode
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.map.Last;
+    }
 
     /// <summary>
-    /// Removes one element matching the specified value.
-    /// <br/>O(log n) operation.
+    /// Adds an element and returns the created node.
     /// </summary>
-    /// <param name="value">The value to remove.</param>
-    /// <returns>true if an element was removed; otherwise, false.</returns>
-    public bool Remove(T value)
-        => this.map.Remove(value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.Node Add(T item)
+        => this.map.Add(item, DummyValue).Node;
 
     /// <summary>
-    /// Removes the specified node from the set.
+    /// Adds an element by reusing an unused node when possible.
     /// </summary>
-    /// <param name="node">The node to remove.</param>
-    public void RemoveNode(OrderedMultiMap<T, int>.Node node)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.Node Add(T item, OrderedMultiMap<T, byte>.Node reuse)
+        => this.map.Add(item, DummyValue, reuse).Node;
+
+    /// <summary>
+    /// Determines whether the collection contains the specified element.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Contains(T? item)
+        => this.map.ContainsKey(item);
+
+    /// <summary>
+    /// Finds the first node with the specified value.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.Node? FindFirstNode(T? item)
+        => this.map.FindFirstNode(item);
+
+    /// <summary>
+    /// Removes the first occurrence of the specified element.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(T? item)
+        => this.map.Remove(item);
+
+    /// <summary>
+    /// Removes the specified node.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveNode(OrderedMultiMap<T, byte>.Node node)
         => this.map.RemoveNode(node);
 
     /// <summary>
-    /// Removes all elements from the set.
+    /// Changes the element stored in the specified node.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool SetNodeValue(OrderedMultiMap<T, byte>.Node node, T value)
+        => this.map.SetNodeKey(node, value);
+
+    /// <summary>
+    /// Removes all elements.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
         => this.map.Clear();
+
+    /// <summary>
+    /// Copies all elements to the specified array.
+    /// </summary>
+    public void CopyTo(T[] array, int index)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+
+        if ((uint)index > (uint)array.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (array.Length - index < this.Count)
+        {
+            throw new ArgumentException(
+                "The destination array is too small.",
+                nameof(array));
+        }
+
+        var enumerator = this.GetEnumerator();
+        while (enumerator.MoveNext())
+        {
+            array[index++] = enumerator.Current;
+        }
+    }
+
+    /// <summary>
+    /// Counts occurrences of the specified element.
+    /// </summary>
+    public int GetCount(T? item)
+    {
+        var count = 0;
+        var enumerator = this.map.EnumerateNode(item).GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Removes all occurrences of the specified element.
+    /// </summary>
+    public int RemoveAll(T? item)
+    {
+        var count = 0;
+
+        while (true)
+        {
+            var node = this.map.FindFirstNode(item);
+            if (node is null)
+            {
+                return count;
+            }
+
+            this.map.RemoveNode(node);
+            count++;
+        }
+    }
+
+    /// <summary>
+    /// Gets the first node equal to or after the specified value in sort order.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.Node? GetLowerBound(T? value)
+        => this.map.GetLowerBound(value);
+
+    /// <summary>
+    /// Gets the last node equal to or before the specified value in sort order.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.Node? GetUpperBound(T? value)
+        => this.map.GetUpperBound(value);
+
+    /// <summary>
+    /// Gets the nodes delimiting the specified range.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (OrderedMultiMap<T, byte>.Node? Lower, OrderedMultiMap<T, byte>.Node? Upper) GetRange(T? lower, T? upper)
+        => this.map.GetRange(lower, upper);
+
+    /// <summary>
+    /// Enumerates nodes matching the specified element without allocation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public OrderedMultiMap<T, byte>.NodeEnumerable EnumerateNode(T? item)
+        => this.map.EnumerateNode(item);
+
+    /// <summary>
+    /// Validates the underlying Red-Black Tree and duplicate lists.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Validate()
+        => this.map.Validate();
+
+    #region Enumerator
+
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Enumerator GetEnumerator()
+        => new(this.map);
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        => new Enumerator(this.map);
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this.map);
+
+    /// <summary>
+    /// Enumerates elements in sort order.
+    /// </summary>
+    public struct Enumerator : IEnumerator<T>
+    {
+        private OrderedMultiMap<T, byte>.KeyEnumerable.Enumerator enumerator;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal Enumerator(OrderedMultiMap<T, byte> map)
+        {
+            this.enumerator = map.Keys.GetEnumerator();
+        }
+
+        public readonly T Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.enumerator.Current;
+        }
+
+        object? IEnumerator.Current
+            => this.Current;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+            => this.enumerator.MoveNext();
+
+        public void Dispose()
+        {
+        }
+
+        void IEnumerator.Reset()
+            => throw new NotSupportedException();
+    }
 
     #endregion
 }

@@ -100,7 +100,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             get
             {
                 Node treeNode;
-
                 if (this.IsSingleNode)
                 {
                     treeNode = this;
@@ -257,7 +256,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         : this(comparer, reverse)
     {
         ArgumentNullException.ThrowIfNull(dictionary);
-
         foreach (var item in dictionary)
         {
             this.Add(item.Key, item.Value);
@@ -311,7 +309,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     public bool ContainsValue(TValue value)
     {
         var node = this.First;
-
         if (value is null)
         {
             while (node is not null)
@@ -366,7 +363,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         ClearTree(this.root);
-
         this.root = null;
         this.count = 0;
         this.version++;
@@ -375,7 +371,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
-
         if ((uint)index > (uint)array.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
@@ -479,10 +474,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var value = node.Value;
-
         this.RemoveNode(node);
         this.Probe(key, value, node);
-
         return true;
     }
 
@@ -515,12 +508,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         {
             node.ListPrevious!.ListNext = node.ListNext;
             node.ListNext!.ListPrevious = node.ListPrevious;
-
             var head = node.ListNext!;
             if (ReferenceEquals(head, head.ListNext))
             {
                 Debug.Assert(!head.IsLinkedListNode);
-
                 head.ListPrevious = null;
                 head.ListNext = null;
             }
@@ -534,12 +525,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             // Promote the next duplicate to the tree node.
             node.ListPrevious!.ListNext = node.ListNext;
             node.ListNext!.ListPrevious = node.ListPrevious;
-
             var newHead = node.ListNext!;
-
             newHead.Color = node.Color;
             this.TransplantNode(newHead, node);
-
             newHead.Left = node.Left;
             if (newHead.Left is not null)
             {
@@ -571,7 +559,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         Node? replacement;
         Node? fixParent = node.Parent;
         var direction = 0;
-
         if (node.Parent is not null)
         {
             direction = ReferenceEquals(node, node.Parent.Left) ? -1 : 1;
@@ -590,7 +577,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         else
         {
             var successor = node.Right;
-
             while (successor.Left is not null)
             {
                 successor = successor.Left;
@@ -598,7 +584,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
             originalColor = successor.Color;
             replacement = successor.Right;
-
             if (ReferenceEquals(successor.Parent, node))
             {
                 fixParent = successor;
@@ -608,15 +593,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 fixParent = successor.Parent;
                 direction = -1;
-
                 this.TransplantNode(successor.Right, successor);
-
                 successor.Right = node.Right;
                 successor.Right.Parent = successor;
             }
 
             this.TransplantNode(successor, node);
-
             successor.Left = node.Left;
             successor.Left.Parent = successor;
             successor.Color = node.Color;
@@ -633,7 +615,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         if (replacement is not null)
         {
             replacement.ColorBlack();
-
             node.Clear();
             this.root?.ColorBlack();
             return;
@@ -647,20 +628,16 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var parent = fixParent;
-
         while (true)
         {
             Node? sibling;
-
             if (direction < 0)
             {
                 sibling = parent.Right;
-
                 if (Node.IsNonNullRed(sibling))
                 {
                     sibling!.ColorBlack();
                     parent.ColorRed();
-
                     this.RotateLeft(parent);
                     sibling = parent.Right;
                 }
@@ -676,11 +653,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 }
                 else
                 {
-                    if (Node.IsNonNullRed(sibling.Left))
+                    // Inner rotation only when the far child is black (CLRS);
+                    // when both children are red, go directly to the far-child case.
+                    if (Node.IsNullOrBlack(sibling.Right))
                     {
                         sibling.Left!.ColorBlack();
                         sibling.ColorRed();
-
                         this.RotateRight(sibling);
                         sibling = parent.Right;
                     }
@@ -688,7 +666,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                     sibling!.Color = parent.Color;
                     parent.ColorBlack();
                     sibling.Right!.ColorBlack();
-
                     this.RotateLeft(parent);
                     break;
                 }
@@ -696,12 +673,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             else
             {
                 sibling = parent.Left;
-
                 if (Node.IsNonNullRed(sibling))
                 {
                     sibling!.ColorBlack();
                     parent.ColorRed();
-
                     this.RotateRight(parent);
                     sibling = parent.Left;
                 }
@@ -717,11 +692,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 }
                 else
                 {
-                    if (Node.IsNonNullRed(sibling.Right))
+                    // Inner rotation only when the far child is black (CLRS);
+                    // when both children are red, go directly to the far-child case.
+                    if (Node.IsNullOrBlack(sibling.Left))
                     {
                         sibling.Right!.ColorBlack();
                         sibling.ColorRed();
-
                         this.RotateLeft(sibling);
                         sibling = parent.Left;
                     }
@@ -729,7 +705,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                     sibling!.Color = parent.Color;
                     parent.ColorBlack();
                     sibling.Left!.ColorBlack();
-
                     this.RotateRight(parent);
                     break;
                 }
@@ -742,11 +717,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
 
             var nextParent = parent.Parent;
-
             direction = ReferenceEquals(parent, nextParent.Left)
                 ? -1
                 : 1;
-
             parent = nextParent;
         }
 
@@ -761,7 +734,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         var node = target;
         Node? parent = null;
         var cmp = 0;
-
         var comparer = this.comparer;
         var hotMethod = this.hotMethod2;
 
@@ -790,6 +762,32 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 return hotMethod.SearchNode(node, key);
             }
 
+            if (typeof(TKey).IsValueType &&
+                ReferenceEquals(comparer, Comparer<TKey>.Default))
+            {
+                // Comparer<TKey>.Default.Compare is devirtualized and inlined by the JIT
+                // for value-type instantiations.
+                while (node is not null)
+                {
+                    cmp = Comparer<TKey>.Default.Compare(key, node.Key);
+                    parent = node;
+                    if (cmp < 0)
+                    {
+                        node = node.Left;
+                    }
+                    else if (cmp > 0)
+                    {
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
             if (!typeof(TKey).IsValueType &&
                 ReferenceEquals(comparer, Comparer<TKey>.Default) &&
                 key is IComparable<TKey> comparable)
@@ -798,7 +796,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 {
                     cmp = comparable.CompareTo(node.Key);
                     parent = node;
-
                     if (cmp < 0)
                     {
                         node = node.Left;
@@ -820,7 +817,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 cmp = comparer.Compare(key, node.Key);
                 parent = node;
-
                 if (cmp < 0)
                 {
                     node = node.Left;
@@ -859,6 +855,32 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 return hotMethod.SearchNodeReverse(node, key);
             }
 
+            if (typeof(TKey).IsValueType &&
+                ReferenceEquals(comparer, Comparer<TKey>.Default))
+            {
+                while (node is not null)
+                {
+                    var c = Comparer<TKey>.Default.Compare(key, node.Key);
+                    parent = node;
+                    if (c > 0)
+                    {
+                        cmp = -1;
+                        node = node.Left;
+                    }
+                    else if (c < 0)
+                    {
+                        cmp = 1;
+                        node = node.Right;
+                    }
+                    else
+                    {
+                        return (0, node);
+                    }
+                }
+
+                return (cmp, parent);
+            }
+
             if (!typeof(TKey).IsValueType &&
                 ReferenceEquals(comparer, Comparer<TKey>.Default) &&
                 key is IComparable<TKey> comparable)
@@ -867,7 +889,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 {
                     var c = comparable.CompareTo(node.Key);
                     parent = node;
-
                     if (c > 0)
                     {
                         cmp = -1;
@@ -891,7 +912,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 var c = comparer.Compare(key, node.Key);
                 parent = node;
-
                 if (c > 0)
                 {
                     cmp = -1;
@@ -935,7 +955,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
         var node = result.Leaf;
         var comparer = EqualityComparer<TValue>.Default;
-
         if (node.IsSingleNode)
         {
             return comparer.Equals(node.Value, value)
@@ -963,7 +982,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     public Node? GetLowerBound(TKey? key)
     {
         var (cmp, node) = this.SearchFirstNode(this.root, key);
-
         if (node is null || cmp <= 0)
         {
             return node;
@@ -1012,53 +1030,184 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Enumerates nodes with the specified key.
+    /// Enumerates nodes with the specified key without allocation.
     /// </summary>
-    public IEnumerable<Node> EnumerateNode(TKey? key)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public NodeEnumerable EnumerateNode(TKey? key)
+        => new(this, key);
+
+    /// <summary>
+    /// Enumerates values with the specified key without allocation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public MatchedValueEnumerable EnumerateValue(TKey? key)
+        => new(this, key);
+
+    /// <summary>
+    /// Enumerates the nodes of a duplicate-key group.
+    /// </summary>
+    public readonly struct NodeEnumerable : IEnumerable<Node>
     {
-        var node = this.FindFirstNode(key);
-        if (node is null)
+        private readonly OrderedMultiMap<TKey, TValue> map;
+        private readonly TKey? key;
+
+        internal NodeEnumerable(OrderedMultiMap<TKey, TValue> map, TKey? key)
         {
-            yield break;
+            this.map = map;
+            this.key = key;
         }
 
-        if (node.IsSingleNode)
-        {
-            yield return node;
-            yield break;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator()
+            => new(this.map, this.key);
 
-        do
+        IEnumerator<Node> IEnumerable<Node>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<Node>
         {
-            yield return node;
-            node = node.ListNext!;
+            private readonly OrderedMultiMap<TKey, TValue> map;
+            private readonly TKey? key;
+            private readonly int version;
+            private Node? current;
+            private Node? next;
+
+            internal Enumerator(OrderedMultiMap<TKey, TValue> map, TKey? key)
+            {
+                this.map = map;
+                this.key = key;
+                this.version = map.version;
+                this.current = null;
+                this.next = map.FindFirstNode(key);
+            }
+
+            public readonly Node Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.current!;
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.current is null)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.current;
+                }
+            }
+
+            public bool MoveNext()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                var node = this.next;
+                if (node is null)
+                {
+                    this.current = null;
+                    return false;
+                }
+
+                this.current = node;
+                if (node.IsSingleNode)
+                {
+                    this.next = null;
+                }
+                else
+                {
+                    var listNext = node.ListNext!;
+                    this.next = listNext.IsLinkedListNode ? listNext : null;
+                }
+
+                return true;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.current = null;
+                this.next = this.map.FindFirstNode(this.key);
+            }
         }
-        while (node.IsLinkedListNode);
     }
 
     /// <summary>
-    /// Enumerates values with the specified key.
+    /// Enumerates the values of a duplicate-key group.
     /// </summary>
-    public IEnumerable<TValue> EnumerateValue(TKey? key)
+    public readonly struct MatchedValueEnumerable : IEnumerable<TValue>
     {
-        var node = this.FindFirstNode(key);
-        if (node is null)
+        private readonly OrderedMultiMap<TKey, TValue> map;
+        private readonly TKey? key;
+
+        internal MatchedValueEnumerable(OrderedMultiMap<TKey, TValue> map, TKey? key)
         {
-            yield break;
+            this.map = map;
+            this.key = key;
         }
 
-        if (node.IsSingleNode)
-        {
-            yield return node.Value;
-            yield break;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator()
+            => new(this.map, this.key);
 
-        do
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<TValue>
         {
-            yield return node.Value;
-            node = node.ListNext!;
+            private NodeEnumerable.Enumerator enumerator;
+
+            internal Enumerator(OrderedMultiMap<TKey, TValue> map, TKey? key)
+            {
+                this.enumerator = new NodeEnumerable.Enumerator(map, key);
+            }
+
+            public readonly TValue Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => this.enumerator.Current.Value;
+            }
+
+            object? IEnumerator.Current
+                => ((IEnumerator)this.enumerator).Current is Node node
+                    ? node.Value
+                    : default;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext()
+                => this.enumerator.MoveNext();
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+                => ((IEnumerator)this.enumerator).Reset();
         }
-        while (node.IsLinkedListNode);
     }
 
     #endregion
@@ -1130,7 +1279,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
             this.current = node;
             this.next = GetNextNode(node);
-
             return true;
         }
 
@@ -1229,7 +1377,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
                 this.current = node;
                 this.next = GetNextNode(node);
-
                 return true;
             }
 
@@ -1329,7 +1476,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
                 this.current = node;
                 this.next = GetNextNode(node);
-
                 return true;
             }
 
@@ -1370,7 +1516,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
     {
         var (cmp, parent) = this.SearchFirstNode(this.root, key);
-
         Node node;
         if (reuse is not null && reuse.IsUnused)
         {
@@ -1388,12 +1533,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         if (cmp == 0 && parent is not null)
         {
             node.Color = NodeColor.LinkedList;
-
             if (parent.IsSingleNode)
             {
                 parent.ListPrevious = node;
                 parent.ListNext = node;
-
                 node.ListPrevious = parent;
                 node.ListNext = parent;
             }
@@ -1401,7 +1544,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 node.ListPrevious = parent.ListPrevious;
                 node.ListNext = parent;
-
                 parent.ListPrevious!.ListNext = node;
                 parent.ListPrevious = node;
             }
@@ -1410,12 +1552,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         node.Parent = parent;
-
         if (parent is null)
         {
             this.root = node;
             node.ColorBlack();
-
             return (node, true);
         }
 
@@ -1429,23 +1569,18 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var current = node;
-
 #nullable disable
-
         while (current.Parent is not null && current.Parent.IsRed)
         {
             var grandParent = current.Parent.Parent;
-
             if (ReferenceEquals(current.Parent, grandParent.Right))
             {
                 var uncle = grandParent.Left;
-
                 if (uncle is not null && uncle.IsRed)
                 {
                     uncle.ColorBlack();
                     current.Parent.ColorBlack();
                     grandParent.ColorRed();
-
                     current = grandParent;
                 }
                 else
@@ -1458,7 +1593,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
                     current.Parent.ColorBlack();
                     current.Parent.Parent.ColorRed();
-
                     this.RotateLeft(current.Parent.Parent);
                     break;
                 }
@@ -1466,13 +1600,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             else
             {
                 var uncle = grandParent.Right;
-
                 if (uncle is not null && uncle.IsRed)
                 {
                     uncle.ColorBlack();
                     current.Parent.ColorBlack();
                     grandParent.ColorRed();
-
                     current = grandParent;
                 }
                 else
@@ -1485,18 +1617,161 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
                     current.Parent.ColorBlack();
                     current.Parent.Parent.ColorRed();
-
                     this.RotateRight(current.Parent.Parent);
                     break;
                 }
             }
         }
-
 #nullable enable
 
         this.root!.ColorBlack();
-
         return (node, true);
+    }
+
+    #endregion
+
+    #region Validation
+
+    /// <summary>
+    /// Validates the Red-Black Tree and the duplicate-group linked lists.
+    /// </summary>
+    public bool Validate()
+    {
+        if (this.root is null)
+        {
+            return this.count == 0;
+        }
+
+        if (!this.root.IsBlack || this.root.Parent is not null)
+        {
+            return false;
+        }
+
+        Node? previous = null;
+        var actualCount = 0;
+        if (!this.ValidateNode(this.root, ref previous, ref actualCount))
+        {
+            return false;
+        }
+
+        if (actualCount != this.count)
+        {
+            return false;
+        }
+
+        if (!ValidateColors(this.root))
+        {
+            return false;
+        }
+
+        return ValidateBlackHeight(this.root) >= 0;
+    }
+
+    private bool ValidateNode(Node? node, ref Node? previous, ref int actualCount)
+    {
+        if (node is null)
+        {
+            return true;
+        }
+
+        if (node.IsLinkedListNode || node.IsUnused)
+        {
+            return false;
+        }
+
+        if (node.Left is not null && !ReferenceEquals(node.Left.Parent, node))
+        {
+            return false;
+        }
+
+        if (node.Right is not null && !ReferenceEquals(node.Right.Parent, node))
+        {
+            return false;
+        }
+
+        if (!this.ValidateNode(node.Left, ref previous, ref actualCount))
+        {
+            return false;
+        }
+
+        if (previous is not null &&
+            this.CompareInTreeOrder(previous.Key, node.Key) >= 0)
+        {
+            return false;
+        }
+
+        previous = node;
+        actualCount++;
+
+        // Duplicate-group invariants: a circular list of LinkedList-colored nodes
+        // holding the same key, consistently linked in both directions.
+        if (!node.IsSingleNode)
+        {
+            var p = node;
+            var q = node.ListNext;
+            while (true)
+            {
+                if (q is null || !ReferenceEquals(q.ListPrevious, p))
+                {
+                    return false;
+                }
+
+                if (ReferenceEquals(q, node))
+                {
+                    break;
+                }
+
+                if (!q.IsLinkedListNode ||
+                    this.CompareInTreeOrder(q.Key, node.Key) != 0)
+                {
+                    return false;
+                }
+
+                actualCount++;
+                if (actualCount > this.count)
+                {
+                    return false;
+                }
+
+                p = q;
+                q = q.ListNext;
+            }
+        }
+
+        return this.ValidateNode(node.Right, ref previous, ref actualCount);
+    }
+
+    private static bool ValidateColors(Node? node)
+    {
+        if (node is null)
+        {
+            return true;
+        }
+
+        if (node.IsRed &&
+            (Node.IsNonNullRed(node.Left) || Node.IsNonNullRed(node.Right)))
+        {
+            return false;
+        }
+
+        return ValidateColors(node.Left) && ValidateColors(node.Right);
+    }
+
+    private static int ValidateBlackHeight(Node? node)
+    {
+        if (node is null)
+        {
+            return 0;
+        }
+
+        var left = ValidateBlackHeight(node.Left);
+        var right = ValidateBlackHeight(node.Right);
+        if (left < 0 || right < 0 || left != right)
+        {
+            return -1;
+        }
+
+        return left + (node.IsBlack ? 1 : 0);
     }
 
     #endregion
@@ -1540,7 +1815,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         if (!node.IsSingleNode)
         {
             var next = node.ListNext!;
-
             if (!node.IsLinkedListNode ||
                 next.IsLinkedListNode)
             {
@@ -1560,7 +1834,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         if (node.Right is not null)
         {
             node = node.Right;
-
             while (node.Left is not null)
             {
                 node = node.Left;
@@ -1571,7 +1844,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
         var current = node;
         var parent = node.Parent;
-
         while (parent is not null &&
                ReferenceEquals(current, parent.Right))
         {
@@ -1585,7 +1857,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private int CompareInTreeOrder(TKey? x, TKey? y)
     {
         int cmp;
-
         if (x is null)
         {
             cmp = y is null ? 0 : -1;
@@ -1621,11 +1892,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
         ClearTree(node.Left);
         ClearTree(node.Right);
-
         if (!node.IsSingleNode)
         {
             var listNode = node.ListNext!;
-
             while (!ReferenceEquals(listNode, node))
             {
                 var next = listNode.ListNext!;
@@ -1641,7 +1910,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private void TransplantNode(Node? node, Node destination)
     {
         var parent = destination.Parent;
-
         if (parent is null)
         {
             this.root = node;
@@ -1665,7 +1933,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private void RotateLeft(Node node)
     {
         var right = node.Right!;
-
         node.Right = right.Left;
         if (right.Left is not null)
         {
@@ -1673,9 +1940,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var parent = node.Parent;
-
         right.Parent = parent;
-
         if (parent is null)
         {
             this.root = right;
@@ -1697,7 +1962,6 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private void RotateRight(Node node)
     {
         var left = node.Left!;
-
         node.Left = left.Right;
         if (left.Right is not null)
         {
@@ -1705,9 +1969,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var parent = node.Parent;
-
         left.Parent = parent;
-
         if (parent is null)
         {
             this.root = left;
