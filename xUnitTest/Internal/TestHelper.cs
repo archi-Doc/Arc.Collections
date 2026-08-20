@@ -44,9 +44,9 @@ public static class TestHelper
         }
     }
 
-    public static OrderedMap<T, int>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
+    public static OrderedMap<T, byte>.Node AddAndValidate<T>(this OrderedSet<T> os, T value)
     {
-        var result = os.Add(value);
+        var result = os.AddNode(value);
         os.Validate().IsTrue();
         return result.Node;
     }

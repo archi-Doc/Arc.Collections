@@ -78,7 +78,7 @@ public class SortedSetBenchmark
     public long Sum_OrderedSet2()
     {
         long sum = 0;
-        var node = this.orderedSet.First;
+        var node = this.orderedSet.FirstNode;
         while (node is not null)
         {
             sum += node.Key;
