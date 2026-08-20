@@ -49,20 +49,20 @@ namespace Arc.Collections.HotMethod
         {
             ref byte r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -72,20 +72,20 @@ namespace Arc.Collections.HotMethod
         {
             ref byte r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -245,20 +245,20 @@ namespace Arc.Collections.HotMethod
         {
             ref sbyte r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -268,20 +268,20 @@ namespace Arc.Collections.HotMethod
         {
             ref sbyte r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -441,20 +441,20 @@ namespace Arc.Collections.HotMethod
         {
             ref ushort r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -464,20 +464,20 @@ namespace Arc.Collections.HotMethod
         {
             ref ushort r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -637,20 +637,20 @@ namespace Arc.Collections.HotMethod
         {
             ref short r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -660,20 +660,20 @@ namespace Arc.Collections.HotMethod
         {
             ref short r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -833,20 +833,20 @@ namespace Arc.Collections.HotMethod
         {
             ref uint r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -856,20 +856,20 @@ namespace Arc.Collections.HotMethod
         {
             ref uint r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1029,20 +1029,20 @@ namespace Arc.Collections.HotMethod
         {
             ref int r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1052,20 +1052,20 @@ namespace Arc.Collections.HotMethod
         {
             ref int r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1225,20 +1225,20 @@ namespace Arc.Collections.HotMethod
         {
             ref ulong r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1248,20 +1248,20 @@ namespace Arc.Collections.HotMethod
         {
             ref ulong r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1421,20 +1421,20 @@ namespace Arc.Collections.HotMethod
         {
             ref long r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1444,20 +1444,20 @@ namespace Arc.Collections.HotMethod
         {
             ref long r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1617,20 +1617,20 @@ namespace Arc.Collections.HotMethod
         {
             ref UInt128 r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1640,20 +1640,20 @@ namespace Arc.Collections.HotMethod
         {
             ref UInt128 r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1813,20 +1813,20 @@ namespace Arc.Collections.HotMethod
         {
             ref Int128 r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -1836,20 +1836,20 @@ namespace Arc.Collections.HotMethod
         {
             ref Int128 r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2009,20 +2009,20 @@ namespace Arc.Collections.HotMethod
         {
             ref float r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2032,20 +2032,20 @@ namespace Arc.Collections.HotMethod
         {
             ref float r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2205,20 +2205,20 @@ namespace Arc.Collections.HotMethod
         {
             ref double r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2228,20 +2228,20 @@ namespace Arc.Collections.HotMethod
         {
             ref double r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2401,20 +2401,20 @@ namespace Arc.Collections.HotMethod
         {
             ref DateTime r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) < value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) < value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;
@@ -2424,20 +2424,20 @@ namespace Arc.Collections.HotMethod
         {
             ref DateTime r = ref MemoryMarshal.GetReference(span);
             nuint lo = 0;
-            nuint n = (nuint)(uint)span.Length;
-
-            while (n > 1)
+            nuint count = (nuint)(uint)span.Length;
+            while (count != 0)
             {
-                nuint half = n >> 1;
-                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
-                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
-                n -= half;
-            }
-
-            if (n != 0)
-            {
-                bool c = Unsafe.Add(ref r, lo) <= value;
-                lo += Unsafe.As<bool, byte>(ref c);
+                nuint half = count >> 1;
+                nuint mid = lo + half;
+                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                {
+                    lo = mid + 1;
+                    count -= half + 1;
+                }
+                else
+                {
+                    count = half;
+                }
             }
 
             return (int)lo;

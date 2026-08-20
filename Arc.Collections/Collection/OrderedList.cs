@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Arc.Collections.HotMethod;
 
 namespace Arc.Collections;
@@ -14,6 +15,8 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 public class OrderedList<T> : UnorderedList<T>
 {
+    private readonly bool useComparableFastPath;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
     /// </summary>
@@ -50,6 +53,10 @@ public class OrderedList<T> : UnorderedList<T>
     {
         this.Comparer = comparer ?? Comparer<T>.Default;
         this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
+        this.useComparableFastPath =
+            this.HotMethod is null &&
+            !typeof(T).IsValueType &&
+            ReferenceEquals(this.Comparer, Comparer<T>.Default);
     }
 
     /// <summary>
@@ -72,6 +79,10 @@ public class OrderedList<T> : UnorderedList<T>
 
         this.Comparer = comparer ?? Comparer<T>.Default;
         this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
+        this.useComparableFastPath =
+            this.HotMethod is null &&
+            !typeof(T).IsValueType &&
+            ReferenceEquals(this.Comparer, Comparer<T>.Default);
 
         var array = collection.ToArray();
         if (array.Length > 1)
@@ -102,68 +113,20 @@ public class OrderedList<T> : UnorderedList<T>
     /// </summary>
     /// <param name="value">The value to search for.</param>
     /// <returns>
-    /// An index of a matching element, or the bitwise complement of its insertion index
+    /// The index of the first matching element, or the bitwise complement of its insertion index
     /// if no matching element exists.
     /// </returns>
     public int BinarySearch(T value)
     {
-        var hotMethod = this.HotMethod;
-        if (hotMethod is not null)
+        var index = this.LowerBound(value);
+
+        if ((uint)index < (uint)this.size &&
+            this.Comparer.Compare(this.items[index], value) == 0)
         {
-            return hotMethod.BinarySearch(this.items, 0, this.size, value);
+            return index;
         }
 
-        var comparer = this.Comparer;
-        var min = 0;
-        var max = this.size - 1;
-
-        // Avoid boxing value types through IComparable<T>.
-        if (!typeof(T).IsValueType &&
-            ReferenceEquals(comparer, Comparer<T>.Default) &&
-            value is IComparable<T> comparable)
-        {
-            while (min <= max)
-            {
-                var mid = min + ((max - min) >> 1);
-                var comparison = comparable.CompareTo(this.items[mid]);
-
-                if (comparison < 0)
-                {
-                    max = mid - 1;
-                }
-                else if (comparison > 0)
-                {
-                    min = mid + 1;
-                }
-                else
-                {
-                    return mid;
-                }
-            }
-        }
-        else
-        {
-            while (min <= max)
-            {
-                var mid = min + ((max - min) >> 1);
-                var comparison = comparer.Compare(value, this.items[mid]);
-
-                if (comparison < 0)
-                {
-                    max = mid - 1;
-                }
-                else if (comparison > 0)
-                {
-                    min = mid + 1;
-                }
-                else
-                {
-                    return mid;
-                }
-            }
-        }
-
-        return ~min;
+        return ~index;
     }
 
     /// <summary>
@@ -195,7 +158,9 @@ public class OrderedList<T> : UnorderedList<T>
     public new bool Contains(T value)
     {
         var index = this.LowerBound(value);
-        return index < this.size && this.Comparer.Compare(this.items[index], value) == 0;
+
+        return (uint)index < (uint)this.size &&
+            this.Comparer.Compare(this.items[index], value) == 0;
     }
 
     /// <summary>
@@ -205,8 +170,10 @@ public class OrderedList<T> : UnorderedList<T>
     /// <returns><see langword="true"/> if the value was removed.</returns>
     public new bool Remove(T value)
     {
-        var index = this.IndexOf(value);
-        if (index < 0)
+        var index = this.LowerBound(value);
+
+        if ((uint)index >= (uint)this.size ||
+            this.Comparer.Compare(this.items[index], value) != 0)
         {
             return false;
         }
@@ -239,7 +206,8 @@ public class OrderedList<T> : UnorderedList<T>
     {
         var index = this.LowerBound(value);
 
-        if (index < this.size && this.Comparer.Compare(this.items[index], value) == 0)
+        if ((uint)index < (uint)this.size &&
+            this.Comparer.Compare(this.items[index], value) == 0)
         {
             return index;
         }
@@ -250,15 +218,46 @@ public class OrderedList<T> : UnorderedList<T>
     /// <summary>
     /// Returns the index of the first element not less than the specified value.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int LowerBound(T value)
+    {
+        var hotMethod = this.HotMethod;
+
+        if (hotMethod is not null)
+        {
+            return hotMethod.LowerBound(
+                new ReadOnlySpan<T>(this.items, 0, this.size),
+                value);
+        }
+
+        return this.LowerBoundSlow(value);
+    }
+
+    /// <summary>
+    /// Returns the index of the first element greater than the specified value.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int UpperBoundExclusive(T value)
+    {
+        var hotMethod = this.HotMethod;
+
+        if (hotMethod is not null)
+        {
+            return hotMethod.UpperBoundExclusive(
+                new ReadOnlySpan<T>(this.items, 0, this.size),
+                value);
+        }
+
+        return this.UpperBoundExclusiveSlow(value);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private int LowerBoundSlow(T value)
     {
         var min = 0;
         var max = this.size;
-        var comparer = this.Comparer;
 
-        if (!typeof(T).IsValueType &&
-            ReferenceEquals(comparer, Comparer<T>.Default) &&
-            value is IComparable<T> comparable)
+        if (this.useComparableFastPath && value is IComparable<T> comparable)
         {
             while (min < max)
             {
@@ -276,11 +275,14 @@ public class OrderedList<T> : UnorderedList<T>
         }
         else
         {
+            var comparer = this.Comparer;
+            var items = this.items;
+
             while (min < max)
             {
                 var mid = min + ((max - min) >> 1);
 
-                if (comparer.Compare(this.items[mid], value) < 0)
+                if (comparer.Compare(items[mid], value) < 0)
                 {
                     min = mid + 1;
                 }
@@ -294,18 +296,13 @@ public class OrderedList<T> : UnorderedList<T>
         return min;
     }
 
-    /// <summary>
-    /// Returns the index of the first element greater than the specified value.
-    /// </summary>
-    private int UpperBoundExclusive(T value)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private int UpperBoundExclusiveSlow(T value)
     {
         var min = 0;
         var max = this.size;
-        var comparer = this.Comparer;
 
-        if (!typeof(T).IsValueType &&
-            ReferenceEquals(comparer, Comparer<T>.Default) &&
-            value is IComparable<T> comparable)
+        if (this.useComparableFastPath && value is IComparable<T> comparable)
         {
             while (min < max)
             {
@@ -323,11 +320,14 @@ public class OrderedList<T> : UnorderedList<T>
         }
         else
         {
+            var comparer = this.Comparer;
+            var items = this.items;
+
             while (min < max)
             {
                 var mid = min + ((max - min) >> 1);
 
-                if (comparer.Compare(this.items[mid], value) <= 0)
+                if (comparer.Compare(items[mid], value) <= 0)
                 {
                     min = mid + 1;
                 }
