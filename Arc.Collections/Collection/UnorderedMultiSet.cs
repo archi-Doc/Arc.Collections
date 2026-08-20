@@ -3,8 +3,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1124 // Do not use regions
+#pragma warning disable SA1615 // Element return value should be documented
 
 namespace Arc.Collections;
 
@@ -12,7 +14,7 @@ namespace Arc.Collections;
 /// Represents an unordered collection that allows duplicate elements.
 /// </summary>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
-public sealed class UnorderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+public sealed class UnorderedMultiSet<T>
 {
     private readonly UnorderedMultiMap<T, int> map;
 
@@ -111,24 +113,17 @@ public sealed class UnorderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T
     public void Clear()
         => this.map.Clear();
 
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnorderedMultiMap<T, int>.Enumerator GetEnumerator() => new(this.map);
+
     #endregion
 
     #region Interface
 
-    bool ICollection<T>.IsReadOnly => false;
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection<T>.Add(T item)
-        => this.map.Add(item, 0);
-
-    void ICollection<T>.CopyTo(T[] array, int arrayIndex)
-        => this.map.Keys.CopyTo(array, arrayIndex);
-
-    void ICollection.CopyTo(Array array, int index)
-        => ((ICollection)this.map.Keys).CopyTo(array, index);
+    public
 
     public UnorderedMultiMap<T, int>.KeyCollection.Enumerator GetEnumerator()
         => this.map.Keys.GetEnumerator();

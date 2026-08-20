@@ -34,19 +34,4 @@ public class UnorderedMultiMap<TKey, TValue> : UnorderedMap<TKey, TValue>
     {
         this.AllowDuplicate = true;
     }
-
-    public UnorderedMultiMap(IDictionary<TKey, TValue> dictionary)
-        : base(dictionary)
-    {
-        this.AllowDuplicate = true;
-    }
-
-    public UnorderedMultiMap(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer)
-        : base(dictionary, comparer)
-    {
-        this.AllowDuplicate = true;
-    }
-
-    public (TKey? Key, int Count) TryGetMostDuplicateKey()
-        => this.TryGetMostDuplicateKeyInternal();
 }
