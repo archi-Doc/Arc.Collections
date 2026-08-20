@@ -107,6 +107,8 @@ public class UInt64Hashtable<TValue>
     /// <summary>
     /// Gets the existing value or adds a newly created value.
     /// </summary>
+    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
+    /// it must not call back into this hashtable.</remarks>
     public TValue GetOrAdd(ulong key, Func<ulong, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -145,12 +147,70 @@ public class UInt64Hashtable<TValue>
     }
 
     /// <summary>
+    /// Determines whether the hashtable contains the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool ContainsKey(ulong key)
+        => this.TryGetValue(key, out _);
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(ulong key)
+        => this.TryRemove(key, out _);
+
+    /// <summary>
+    /// Attempts to remove the value with the specified key.
+    /// </summary>
+    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    public bool TryRemove(ulong key, [MaybeNullWhen(false)] out TValue value)
+    {
+        using (this.lockObject.EnterScope())
+        {
+            var table = this.table;
+            var bucketIndex = GetHashCode(key) & (table.Length - 1);
+            var head = table[bucketIndex];
+
+            for (var item = head; item is not null; item = item.Next)
+            {
+                if (item.Key != key)
+                {
+                    continue;
+                }
+
+                value = item.Value;
+
+                // Rebuild the chain without the target, cloning only the prefix,
+                // so that nodes visible to lock-free readers are never mutated.
+                var newHead = item.Next;
+                for (var p = head; !ReferenceEquals(p, item); p = p.Next!)
+                {
+                    newHead = new Item(p.Key, p.Value, newHead);
+                }
+
+                Volatile.Write(ref table[bucketIndex], newHead);
+                Volatile.Write(ref this.count, this.count - 1);
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Removes all key-value pairs.
     /// </summary>
     public void Clear()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return;
+            }
+
             var table = new Item?[this.table.Length];
 
             Volatile.Write(ref this.table, table);
@@ -300,5 +360,14 @@ public class UInt64Hashtable<TValue>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetHashCode(ulong key)
-        => key.GetHashCode();
+    {
+        return key.GetHashCode();
+
+        // Fibonacci hashing: a single multiply whose high bits are well mixed.
+        // ulong.GetHashCode() only XOR-folds the two halves, which degenerates into
+        // pathological collision chains under the power-of-two mask for strided or
+        // aligned keys (multiples of 4096, pointer-like values, and so on); this
+        // costs one multiplication and is robust for such patterns.
+        // return (int)((key * 0x9E3779B97F4A7C15UL) >> 32);
+    }
 }
