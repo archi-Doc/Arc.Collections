@@ -3,32 +3,40 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
+#pragma warning disable SA1204 // Static elements should appear before instance elements
 #pragma warning disable SA1401
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a collection of utf-16 key and value pairs.<br/>
-/// It is thread-safe, and it locks when adding items, but it is lock-free when retrieving them.<br/>
-/// Please use this for use cases where the collection is initially built and then primarily used for retrieval.
+/// Represents a thread-safe collection of UTF-16 key/value pairs.<br/>
+/// Writes are serialized, while lookups are lock-free.<br/>
+/// Optimized for collections that are built infrequently and read frequently.
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
 public class Utf16Hashtable<TValue>
 {
+    private const int MaximumCapacity = 1 << 30;
+
     private sealed class Item
     {
-        public string Key;
-        public TValue Value;
-        public int Hash;
-        public Item? Next;
+        internal readonly string Key;
+        internal readonly TValue Value;
+        internal readonly int Hash;
+        internal readonly Item? Next;
 
-        public Item(string key, TValue value, int hash)
+        internal Item(string key, TValue value, int hash, Item? next)
         {
             this.Key = key;
             this.Value = value;
             this.Hash = hash;
+            this.Next = next;
         }
     }
 
@@ -36,37 +44,42 @@ public class Utf16Hashtable<TValue>
     private Item?[] table;
     private int count;
 
+    /// <summary>
+    /// Gets the number of items in the hashtable.
+    /// </summary>
     public int Count => Volatile.Read(ref this.count);
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Utf16Hashtable{TValue}"/> class.
+    /// </summary>
+    /// <param name="capacity">The initial capacity.</param>
     public Utf16Hashtable(int capacity = 4)
     {
+        if (capacity < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+        }
+
         var size = HashtableHelper.CalculateCapacity(capacity);
-        this.table = new Item[size];
+        this.table = new Item?[size];
     }
 
     /// <summary>
-    /// Gets an array of values.
+    /// Gets an array containing all values.
     /// </summary>
-    /// <returns>An array of values.</returns>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
         {
-            var t = this.table;
+            var table = this.table;
             var values = new TValue[this.count];
             var n = 0;
-            for (var i = 0; i < t.Length; i++)
+
+            for (var i = 0; i < table.Length; i++)
             {
-                var item = t[i];
-                while (item is not null)
+                for (var item = table[i]; item is not null; item = item.Next)
                 {
                     values[n++] = item.Value;
-                    if (n >= this.count)
-                    {
-                        break;
-                    }
-
-                    item = item.Next;
                 }
             }
 
@@ -75,28 +88,21 @@ public class Utf16Hashtable<TValue>
     }
 
     /// <summary>
-    /// Gets an array of key-value pairs.
+    /// Gets an array containing all key-value pairs.
     /// </summary>
-    /// <returns>An array of key-value pairs.</returns>
     public KeyValuePair<string, TValue>[] ToKeyValuePairs()
     {
         using (this.lockObject.EnterScope())
         {
-            var t = this.table;
+            var table = this.table;
             var pairs = new KeyValuePair<string, TValue>[this.count];
             var n = 0;
-            for (var i = 0; i < t.Length; i++)
+
+            for (var i = 0; i < table.Length; i++)
             {
-                var item = t[i];
-                while (item is not null)
+                for (var item = table[i]; item is not null; item = item.Next)
                 {
                     pairs[n++] = new(item.Key, item.Value);
-                    if (n >= this.count)
-                    {
-                        break;
-                    }
-
-                    item = item.Next;
                 }
             }
 
@@ -105,92 +111,90 @@ public class Utf16Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to add a key-value pair to the hashtable.
+    /// Attempts to add a key-value pair.
     /// </summary>
-    /// <param name="key">The key to add.</param>
-    /// <param name="value">The value to add.</param>
-    /// <returns><c>true</c> if the key-value pair was added successfully; otherwise, <c>false</c> if the key already exists.</returns>
     public bool TryAdd(string key, TValue value)
-        => this.AddInternal(key, false, _ => value, out _);
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return this.AddInternal(key, value, false, out _);
+    }
 
     /// <summary>
-    /// Attempts to add a key-value pair to the hashtable.
+    /// Attempts to add a key-value pair.
     /// </summary>
-    /// <param name="key">The key to add.</param>
-    /// <param name="value">The value to add.</param>
-    /// <returns><c>true</c> if the key-value pair was added successfully; otherwise, <c>false</c> if the key already exists.</returns>
     public bool TryAdd(ReadOnlySpan<char> key, TValue value)
-        => this.AddInternal(key, false, _ => value, out _);
+        => this.AddInternal(key, value, false, out _);
 
     /// <summary>
-    /// Adds a key-value pair to the hashtable.
+    /// Adds or updates a key-value pair.
     /// </summary>
-    /// <param name="key">The key to add.</param>
-    /// <param name="value">The value to add.</param>
     public void Add(string key, TValue value)
-        => this.AddInternal(key, true, _ => value, out _);
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        this.AddInternal(key, value, true, out _);
+    }
 
     /// <summary>
-    /// Adds a key-value pair to the hashtable.
+    /// Adds or updates a key-value pair.
     /// </summary>
-    /// <param name="key">The key to add.</param>
-    /// <param name="value">The value to add.</param>
     public void Add(ReadOnlySpan<char> key, TValue value)
-        => this.AddInternal(key, true, _ => value, out _);
+        => this.AddInternal(key, value, true, out _);
 
     /// <summary>
-    /// Gets the value associated with the specified key if it exists in the hashtable; otherwise, adds a new key-value pair using the specified value factory function and returns the added value.
+    /// Gets the existing value or adds a newly created value.
     /// </summary>
-    /// <param name="key">The key to get or add.</param>
-    /// <param name="valueFactory">The function used to generate a value for the key if it doesn't exist.</param>
-    /// <returns>The value associated with the specified key if it exists; otherwise, the newly added value.</returns>
     public TValue GetOrAdd(string key, Func<string, TValue> valueFactory)
     {
-        TValue? v;
-        if (this.TryGetValue(key, out v))
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(valueFactory);
+
+        if (this.TryGetValue(key, out var value))
         {
-            return v;
+            return value;
         }
 
-        this.AddInternal(key, false, valueFactory, out v);
-        return v;
+        return this.GetOrAddSlow(key, valueFactory);
     }
 
     /// <summary>
-    /// Gets the value associated with the specified key if it exists in the hashtable; otherwise, adds a new key-value pair using the specified value factory function and returns the added value.
+    /// Gets the existing value or adds a newly created value.
     /// </summary>
-    /// <param name="key">The key to get or add.</param>
-    /// <param name="valueFactory">The function used to generate a value for the key if it doesn't exist.</param>
-    /// <returns>The value associated with the specified key if it exists; otherwise, the newly added value.</returns>
     public TValue GetOrAdd(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
     {
-        TValue? v;
-        if (this.TryGetValue(key, out v))
+        ArgumentNullException.ThrowIfNull(valueFactory);
+
+        if (this.TryGetValue(key, out var value))
         {
-            return v;
+            return value;
         }
 
-        this.AddInternal(key, false, valueFactory, out v);
-        return v;
+        return this.GetOrAddSlow(key, valueFactory);
     }
 
     /// <summary>
-    /// Attempts to retrieve the value associated with the specified key from the hashtable.
+    /// Attempts to get the value associated with the specified key.
     /// </summary>
-    /// <param name="key">The key to retrieve the value for.</param>
-    /// <param name="value">When this method returns, contains the value associated with the specified key, if the key is found; otherwise, the default value for the type of the value parameter. This parameter is passed uninitialized.</param>
-    /// <returns><c>true</c> if the key was found and the value was successfully retrieved; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetValue(string key, [MaybeNullWhen(false)] out TValue value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return this.TryGetValue(key.AsSpan(), out value);
+    }
+
+    /// <summary>
+    /// Attempts to get the value associated with the specified key.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out TValue value)
     {
-        var table = this.table;
-        var hash = unchecked((int)XxHash3Slim.Hash64(key));
-        var item = table[hash & (table.Length - 1)];
+        var table = Volatile.Read(ref this.table);
+        var hash = GetHashCode(key);
+        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
 
-        while (item != null)
+        while (item is not null)
         {
-            if (item.Hash == hash &&
-                key.SequenceEqual(item.Key.AsSpan()))
-            {// Identical
+            if (item.Hash == hash && key.SequenceEqual(item.Key))
+            {
                 value = item.Value;
                 return true;
             }
@@ -203,179 +207,242 @@ public class Utf16Hashtable<TValue>
     }
 
     /// <summary>
-    /// Clears the hashtable, removing all key-value pairs.
+    /// Removes all key-value pairs.
     /// </summary>
     public void Clear()
     {
         using (this.lockObject.EnterScope())
         {
-            var newTable = new Item[this.table.Length];
-            Volatile.Write(ref this.table, newTable);
+            var table = new Item?[this.table.Length];
+
+            Volatile.Write(ref this.table, table);
             Volatile.Write(ref this.count, 0);
         }
     }
 
-    private bool AddInternal(string key, bool updateValue, Func<string, TValue> valueFactory, out TValue resultingValue)
+    private bool AddInternal(string key, TValue value, bool updateValue, out TValue resultingValue)
     {
+        var hash = GetHashCode(key.AsSpan());
+
         using (this.lockObject.EnterScope())
         {
-            if ((this.count * 2) > this.table.Length)
-            {// Rebuild table
-                this.RebuildTable();
-            }
-
             var table = this.table;
-            var hash = unchecked((int)XxHash3Slim.Hash64(key));
-            var h = hash & (table.Length - 1);
+            var bucketIndex = hash & (table.Length - 1);
+            var head = table[bucketIndex];
 
-            if (table[h] is null)
+            for (var item = head; item is not null; item = item.Next)
             {
-                resultingValue = valueFactory(key);
-                var item = new Item(key, resultingValue, hash);
-                table[h] = item;
-
-                this.count++;
-                return true;
-            }
-            else
-            {
-                var i = table[h]!;
-                while (true)
+                if (item.Hash != hash || key != item.Key)
                 {
-                    if (i.Hash == hash && key == i.Key)
-                    {// Identical
-                        if (updateValue)
-                        {
-                            i.Value = valueFactory(key);
-                        }
-
-                        resultingValue = i.Value;
-                        return false;
-                    }
-
-                    if (i.Next == null)
-                    { // Last item.
-                        break;
-                    }
-
-                    i = i.Next;
+                    continue;
                 }
 
-                resultingValue = valueFactory(key);
-                var item = new Item(key, resultingValue, hash);
-                i.Next = item;
+                if (!updateValue)
+                {
+                    resultingValue = item.Value;
+                    return false;
+                }
 
-                this.count++;
-                return true;
+                var newHead = ReplaceValue(head!, item, value);
+                Volatile.Write(ref table[bucketIndex], newHead);
+
+                resultingValue = value;
+                return false;
             }
+
+            if (this.count > (table.Length >> 1))
+            {
+                this.RebuildTable();
+
+                table = this.table;
+                bucketIndex = hash & (table.Length - 1);
+                head = table[bucketIndex];
+            }
+
+            var newItem = new Item(key, value, hash, head);
+
+            Volatile.Write(ref table[bucketIndex], newItem);
+            Volatile.Write(ref this.count, this.count + 1);
+
+            resultingValue = value;
+            return true;
         }
     }
 
-    private bool AddInternal(ReadOnlySpan<char> key, bool updateValue, Func<string, TValue> valueFactory, out TValue resultingValue)
+    private bool AddInternal(ReadOnlySpan<char> key, TValue value, bool updateValue, out TValue resultingValue)
     {
+        var hash = GetHashCode(key);
+
         using (this.lockObject.EnterScope())
         {
-            if ((this.count * 2) > this.table.Length)
-            {// Rebuild table
-                this.RebuildTable();
-            }
-
             var table = this.table;
-            var hash = unchecked((int)XxHash3Slim.Hash64(key));
-            var h = hash & (table.Length - 1);
+            var bucketIndex = hash & (table.Length - 1);
+            var head = table[bucketIndex];
 
-            if (table[h] is null)
+            for (var item = head; item is not null; item = item.Next)
             {
-                var st = key.ToString();
-                resultingValue = valueFactory(st);
-                var item = new Item(st, resultingValue, hash);
-                table[h] = item;
-
-                this.count++;
-                return true;
-            }
-            else
-            {
-                var i = table[h]!;
-                while (true)
+                if (item.Hash != hash || !key.SequenceEqual(item.Key))
                 {
-                    if (i.Hash == hash && key.SequenceEqual(i.Key.AsSpan()))
-                    {// Identical
-                        if (updateValue)
-                        {
-                            i.Value = valueFactory(i.Key);
-                        }
-
-                        resultingValue = i.Value;
-                        return false;
-                    }
-
-                    if (i.Next == null)
-                    { // Last item.
-                        break;
-                    }
-
-                    i = i.Next;
+                    continue;
                 }
 
-                var st = key.ToString();
-                resultingValue = valueFactory(st);
-                var item = new Item(st, resultingValue, hash);
-                i.Next = item;
+                if (!updateValue)
+                {
+                    resultingValue = item.Value;
+                    return false;
+                }
 
-                this.count++;
-                return true;
+                var newHead = ReplaceValue(head!, item, value);
+                Volatile.Write(ref table[bucketIndex], newHead);
+
+                resultingValue = value;
+                return false;
             }
+
+            if (this.count > (table.Length >> 1))
+            {
+                this.RebuildTable();
+
+                table = this.table;
+                bucketIndex = hash & (table.Length - 1);
+                head = table[bucketIndex];
+            }
+
+            var stringKey = key.ToString();
+            var newItem = new Item(stringKey, value, hash, head);
+
+            Volatile.Write(ref table[bucketIndex], newItem);
+            Volatile.Write(ref this.count, this.count + 1);
+
+            resultingValue = value;
+            return true;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private TValue GetOrAddSlow(string key, Func<string, TValue> valueFactory)
+    {
+        var hash = GetHashCode(key.AsSpan());
+
+        using (this.lockObject.EnterScope())
+        {
+            var table = this.table;
+            var bucketIndex = hash & (table.Length - 1);
+
+            for (var item = table[bucketIndex]; item is not null; item = item.Next)
+            {
+                if (item.Hash == hash && key == item.Key)
+                {
+                    return item.Value;
+                }
+            }
+
+            var value = valueFactory(key);
+
+            if (this.count > (table.Length >> 1))
+            {
+                this.RebuildTable();
+
+                table = this.table;
+                bucketIndex = hash & (table.Length - 1);
+            }
+
+            var newItem = new Item(key, value, hash, table[bucketIndex]);
+
+            Volatile.Write(ref table[bucketIndex], newItem);
+            Volatile.Write(ref this.count, this.count + 1);
+
+            return value;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private TValue GetOrAddSlow(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
+    {
+        var hash = GetHashCode(key);
+
+        using (this.lockObject.EnterScope())
+        {
+            var table = this.table;
+            var bucketIndex = hash & (table.Length - 1);
+
+            for (var item = table[bucketIndex]; item is not null; item = item.Next)
+            {
+                if (item.Hash == hash && key.SequenceEqual(item.Key))
+                {
+                    return item.Value;
+                }
+            }
+
+            var stringKey = key.ToString();
+            var value = valueFactory(stringKey);
+
+            if (this.count > (table.Length >> 1))
+            {
+                this.RebuildTable();
+
+                table = this.table;
+                bucketIndex = hash & (table.Length - 1);
+            }
+
+            var newItem = new Item(stringKey, value, hash, table[bucketIndex]);
+
+            Volatile.Write(ref table[bucketIndex], newItem);
+            Volatile.Write(ref this.count, this.count + 1);
+
+            return value;
         }
     }
 
     private void RebuildTable()
-    {// lock(cs) required.
-        var nextCapacity = this.table.Length * 2;
-        var nextTable = new Item[nextCapacity];
-        for (var i = 0; i < this.table.Length; i++)
+    {
+        var table = this.table;
+
+        if (table.Length >= MaximumCapacity)
         {
-            var e = this.table[i];
-            while (e != null)
+            throw new InvalidOperationException(
+                "The maximum capacity of the hashtable has been reached.");
+        }
+
+        var nextTable = new Item?[table.Length << 1];
+        var mask = nextTable.Length - 1;
+
+        for (var i = 0; i < table.Length; i++)
+        {
+            var item = table[i];
+
+            while (item is not null)
             {
-                var newItem = new Item(e.Key, e.Value, e.Hash);
-                this.AddItem(nextTable, newItem);
-                e = e.Next;
+                var bucketIndex = item.Hash & mask;
+
+                nextTable[bucketIndex] =
+                    new Item(item.Key, item.Value, item.Hash, nextTable[bucketIndex]);
+
+                item = item.Next;
             }
         }
 
         Volatile.Write(ref this.table, nextTable);
     }
 
-    private bool AddItem(Item[] table, Item item)
-    {// lock(cs) required.
-        var h = item.Hash & (table.Length - 1);
+    /// <summary>
+    /// Replaces a value without modifying nodes visible to lock-free readers.
+    /// </summary>
+    private static Item ReplaceValue(Item head, Item target, TValue value)
+    {
+        Item? newHead = null;
 
-        if (table[h] == null)
+        // Reversing the collision chain does not affect lookup semantics.
+        for (var item = head; item is not null; item = item.Next)
         {
-            table[h] = item;
-        }
-        else
-        {
-            var i = table[h];
-            while (true)
-            {
-                if (i.Key == item.Key)
-                {// Identical
-                    return false;
-                }
-
-                if (i.Next == null)
-                { // Last item.
-                    break;
-                }
-
-                i = i.Next;
-            }
-
-            i.Next = item;
+            var newValue = ReferenceEquals(item, target) ? value : item.Value;
+            newHead = new Item(item.Key, newValue, item.Hash, newHead);
         }
 
-        return true;
+        return newHead!;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetHashCode(ReadOnlySpan<char> key)
+        => unchecked((int)XxHash3Slim.Hash64(key));
 }

@@ -22,6 +22,8 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(Utf16HashtableBenchmark2),
+            typeof(Utf16HashtableBenchmark),
             typeof(UInt64HashtableBenchmark),
             typeof(UnorderedMapSlimTest),
             typeof(UnorderedListBenchmark),
@@ -31,7 +33,6 @@ public class Program
             typeof(SequenceBuilderAddBenchmark),
             typeof(StringBuilderBenchmark),
             typeof(HashCombinerBenchmark),
-            typeof(Utf16HashtableBenchmark),
             typeof(TemporaryListBenchmark),
             typeof(RemoveCrBenchmark),
             typeof(WhiteSpaceBenchmark),
