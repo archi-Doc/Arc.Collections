@@ -12,9 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Security.Cryptography;
 using System.Text;
-using Microsoft.VisualBasic;
 
 namespace Arc;
 
@@ -23,6 +21,11 @@ namespace Arc;
 /// </summary>
 public static class BaseHelper
 {
+    /// <summary>
+    /// The threshold value that determines whether to use <see langword="stackalloc"/> or <see cref="System.Buffers.ArrayPool{T}"/> when allocating a span.
+    /// </summary>
+    public const int StackallocThreshold = 1024;
+
     public const char LfChar = '\n';
     public const char CrChar = '\r';
     public const char SpaceChar = ' ';
@@ -1290,7 +1293,7 @@ public static class BaseHelper
         }
 
         char[]? rentArray = null;
-        Span<char> span = length <= Arc.BaseConstants.StackallocThreshold ?
+        Span<char> span = length <= Arc.BaseHelper.StackallocThreshold ?
             stackalloc char[length] : (rentArray = ArrayPool<char>.Shared.Rent(length));
 
         try
@@ -1336,7 +1339,7 @@ public static class BaseHelper
         }
 
         char[]? rentArray = null;
-        Span<char> span = length <= Arc.BaseConstants.StackallocThreshold ?
+        Span<char> span = length <= Arc.BaseHelper.StackallocThreshold ?
             stackalloc char[length] : (rentArray = ArrayPool<char>.Shared.Rent(length));
 
         try

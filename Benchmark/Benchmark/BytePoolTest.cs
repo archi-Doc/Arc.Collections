@@ -33,7 +33,7 @@ public class BytePoolTest
         var length = 100;
 
         byte[]? rentArray = null;
-        Span<byte> span = length <= Arc.BaseConstants.StackallocThreshold ? // 1024
+        Span<byte> span = length <= Arc.BaseHelper.StackallocThreshold ? // 1024
             stackalloc byte[length] : (rentArray = ArrayPool<byte>.Shared.Rent(length));
 
         try
