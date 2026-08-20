@@ -186,7 +186,7 @@ public class UInt64Hashtable<TValue>
                 var newHead = item.Next;
                 for (var p = head; !ReferenceEquals(p, item); p = p.Next!)
                 {
-                    newHead = new Item(p.Key, p.Value, newHead);
+                    newHead = new Item(p!.Key, p.Value, newHead);
                 }
 
                 Volatile.Write(ref table[bucketIndex], newHead);
