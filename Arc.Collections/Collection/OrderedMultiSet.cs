@@ -16,7 +16,7 @@ namespace Arc.Collections;
 /// <br/><see cref="OrderedMultiSet{T}"/> allows duplicate elements.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
-public class OrderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
+public class OrderedMultiSet<T>
 {
     private readonly OrderedMultiMap<T, int> map;
 
@@ -130,34 +130,6 @@ public class OrderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, IColle
     /// </summary>
     public void Clear()
         => this.map.Clear();
-
-    #endregion
-
-    #region Interface
-
-    bool ICollection<T>.IsReadOnly => false;
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection<T>.Add(T item)
-        => this.map.Add(item, 0);
-
-    void ICollection<T>.CopyTo(T[] array, int arrayIndex)
-        => this.map.Keys.CopyTo(array, arrayIndex);
-
-    void ICollection.CopyTo(Array array, int index)
-        => ((ICollection)this.map.Keys).CopyTo(array, index);
-
-    public OrderedMultiMap<T, int>.KeyCollection.Enumerator GetEnumerator()
-        => this.map.Keys.GetEnumerator();
-
-    IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        => this.map.Keys.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => this.map.Keys.GetEnumerator();
 
     #endregion
 }
