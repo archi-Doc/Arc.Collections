@@ -62,7 +62,7 @@ public class SortedSetBenchmark
         return sum;
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public long Sum_OrderedSet()
     {
         long sum = 0;
@@ -72,7 +72,7 @@ public class SortedSetBenchmark
         }
 
         return sum;
-    }
+    }*/
 
     [Benchmark]
     public long Sum_OrderedSet2()
