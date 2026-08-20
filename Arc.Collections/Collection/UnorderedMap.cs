@@ -24,7 +24,7 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
-    private const int MinLogCapacity = 2;
+    private const int MinimumCapacity = 4;
     private const int MaximumCapacity = 1 << 30;
 
     /// <summary>
@@ -46,15 +46,17 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
         public readonly bool IsInvalid() => this.previous == UnusedNode;
 
-        public readonly TKey Key => this.key;
+        public readonly TKey? Key => this.key;
 
         public readonly TValue Value => this.value;
     }
 
-    // Null iff TKey is a value type and the default comparer is used.
+    // Null when the default comparer is used.
     private readonly IEqualityComparer<TKey>? comparer;
+
     private int version;
-    private int[] buckets = default!; // Length is always a power of two; the mask is buckets.Length - 1.
+    private int hashMask;
+    private int[] buckets = default!;
     private Node[] nodes = default!;
     private int nodeCount;
     private int freeList;
@@ -117,17 +119,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         this.Initialize(capacity);
         this.AllowDuplicate = allowDuplicate;
 
-        // Keep the default comparer null for value types so the JIT can
-        // devirtualize equality and hash-code operations in hot paths.
-        if (!typeof(TKey).IsValueType)
-        {
-            this.comparer = comparer ?? EqualityComparer<TKey>.Default;
-        }
-        else if (comparer is not null &&
-                 !ReferenceEquals(comparer, EqualityComparer<TKey>.Default))
-        {
-            this.comparer = comparer;
-        }
+        var defaultComparer = EqualityComparer<TKey>.Default;
+        this.comparer = comparer is null || ReferenceEquals(comparer, defaultComparer)
+            ? null
+            : comparer;
     }
 
     /// <summary>
@@ -177,32 +172,23 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         get
         {
             var index = this.FindFirstNode(key);
-            if (index < 0)
-            {
-                throw new KeyNotFoundException();
-            }
-
-            return this.nodes[index].value;
-        }
-
-        set
-        {
-            var index = this.FindFirstNode(key);
             if (index >= 0)
             {
-                this.nodes[index].value = value;
-                this.version++;
-                return;
+                return this.nodes[index].value;
             }
 
-            this.Probe(key, value);
+            ThrowKeyNotFound();
+            return default!;
         }
+
+        set => this.SetValue(key, value);
     }
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
     /// The returned array may be replaced when the map is resized.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (Node[] Nodes, int Max) UnsafeGetNodes()
         => (this.nodes, this.nodeCount);
 
@@ -240,7 +226,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             for (var i = 0; i < count; i++)
             {
                 ref var node = ref nodes[i];
-                if (node.IsValid() && node.value is null)
+
+                if (node.previous != Node.UnusedNode &&
+                    node.value is null)
                 {
                     return true;
                 }
@@ -250,10 +238,13 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         }
 
         var comparer = EqualityComparer<TValue>.Default;
+
         for (var i = 0; i < count; i++)
         {
             ref var node = ref nodes[i];
-            if (node.IsValid() && comparer.Equals(node.value, value))
+
+            if (node.previous != Node.UnusedNode &&
+                comparer.Equals(node.value, value))
             {
                 return true;
             }
@@ -268,11 +259,60 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
     {
-        var index = this.FindFirstNode(key);
-        if (index >= 0)
+        if (key is null)
         {
-            value = this.nodes[index].value;
-            return true;
+            var index = this.nullList;
+
+            if (index >= 0)
+            {
+                value = this.nodes[index].value;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
+        {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key))
+                {
+                    value = node.value;
+                    return true;
+                }
+
+                i = node.next;
+            }
+        }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key))
+                {
+                    value = node.value;
+                    return true;
+                }
+
+                i = node.next;
+            }
         }
 
         value = default;
@@ -291,7 +331,47 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             return this.nullList;
         }
 
-        return this.FindCore(key, this.GetKeyHashCode(key));
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
+        {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key))
+                {
+                    return i;
+                }
+
+                i = node.next;
+            }
+        }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key))
+                {
+                    return i;
+                }
+
+                i = node.next;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -302,11 +382,64 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     {
         var nodes = this.nodes;
         var valueComparer = EqualityComparer<TValue>.Default;
-        foreach (var i in this.EnumerateNode(key))
+
+        if (key is null)
         {
-            if (valueComparer.Equals(nodes[i].value, value))
+            var i = this.nullList;
+
+            while ((uint)i < (uint)nodes.Length)
             {
-                return i;
+                ref var node = ref nodes[i];
+
+                if (valueComparer.Equals(node.value, value))
+                {
+                    return i;
+                }
+
+                i = node.next;
+            }
+
+            return -1;
+        }
+
+        var comparer = this.comparer;
+
+        if (comparer is null)
+        {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    EqualityComparer<TKey>.Default.Equals(node.key, key) &&
+                    valueComparer.Equals(node.value, value))
+                {
+                    return i;
+                }
+
+                i = node.next;
+            }
+        }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
+            while ((uint)i < (uint)nodes.Length)
+            {
+                ref var node = ref nodes[i];
+
+                if (node.hashCode == hashCode &&
+                    comparer.Equals(node.key, key) &&
+                    valueComparer.Equals(node.value, value))
+                {
+                    return i;
+                }
+
+                i = node.next;
             }
         }
 
@@ -320,6 +453,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public bool Remove(TKey? key)
     {
         var index = this.FindFirstNode(key);
+
         if (index < 0)
         {
             return false;
@@ -336,6 +470,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public bool Remove(TKey? key, TValue value)
     {
         var index = this.FindNode(key, value);
+
         if (index < 0)
         {
             return false;
@@ -357,13 +492,15 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
         var nodes = this.nodes;
         ref var node = ref nodes[nodeIndex];
-        if (node.IsInvalid())
+
+        if (node.previous == Node.UnusedNode)
         {
             return;
         }
 
         var previous = node.previous;
         var next = node.next;
+
         if (node.key is null)
         {
             if (previous < 0)
@@ -377,11 +514,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         }
         else
         {
-            var buckets = this.buckets;
-            var bucketIndex = node.hashCode & (buckets.Length - 1);
+            var bucketIndex = node.hashCode & this.hashMask;
+
             if (previous < 0)
             {
-                buckets[bucketIndex] = next;
+                this.buckets[bucketIndex] = next;
             }
             else
             {
@@ -396,6 +533,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
         node.previous = Node.UnusedNode;
         node.next = this.freeList;
+
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
         {
             node.key = default!;
@@ -423,7 +561,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
         var nodes = this.nodes;
         ref var node = ref nodes[nodeIndex];
-        if (node.IsInvalid())
+
+        if (node.previous == Node.UnusedNode)
         {
             return false;
         }
@@ -435,7 +574,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 return false;
             }
         }
-        else if (node.key is not null && this.KeysEqual(node.key, key))
+        else if (node.key is not null &&
+                 this.KeysEqual(node.key, key))
         {
             return false;
         }
@@ -443,17 +583,16 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         if (!this.AllowDuplicate)
         {
             var existing = this.FindFirstNode(key);
+
             if (existing >= 0 && existing != nodeIndex)
             {
                 return false;
             }
         }
 
-        var buckets = this.buckets;
         var previous = node.previous;
         var next = node.next;
 
-        // Unlink from the current chain.
         if (node.key is null)
         {
             if (previous < 0)
@@ -467,10 +606,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         }
         else
         {
-            var oldBucketIndex = node.hashCode & (buckets.Length - 1);
+            var bucketIndex = node.hashCode & this.hashMask;
+
             if (previous < 0)
             {
-                buckets[oldBucketIndex] = next;
+                this.buckets[bucketIndex] = next;
             }
             else
             {
@@ -483,13 +623,13 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             nodes[next].previous = previous;
         }
 
-        // Relink using the new key.
         if (key is null)
         {
             node.hashCode = 0;
             node.key = default!;
             node.previous = -1;
             node.next = this.nullList;
+
             if (this.nullList >= 0)
             {
                 nodes[this.nullList].previous = nodeIndex;
@@ -500,18 +640,20 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         else
         {
             var hashCode = this.GetKeyHashCode(key);
-            var bucketIndex = hashCode & (buckets.Length - 1);
-            var head = buckets[bucketIndex];
+            var bucketIndex = hashCode & this.hashMask;
+            var head = this.buckets[bucketIndex];
+
             node.hashCode = hashCode;
             node.key = key;
             node.previous = -1;
             node.next = head;
+
             if (head >= 0)
             {
                 nodes[head].previous = nodeIndex;
             }
 
-            buckets[bucketIndex] = nodeIndex;
+            this.buckets[bucketIndex] = nodeIndex;
         }
 
         this.version++;
@@ -525,7 +667,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public bool SetNodeValue(int nodeIndex, TValue value)
     {
         if ((uint)nodeIndex >= (uint)this.nodeCount ||
-            this.nodes[nodeIndex].IsInvalid())
+            this.nodes[nodeIndex].previous == Node.UnusedNode)
         {
             return false;
         }
@@ -548,12 +690,14 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public void Clear()
     {
         var count = this.nodeCount;
+
         if (count == 0)
         {
             return;
         }
 
         Array.Fill(this.buckets, -1);
+
         if (RuntimeHelpers.IsReferenceOrContainsReferences<Node>())
         {
             Array.Clear(this.nodes, 0, count);
@@ -601,13 +745,17 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
         private readonly UnorderedMap<TKey, TValue> map;
+        private readonly Node[] nodes;
         private readonly int version;
+        private readonly int count;
         private int index;
 
         internal Enumerator(UnorderedMap<TKey, TValue> map)
         {
             this.map = map;
+            this.nodes = map.nodes;
             this.version = map.version;
+            this.count = map.nodeCount;
             this.index = 0;
         }
 
@@ -616,7 +764,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                ref var node = ref this.map.nodes[this.index - 1];
+                ref var node = ref this.nodes[this.index - 1];
                 return new(node.key, node.value);
             }
         }
@@ -630,7 +778,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     ThrowVersionMismatch();
                 }
 
-                if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                if (this.index == 0 || this.index == this.count + 1)
                 {
                     ThrowInvalidEnumeratorState();
                 }
@@ -647,13 +795,15 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 ThrowVersionMismatch();
             }
 
-            var nodes = this.map.nodes;
-            var count = this.map.nodeCount;
+            var nodes = this.nodes;
+            var count = this.count;
             var i = this.index;
+
             while ((uint)i < (uint)count)
             {
                 i++;
-                if (nodes[i - 1].IsValid())
+
+                if (nodes[i - 1].previous != Node.UnusedNode)
                 {
                     this.index = i;
                     return true;
@@ -703,20 +853,24 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         public struct Enumerator : IEnumerator<TKey>
         {
             private readonly UnorderedMap<TKey, TValue> map;
+            private readonly Node[] nodes;
             private readonly int version;
+            private readonly int count;
             private int index;
 
             internal Enumerator(UnorderedMap<TKey, TValue> map)
             {
                 this.map = map;
+                this.nodes = map.nodes;
                 this.version = map.version;
+                this.count = map.nodeCount;
                 this.index = 0;
             }
 
             public readonly TKey Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => this.map.nodes[this.index - 1].key;
+                get => this.nodes[this.index - 1].key;
             }
 
             object? IEnumerator.Current
@@ -728,7 +882,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                         ThrowVersionMismatch();
                     }
 
-                    if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                    if (this.index == 0 || this.index == this.count + 1)
                     {
                         ThrowInvalidEnumeratorState();
                     }
@@ -745,13 +899,15 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     ThrowVersionMismatch();
                 }
 
-                var nodes = this.map.nodes;
-                var count = this.map.nodeCount;
+                var nodes = this.nodes;
+                var count = this.count;
                 var i = this.index;
+
                 while ((uint)i < (uint)count)
                 {
                     i++;
-                    if (nodes[i - 1].IsValid())
+
+                    if (nodes[i - 1].previous != Node.UnusedNode)
                     {
                         this.index = i;
                         return true;
@@ -802,20 +958,24 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         public struct Enumerator : IEnumerator<TValue>
         {
             private readonly UnorderedMap<TKey, TValue> map;
+            private readonly Node[] nodes;
             private readonly int version;
+            private readonly int count;
             private int index;
 
             internal Enumerator(UnorderedMap<TKey, TValue> map)
             {
                 this.map = map;
+                this.nodes = map.nodes;
                 this.version = map.version;
+                this.count = map.nodeCount;
                 this.index = 0;
             }
 
             public readonly TValue Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => this.map.nodes[this.index - 1].value;
+                get => this.nodes[this.index - 1].value;
             }
 
             object? IEnumerator.Current
@@ -827,7 +987,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                         ThrowVersionMismatch();
                     }
 
-                    if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                    if (this.index == 0 || this.index == this.count + 1)
                     {
                         ThrowInvalidEnumeratorState();
                     }
@@ -844,13 +1004,15 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     ThrowVersionMismatch();
                 }
 
-                var nodes = this.map.nodes;
-                var count = this.map.nodeCount;
+                var nodes = this.nodes;
+                var count = this.count;
                 var i = this.index;
+
                 while ((uint)i < (uint)count)
                 {
                     i++;
-                    if (nodes[i - 1].IsValid())
+
+                    if (nodes[i - 1].previous != Node.UnusedNode)
                     {
                         this.index = i;
                         return true;
@@ -903,29 +1065,42 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         public struct Enumerator : IEnumerator<int>
         {
             private readonly UnorderedMap<TKey, TValue> map;
-            private readonly int version;
+            private readonly Node[] nodes;
+            private readonly IEqualityComparer<TKey>? comparer;
             private readonly TKey? key;
+            private readonly int version;
             private readonly int hashCode;
+            private readonly int firstIndex;
             private int nextIndex;
             private int currentIndex;
 
             internal Enumerator(UnorderedMap<TKey, TValue> map, TKey? key)
             {
                 this.map = map;
-                this.version = map.version;
+                this.nodes = map.nodes;
+                this.comparer = map.comparer;
                 this.key = key;
+                this.version = map.version;
                 this.currentIndex = -1;
+
                 if (key is null)
                 {
                     this.hashCode = 0;
-                    this.nextIndex = map.nullList;
+                    this.firstIndex = map.nullList;
                 }
                 else
                 {
-                    this.hashCode = map.GetKeyHashCode(key);
-                    var buckets = map.buckets;
-                    this.nextIndex = buckets[this.hashCode & (buckets.Length - 1)];
+                    var comparer = this.comparer;
+
+                    this.hashCode = comparer is null
+                        ? key.GetHashCode()
+                        : comparer.GetHashCode(key);
+
+                    this.firstIndex =
+                        map.buckets[this.hashCode & map.hashMask];
                 }
+
+                this.nextIndex = this.firstIndex;
             }
 
             public readonly int Current
@@ -937,26 +1112,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             internal readonly TValue CurrentValue
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => this.map.nodes[this.currentIndex].value;
+                get => this.nodes[this.currentIndex].value;
             }
 
             object IEnumerator.Current
-            {
-                get
-                {
-                    if (this.version != this.map.version)
-                    {
-                        ThrowVersionMismatch();
-                    }
-
-                    if (this.currentIndex < 0)
-                    {
-                        ThrowInvalidEnumeratorState();
-                    }
-
-                    return this.currentIndex;
-                }
-            }
+                => this.GetCurrentIndexChecked();
 
             public bool MoveNext()
             {
@@ -965,11 +1125,12 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     ThrowVersionMismatch();
                 }
 
-                var nodes = this.map.nodes;
+                var nodes = this.nodes;
                 var i = this.nextIndex;
+
                 if (this.key is null)
                 {
-                    if (i < 0)
+                    if ((uint)i >= (uint)nodes.Length)
                     {
                         this.currentIndex = -1;
                         return false;
@@ -980,13 +1141,15 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     return true;
                 }
 
-                var comparer = this.map.comparer;
+                var comparer = this.comparer;
+
                 if (comparer is null)
                 {
                     while ((uint)i < (uint)nodes.Length)
                     {
                         ref var node = ref nodes[i];
                         var next = node.next;
+
                         if (node.hashCode == this.hashCode &&
                             EqualityComparer<TKey>.Default.Equals(node.key, this.key))
                         {
@@ -1004,6 +1167,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                     {
                         ref var node = ref nodes[i];
                         var next = node.next;
+
                         if (node.hashCode == this.hashCode &&
                             comparer.Equals(node.key, this.key!))
                         {
@@ -1026,22 +1190,48 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
 
             void IEnumerator.Reset()
+                => this.ResetCore();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal void ResetCore()
             {
                 if (this.version != this.map.version)
                 {
                     ThrowVersionMismatch();
                 }
 
+                this.nextIndex = this.firstIndex;
                 this.currentIndex = -1;
-                if (this.key is null)
+            }
+
+            internal readonly TValue GetCurrentValueChecked()
+            {
+                if (this.version != this.map.version)
                 {
-                    this.nextIndex = this.map.nullList;
+                    ThrowVersionMismatch();
                 }
-                else
+
+                if (this.currentIndex < 0)
                 {
-                    var buckets = this.map.buckets;
-                    this.nextIndex = buckets[this.hashCode & (buckets.Length - 1)];
+                    ThrowInvalidEnumeratorState();
                 }
+
+                return this.nodes[this.currentIndex].value;
+            }
+
+            private readonly int GetCurrentIndexChecked()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.currentIndex < 0)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.currentIndex;
             }
         }
     }
@@ -1085,17 +1275,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
 
             object? IEnumerator.Current
-            {
-                get
-                {
-                    if (this.enumerator.Current < 0)
-                    {
-                        ThrowInvalidEnumeratorState();
-                    }
-
-                    return this.Current;
-                }
-            }
+                => this.enumerator.GetCurrentValueChecked();
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
@@ -1106,7 +1286,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
 
             void IEnumerator.Reset()
-                => ((IEnumerator)this.enumerator).Reset();
+                => this.enumerator.ResetCore();
         }
     }
 
@@ -1120,70 +1300,88 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         }
 
         var size = BitOperations.RoundUpToPowerOf2((uint)capacity);
-        var minimumCapacity = 1u << MinLogCapacity;
-        if (size < minimumCapacity)
-        {
-            size = minimumCapacity;
-        }
 
-        if (size > MaximumCapacity)
+        if (size < MinimumCapacity)
         {
-            size = MaximumCapacity;
+            size = MinimumCapacity;
         }
 
         var length = (int)size;
+
+        this.hashMask = length - 1;
+
         this.buckets = new int[length];
         Array.Fill(this.buckets, -1);
+
         this.nodes = new Node[length];
         this.freeList = -1;
         this.nullList = -1;
     }
 
-    /// <summary>
-    /// The single lookup core shared by all key searches: walks the collision chain of a
-    /// non-null key. The comparer branch is duplicated so that value-type keys with the
-    /// default comparer use fully devirtualized, inlined equality.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int FindCore(TKey key, int hashCode)
+    private void SetValue(TKey? key, TValue value)
     {
-        var buckets = this.buckets;
-        var nodes = this.nodes;
+        if (key is null)
+        {
+            var index = this.nullList;
 
-        // Chain indexes are always -1 or valid node indexes, so the (uint) comparison
-        // both terminates the walk and lets the JIT elide the bounds check on nodes[i].
-        var i = buckets[hashCode & (buckets.Length - 1)];
+            if (index >= 0)
+            {
+                this.nodes[index].value = value;
+                this.version++;
+                return;
+            }
+
+            this.InsertNull(value);
+            return;
+        }
+
+        var nodes = this.nodes;
         var comparer = this.comparer;
+
         if (comparer is null)
         {
+            var hashCode = key.GetHashCode();
+            var i = this.buckets[hashCode & this.hashMask];
+
             while ((uint)i < (uint)nodes.Length)
             {
                 ref var node = ref nodes[i];
+
                 if (node.hashCode == hashCode &&
                     EqualityComparer<TKey>.Default.Equals(node.key, key))
                 {
-                    return i;
+                    node.value = value;
+                    this.version++;
+                    return;
                 }
 
                 i = node.next;
             }
+
+            this.InsertNew(key, value, hashCode);
         }
         else
         {
+            var hashCode = comparer.GetHashCode(key);
+            var i = this.buckets[hashCode & this.hashMask];
+
             while ((uint)i < (uint)nodes.Length)
             {
                 ref var node = ref nodes[i];
+
                 if (node.hashCode == hashCode &&
                     comparer.Equals(node.key, key))
                 {
-                    return i;
+                    node.value = value;
+                    this.version++;
+                    return;
                 }
 
                 i = node.next;
             }
-        }
 
-        return -1;
+            this.InsertNew(key, value, hashCode);
+        }
     }
 
     private (int NodeIndex, bool NewlyAdded) Probe(TKey? key, TValue value)
@@ -1195,65 +1393,121 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 return (this.nullList, false);
             }
 
-            if (this.nodeCount == this.nodes.Length &&
-                this.freeCount == 0)
-            {
-                this.Resize();
-            }
-
-            var index = this.NewNode();
-            ref var node = ref this.nodes[index];
-            node.hashCode = 0;
-            node.key = default!;
-            node.value = value;
-            node.previous = -1;
-            node.next = this.nullList;
-            if (this.nullList >= 0)
-            {
-                this.nodes[this.nullList].previous = index;
-            }
-
-            this.nullList = index;
-            this.version++;
-            return (index, true);
+            return (this.InsertNull(value), true);
         }
 
-        var hashCode = this.GetKeyHashCode(key);
-        if (!this.AllowDuplicate)
+        var nodes = this.nodes;
+        var comparer = this.comparer;
+
+        if (comparer is null)
         {
-            var existing = this.FindCore(key, hashCode);
-            if (existing >= 0)
-            {
-                return (existing, false);
-            }
-        }
+            var hashCode = key.GetHashCode();
 
-        // Grow only after duplicate detection.
+            if (!this.AllowDuplicate)
+            {
+                var i = this.buckets[hashCode & this.hashMask];
+
+                while ((uint)i < (uint)nodes.Length)
+                {
+                    ref var node = ref nodes[i];
+
+                    if (node.hashCode == hashCode &&
+                        EqualityComparer<TKey>.Default.Equals(node.key, key))
+                    {
+                        return (i, false);
+                    }
+
+                    i = node.next;
+                }
+            }
+
+            return (this.InsertNew(key, value, hashCode), true);
+        }
+        else
+        {
+            var hashCode = comparer.GetHashCode(key);
+
+            if (!this.AllowDuplicate)
+            {
+                var i = this.buckets[hashCode & this.hashMask];
+
+                while ((uint)i < (uint)nodes.Length)
+                {
+                    ref var node = ref nodes[i];
+
+                    if (node.hashCode == hashCode &&
+                        comparer.Equals(node.key, key))
+                    {
+                        return (i, false);
+                    }
+
+                    i = node.next;
+                }
+            }
+
+            return (this.InsertNew(key, value, hashCode), true);
+        }
+    }
+
+    private int InsertNull(TValue value)
+    {
         if (this.nodeCount == this.nodes.Length &&
             this.freeCount == 0)
         {
             this.Resize();
         }
 
-        var buckets = this.buckets;
-        var bucketIndex = hashCode & (buckets.Length - 1);
-        var head = buckets[bucketIndex];
-        var newIndex = this.NewNode();
         var nodes = this.nodes;
-        ref var newNode = ref nodes[newIndex];
-        newNode.hashCode = hashCode;
-        newNode.key = key;
-        newNode.value = value;
-        newNode.previous = -1;
-        newNode.next = head;
-        if (head >= 0)
+        var index = this.NewNode();
+        ref var node = ref nodes[index];
+
+        node.hashCode = 0;
+        node.key = default!;
+        node.value = value;
+        node.previous = -1;
+        node.next = this.nullList;
+
+        if (this.nullList >= 0)
         {
-            nodes[head].previous = newIndex;
+            nodes[this.nullList].previous = index;
         }
 
-        buckets[bucketIndex] = newIndex;
+        this.nullList = index;
         this.version++;
-        return (newIndex, true);
+
+        return index;
+    }
+
+    private int InsertNew(TKey key, TValue value, int hashCode)
+    {
+        if (this.nodeCount == this.nodes.Length &&
+            this.freeCount == 0)
+        {
+            this.Resize();
+        }
+
+        var nodes = this.nodes;
+        var bucketIndex = hashCode & this.hashMask;
+        var head = this.buckets[bucketIndex];
+        var index = this.NewNode();
+
+        ref var node = ref nodes[index];
+
+        node.hashCode = hashCode;
+        node.key = key;
+        node.value = value;
+        node.previous = -1;
+        node.next = head;
+
+        if (head >= 0)
+        {
+            nodes[head].previous = index;
+        }
+
+        this.buckets[bucketIndex] = index;
+        this.version++;
+
+        return index;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1262,8 +1516,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         if (this.freeCount > 0)
         {
             var index = this.freeList;
+
             this.freeList = this.nodes[index].next;
             this.freeCount--;
+
             return index;
         }
 
@@ -1273,26 +1529,29 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     private void Resize()
     {
         var oldSize = this.nodes.Length;
+
         if (oldSize >= MaximumCapacity)
         {
             ThrowMaximumCapacity();
         }
 
-        // Resize is called only when there are no reusable nodes.
+        // Resize is called only when no reusable nodes remain.
         var newSize = oldSize << 1;
         var newMask = newSize - 1;
+
         var newBuckets = new int[newSize];
         Array.Fill(newBuckets, -1);
 
         var count = this.nodeCount;
         var newNodes = new Node[newSize];
-        Array.Copy(this.nodes, 0, newNodes, 0, count);
+
+        Array.Copy(this.nodes, newNodes, count);
 
         for (var i = 0; i < count; i++)
         {
             ref var node = ref newNodes[i];
 
-            // Null keys use the dedicated chain and keep their indexes.
+            // Null keys use the dedicated chain.
             if (node.key is null)
             {
                 continue;
@@ -1300,8 +1559,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
             var bucketIndex = node.hashCode & newMask;
             var head = newBuckets[bucketIndex];
+
             node.previous = -1;
             node.next = head;
+
             if (head >= 0)
             {
                 newNodes[head].previous = i;
@@ -1310,6 +1571,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             newBuckets[bucketIndex] = i;
         }
 
+        this.hashMask = newMask;
         this.buckets = newBuckets;
         this.nodes = newNodes;
     }
@@ -1318,6 +1580,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     private int GetKeyHashCode(TKey key)
     {
         var comparer = this.comparer;
+
         return comparer is null
             ? key!.GetHashCode()
             : comparer.GetHashCode(key!);
@@ -1327,10 +1590,16 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     private bool KeysEqual(TKey x, TKey y)
     {
         var comparer = this.comparer;
+
         return comparer is null
             ? EqualityComparer<TKey>.Default.Equals(x, y)
             : comparer.Equals(x, y);
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFound()
+        => throw new KeyNotFoundException();
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
