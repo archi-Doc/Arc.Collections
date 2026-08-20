@@ -4,56 +4,91 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-
-#pragma warning disable SA1124 // Do not use regions
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1611 // Element parameters should be documented
+#pragma warning disable SA1615 // Element return value should be documented
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
+
 /// <summary>
-/// Represents an unordered collection of unique elements backed by a hash table.
+/// Represents a high-performance unordered set.<br/>
+/// Supports duplicate and null elements when configured to do so.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
-public sealed class UnorderedSet<T>
+public sealed class UnorderedSet<T> : IEnumerable<T>
 {
-    private readonly UnorderedMap<T, nint> map;
+    private readonly UnorderedMap<T, byte> map;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
+    /// Initializes an empty set with the specified duplicate behavior.
     /// </summary>
-    public UnorderedSet()
+    public UnorderedSet(bool allowDuplicate = false)
+        : this(0, null, allowDuplicate)
     {
-        this.map = new();
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class.
+    /// Initializes an empty set with the specified capacity.
     /// </summary>
-    /// <param name="comparer">The equality comparer to use for the elements.</param>
-    public UnorderedSet(IEqualityComparer<T> comparer)
+    public UnorderedSet(int capacity, bool allowDuplicate = false)
+        : this(capacity, null, allowDuplicate)
     {
-        this.map = new(comparer);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class containing the specified elements.
+    /// Initializes an empty set with the specified comparer.
     /// </summary>
-    /// <param name="collection">The elements to add to the set.</param>
+    public UnorderedSet(IEqualityComparer<T>? comparer, bool allowDuplicate = false)
+        : this(0, comparer, allowDuplicate)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty set with the specified capacity, comparer, and duplicate behavior.
+    /// </summary>
+    public UnorderedSet(int capacity, IEqualityComparer<T>? comparer, bool allowDuplicate)
+    {
+        this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicate);
+    }
+
+    /// <summary>
+    /// Initializes a set containing the specified elements.
+    /// </summary>
     public UnorderedSet(IEnumerable<T> collection)
-        : this(collection, EqualityComparer<T>.Default)
+        : this(collection, null, false)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="UnorderedSet{T}"/> class containing the specified elements.
+    /// Initializes a set containing the specified elements using the specified comparer.
     /// </summary>
-    /// <param name="collection">The elements to add to the set.</param>
-    /// <param name="comparer">The equality comparer to use for the elements.</param>
-    public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T> comparer)
+    public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer)
+        : this(collection, comparer, false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a set containing the specified elements using the specified duplicate behavior.
+    /// </summary>
+    public UnorderedSet(IEnumerable<T> collection, bool allowDuplicate)
+        : this(collection, null, allowDuplicate)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a set containing the specified elements using the specified comparer and duplicate behavior.
+    /// </summary>
+    public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool allowDuplicate)
     {
         ArgumentNullException.ThrowIfNull(collection);
 
-        this.map = new(comparer);
+        this.map = new UnorderedMap<T, byte>(
+            GetCollectionCount(collection),
+            comparer,
+            allowDuplicate);
+
         foreach (var item in collection)
         {
             this.map.Add(item, 0);
@@ -61,55 +96,116 @@ public sealed class UnorderedSet<T>
     }
 
     /// <summary>
-    /// Gets the number of elements contained in the set.
+    /// Gets a value indicating whether duplicate elements are allowed.
+    /// </summary>
+    public bool AllowDuplicate => this.map.AllowDuplicate;
+
+    /// <summary>
+    /// Gets the number of elements in the set.
     /// </summary>
     public int Count => this.map.Count;
 
     /// <summary>
-    /// Adds the specified value to the set.
+    /// Gets the current capacity.
     /// </summary>
-    /// <param name="value">The value to add.</param>
-    /// <returns>
-    /// The node index and whether a new node was added.
-    /// </returns>
-    public (int NodeIndex, bool NewlyAdded) Add(T value)
-        => this.map.Add(value, 0);
+    public int Capacity => this.map.Capacity;
 
     /// <summary>
-    /// Determines whether the set contains the specified value.
+    /// Gets the comparer used for elements.
     /// </summary>
-    /// <param name="value">The value to locate.</param>
-    /// <returns><see langword="true"/> if the value is contained in the set; otherwise, <see langword="false"/>.</returns>
-    public bool Contains(T value)
-        => this.map.ContainsKey(value);
+    public IEqualityComparer<T> Comparer => this.map.Comparer;
 
     /// <summary>
-    /// Replaces the value of the specified node.
+    /// Adds the specified element to the set.
     /// </summary>
-    /// <param name="nodeIndex">The index of the node to update.</param>
-    /// <param name="value">The new value.</param>
-    /// <returns><see langword="true"/> if the node was successfully updated; otherwise, <see langword="false"/>.</returns>
-    public bool SetNodeValue(int nodeIndex, T value)
-        => this.map.SetNodeKey(nodeIndex, value);
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Add(T? item)
+        => this.map.Add(item, 0).NewlyAdded;
 
     /// <summary>
-    /// Removes the specified value from the set.
+    /// Determines whether the set contains the specified element.
     /// </summary>
-    /// <param name="value">The value to remove.</param>
-    /// <returns><see langword="true"/> if the value was found and removed; otherwise, <see langword="false"/>.</returns>
-    public bool Remove(T value)
-        => this.map.Remove(value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Contains(T? item)
+        => this.map.ContainsKey(item);
 
     /// <summary>
-    /// Removes the specified node from the set.
+    /// Removes one matching element from the set.
     /// </summary>
-    /// <param name="nodeIndex">The index of the node to remove.</param>
-    public void RemoveNode(int nodeIndex)
-        => this.map.RemoveNode(nodeIndex);
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Remove(T? item)
+        => this.map.Remove(item);
 
     /// <summary>
     /// Removes all elements from the set.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
         => this.map.Clear();
+
+    /// <summary>
+    /// Copies the elements to a new array.
+    /// </summary>
+    public T[] ToArray()
+    {
+        var array = new T[this.Count];
+        this.CopyTo(array, 0);
+        return array;
+    }
+
+    /// <summary>
+    /// Copies the elements to the specified array.
+    /// </summary>
+    public void CopyTo(T[] array, int index)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+
+        if ((uint)index > (uint)array.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (array.Length - index < this.Count)
+        {
+            throw new ArgumentException(
+                "The destination array is too small.",
+                nameof(array));
+        }
+
+        foreach (var item in this.map.Keys)
+        {
+            array[index++] = item;
+        }
+    }
+
+    /// <summary>
+    /// Returns an allocation-free enumerator.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnorderedMap<T, byte>.KeyEnumerable.Enumerator GetEnumerator()
+        => this.map.Keys.GetEnumerator();
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        => this.map.Keys.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => this.map.Keys.GetEnumerator();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetCollectionCount(IEnumerable<T> collection)
+    {
+        if (collection is ICollection<T> collection1)
+        {
+            return collection1.Count;
+        }
+
+        if (collection is IReadOnlyCollection<T> collection2)
+        {
+            return collection2.Count;
+        }
+
+        return 0;
+    }
 }

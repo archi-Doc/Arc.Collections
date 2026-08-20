@@ -1502,8 +1502,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         var comparer = this.comparer;
 
         return comparer is null
-            ? key.GetHashCode()
-            : comparer.GetHashCode(key);
+            ? key!.GetHashCode()
+            : comparer.GetHashCode(key!);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
