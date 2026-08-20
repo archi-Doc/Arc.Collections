@@ -4,7 +4,7 @@ using System;
 
 namespace Arc.Collections.HotMethod;
 
-/// <summary>
+/* /// <summary>
 /// Default composited resolver.
 /// </summary>
 public sealed class StandardResolver : IHotMethodResolver
@@ -47,4 +47,4 @@ public sealed class StandardResolver : IHotMethodResolver
             MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(typeof(StandardMethod2<,>).MakeGenericType(typeof(TKey), typeof(TValue)))!;
         }
     }
-}
+}*/
