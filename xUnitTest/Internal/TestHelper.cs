@@ -12,16 +12,6 @@ namespace XunitTest;
 
 public static class TestHelper
 {
-    public static void ValidateWithOrderedMultiMap<TKey, TValue>(this UnorderedMultiMap<TKey, TValue> um, OrderedMultiMap<TKey, TValue> map)
-    {
-        um.Count.Is(map.Count);
-
-        foreach (var x in map)
-        {
-            um.Contains(x).IsTrue();
-        }
-    }
-
     public static void ValidateWithDictionary<TKey, TValue>(this UnorderedMap<TKey, TValue> um, Dictionary<TKey, TValue> dic)
     {
         um.Count.Is(dic.Count);

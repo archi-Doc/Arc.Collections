@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
@@ -21,7 +22,7 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
-public class UnorderedMap<TKey, TValue>
+public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
     private const int MinLogCapacity = 2;
     private const int MaximumCapacity = 1 << 30;
@@ -87,10 +88,26 @@ public class UnorderedMap<TKey, TValue>
     }
 
     /// <summary>
+    /// Initializes an empty map with the specified duplicate-key behavior.
+    /// </summary>
+    public UnorderedMap(bool allowDuplicate)
+        : this(0, null, allowDuplicate)
+    {
+    }
+
+    /// <summary>
     /// Initializes an empty map with the specified capacity and comparer.
     /// </summary>
     public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer)
         : this(capacity, comparer, false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an empty map with the specified capacity and duplicate-key behavior.
+    /// </summary>
+    public UnorderedMap(int capacity, bool allowDuplicate)
+        : this(capacity, null, allowDuplicate)
     {
     }
 
@@ -102,7 +119,7 @@ public class UnorderedMap<TKey, TValue>
         this.Initialize(capacity);
         this.AllowDuplicate = allowDuplicate;
 
-        // Keep the default comparer null for value types so that the JIT can
+        // Keep the default comparer null for value types so the JIT can
         // devirtualize equality and hash-code operations in hot paths.
         if (!typeof(TKey).IsValueType)
         {
@@ -723,18 +740,25 @@ public class UnorderedMap<TKey, TValue>
     public MatchedValueEnumerable EnumerateValue(TKey? key)
         => new(this, key);
 
+    #region Enumerator
+
     /// <summary>
     /// Returns an allocation-free enumerator.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
-    #region Enumerator
+    IEnumerator<KeyValuePair<TKey, TValue>>
+        IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+        => new Enumerator(this);
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => new Enumerator(this);
 
     /// <summary>
-    /// Enumerates key/value pairs without allocation.
+    /// Enumerates key/value pairs without allocation when used directly.
     /// </summary>
-    public struct Enumerator
+    public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
         private readonly UnorderedMap<TKey, TValue> map;
         private readonly int version;
@@ -754,6 +778,24 @@ public class UnorderedMap<TKey, TValue>
             {
                 ref var node = ref this.map.nodes[this.index - 1];
                 return new(node.key, node.value);
+            }
+        }
+
+        object IEnumerator.Current
+        {
+            get
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.Current;
             }
         }
 
@@ -783,12 +825,26 @@ public class UnorderedMap<TKey, TValue>
             this.index = count + 1;
             return false;
         }
+
+        public void Dispose()
+        {
+        }
+
+        void IEnumerator.Reset()
+        {
+            if (this.version != this.map.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            this.index = 0;
+        }
     }
 
     /// <summary>
-    /// Enumerates the keys in the map without allocation.
+    /// Enumerates the keys in the map.
     /// </summary>
-    public readonly struct KeyEnumerable
+    public readonly struct KeyEnumerable : IEnumerable<TKey>
     {
         private readonly UnorderedMap<TKey, TValue> map;
 
@@ -800,7 +856,13 @@ public class UnorderedMap<TKey, TValue>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map);
 
-        public struct Enumerator
+        IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TKey>
         {
             private readonly UnorderedMap<TKey, TValue> map;
             private readonly int version;
@@ -819,6 +881,24 @@ public class UnorderedMap<TKey, TValue>
                 get => this.map.nodes[this.index - 1].key;
             }
 
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.Current;
+                }
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -845,13 +925,27 @@ public class UnorderedMap<TKey, TValue>
                 this.index = count + 1;
                 return false;
             }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.index = 0;
+            }
         }
     }
 
     /// <summary>
-    /// Enumerates the values in the map without allocation.
+    /// Enumerates the values in the map.
     /// </summary>
-    public readonly struct ValueEnumerable
+    public readonly struct ValueEnumerable : IEnumerable<TValue>
     {
         private readonly UnorderedMap<TKey, TValue> map;
 
@@ -863,7 +957,13 @@ public class UnorderedMap<TKey, TValue>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map);
 
-        public struct Enumerator
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map);
+
+        public struct Enumerator : IEnumerator<TValue>
         {
             private readonly UnorderedMap<TKey, TValue> map;
             private readonly int version;
@@ -882,6 +982,24 @@ public class UnorderedMap<TKey, TValue>
                 get => this.map.nodes[this.index - 1].value;
             }
 
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.index == 0 || this.index == this.map.nodeCount + 1)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.Current;
+                }
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -908,13 +1026,27 @@ public class UnorderedMap<TKey, TValue>
                 this.index = count + 1;
                 return false;
             }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.index = 0;
+            }
         }
     }
 
     /// <summary>
-    /// Enumerates node indexes matching a key without allocation.
+    /// Enumerates node indexes matching a key.
     /// </summary>
-    public readonly struct NodeEnumerable
+    public readonly struct NodeEnumerable : IEnumerable<int>
     {
         private readonly UnorderedMap<TKey, TValue> map;
         private readonly TKey? key;
@@ -928,7 +1060,13 @@ public class UnorderedMap<TKey, TValue>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map, this.key);
 
-        public struct Enumerator
+        IEnumerator<int> IEnumerable<int>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<int>
         {
             private readonly UnorderedMap<TKey, TValue> map;
             private readonly int version;
@@ -966,6 +1104,24 @@ public class UnorderedMap<TKey, TValue>
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => this.map.nodes[this.currentIndex].value;
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    if (this.version != this.map.version)
+                    {
+                        ThrowVersionMismatch();
+                    }
+
+                    if (this.currentIndex < 0)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.currentIndex;
+                }
             }
 
             public bool MoveNext()
@@ -1034,13 +1190,37 @@ public class UnorderedMap<TKey, TValue>
                 this.currentIndex = -1;
                 return false;
             }
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                this.currentIndex = -1;
+
+                if (this.key is null)
+                {
+                    this.nextIndex = this.map.nullList;
+                }
+                else
+                {
+                    this.nextIndex =
+                        this.map.buckets[this.hashCode & this.map.hashMask];
+                }
+            }
         }
     }
 
     /// <summary>
-    /// Enumerates values matching a key without allocation.
+    /// Enumerates values matching a key.
     /// </summary>
-    public readonly struct MatchedValueEnumerable
+    public readonly struct MatchedValueEnumerable : IEnumerable<TValue>
     {
         private readonly UnorderedMap<TKey, TValue> map;
         private readonly TKey? key;
@@ -1054,7 +1234,13 @@ public class UnorderedMap<TKey, TValue>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map, this.key);
 
-        public struct Enumerator
+        IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => new Enumerator(this.map, this.key);
+
+        public struct Enumerator : IEnumerator<TValue>
         {
             private NodeEnumerable.Enumerator enumerator;
 
@@ -1069,8 +1255,29 @@ public class UnorderedMap<TKey, TValue>
                 get => this.enumerator.CurrentValue;
             }
 
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (this.enumerator.Current < 0)
+                    {
+                        ThrowInvalidEnumeratorState();
+                    }
+
+                    return this.Current;
+                }
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext() => this.enumerator.MoveNext();
+            public bool MoveNext()
+                => this.enumerator.MoveNext();
+
+            public void Dispose()
+            {
+            }
+
+            void IEnumerator.Reset()
+                => ((IEnumerator)this.enumerator).Reset();
         }
     }
 
@@ -1117,7 +1324,8 @@ public class UnorderedMap<TKey, TValue>
                 return (this.nullList, false);
             }
 
-            if (this.nodeCount == this.nodes.Length && this.freeCount == 0)
+            if (this.nodeCount == this.nodes.Length &&
+                this.freeCount == 0)
             {
                 this.Resize();
             }
@@ -1192,7 +1400,8 @@ public class UnorderedMap<TKey, TValue>
         }
 
         // Grow only after duplicate detection.
-        if (this.nodeCount == nodes.Length && this.freeCount == 0)
+        if (this.nodeCount == nodes.Length &&
+            this.freeCount == 0)
         {
             this.Resize();
             nodes = this.nodes;
@@ -1293,8 +1502,8 @@ public class UnorderedMap<TKey, TValue>
         var comparer = this.comparer;
 
         return comparer is null
-            ? key!.GetHashCode()
-            : comparer.GetHashCode(key!);
+            ? key.GetHashCode()
+            : comparer.GetHashCode(key);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1307,83 +1516,17 @@ public class UnorderedMap<TKey, TValue>
             : comparer.Equals(x, y);
     }
 
-    /// <summary>
-    /// Returns the key with the largest number of duplicate entries.
-    /// </summary>
-    protected (TKey? Key, int Count) TryGetMostDuplicateKeyInternal()
-    {
-        TKey? bestKey = default;
-        var bestCount = 0;
-        var nodes = this.nodes;
-
-        if (this.nullList >= 0)
-        {
-            var count = 0;
-
-            for (var i = this.nullList; i >= 0; i = nodes[i].next)
-            {
-                count++;
-            }
-
-            if (count > bestCount)
-            {
-                bestCount = count;
-                bestKey = default;
-            }
-        }
-
-        var comparer = this.comparer;
-
-        for (var bucketIndex = 0; bucketIndex < this.buckets.Length; bucketIndex++)
-        {
-            for (var i = this.buckets[bucketIndex]; i >= 0; i = nodes[i].next)
-            {
-                ref var candidate = ref nodes[i];
-                var count = 0;
-
-                if (comparer is null)
-                {
-                    for (var j = i; j >= 0; j = nodes[j].next)
-                    {
-                        ref var node = ref nodes[j];
-
-                        if (node.hashCode == candidate.hashCode &&
-                            EqualityComparer<TKey>.Default.Equals(node.key, candidate.key))
-                        {
-                            count++;
-                        }
-                    }
-                }
-                else
-                {
-                    for (var j = i; j >= 0; j = nodes[j].next)
-                    {
-                        ref var node = ref nodes[j];
-
-                        if (node.hashCode == candidate.hashCode &&
-                            comparer.Equals(node.key, candidate.key))
-                        {
-                            count++;
-                        }
-                    }
-                }
-
-                if (count > bestCount)
-                {
-                    bestCount = count;
-                    bestKey = candidate.key;
-                }
-            }
-        }
-
-        return (bestKey, bestCount);
-    }
-
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowVersionMismatch()
         => throw new InvalidOperationException(
             "Collection was modified after the enumerator was instantiated.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowInvalidEnumeratorState()
+        => throw new InvalidOperationException(
+            "Enumeration has either not started or has already finished.");
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
