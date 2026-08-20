@@ -438,6 +438,7 @@ public class OrderedKeyValueList<TKey, TValue> :
             {
                 ThrowArgumentNullKey();
             }
+
             var index = this.IndexOfFirstCore(key);
             if (index >= 0)
             {
