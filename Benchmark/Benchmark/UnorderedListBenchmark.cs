@@ -83,7 +83,7 @@ public class UnorderedListBenchmark
     {
         var sum = 0;
 
-        foreach (var x in this.unorderedList)
+        foreach (var x in this.unorderedList.AsSpan())
         {
             sum += x;
         }
