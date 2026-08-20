@@ -22,11 +22,11 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(UnorderedMapSlimTest),
             typeof(Utf16UnorderedMapBenchmark),
             typeof(Utf16HashtableBenchmark2),
             typeof(Utf16HashtableBenchmark),
             typeof(UInt64HashtableBenchmark),
-            typeof(UnorderedMapSlimTest),
             typeof(UnorderedListBenchmark),
             typeof(UnorderedLinkedListBenchmark),
             typeof(CircularQueueBenchmark),
