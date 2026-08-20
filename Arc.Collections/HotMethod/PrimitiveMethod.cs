@@ -4,6 +4,8 @@
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -41,6 +43,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<byte> span, byte value)
+        {
+            ref byte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<byte> span, byte value)
+        {
+            ref byte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -192,6 +240,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<sbyte> span, sbyte value)
+        {
+            ref sbyte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<sbyte> span, sbyte value)
+        {
+            ref sbyte r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
@@ -341,6 +435,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<ushort> span, ushort value)
+        {
+            ref ushort r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<ushort> span, ushort value)
+        {
+            ref ushort r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -492,6 +632,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<short> span, short value)
+        {
+            ref short r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<short> span, short value)
+        {
+            ref short r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
@@ -641,6 +827,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<uint> span, uint value)
+        {
+            ref uint r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<uint> span, uint value)
+        {
+            ref uint r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -792,6 +1024,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<int> span, int value)
+        {
+            ref int r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<int> span, int value)
+        {
+            ref int r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
@@ -941,6 +1219,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<ulong> span, ulong value)
+        {
+            ref ulong r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<ulong> span, ulong value)
+        {
+            ref ulong r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1092,6 +1416,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<long> span, long value)
+        {
+            ref long r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<long> span, long value)
+        {
+            ref long r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
@@ -1241,6 +1611,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<UInt128> span, UInt128 value)
+        {
+            ref UInt128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<UInt128> span, UInt128 value)
+        {
+            ref UInt128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1392,6 +1808,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<Int128> span, Int128 value)
+        {
+            ref Int128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<Int128> span, Int128 value)
+        {
+            ref Int128 r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class Int128Method2<TValue> : IHotMethod2<Int128, TValue>
@@ -1541,6 +2003,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<float> span, float value)
+        {
+            ref float r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<float> span, float value)
+        {
+            ref float r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
@@ -1692,6 +2200,52 @@ namespace Arc.Collections.HotMethod
 
             return ~min;
         }
+
+        public int LowerBound(ReadOnlySpan<double> span, double value)
+        {
+            ref double r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<double> span, double value)
+        {
+            ref double r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
     }
 
     public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
@@ -1841,6 +2395,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<DateTime> span, DateTime value)
+        {
+            ref DateTime r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<DateTime> span, DateTime value)
+        {
+            ref DateTime r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 

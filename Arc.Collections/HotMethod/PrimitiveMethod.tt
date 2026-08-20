@@ -28,6 +28,8 @@ var allTypes = new (string Simple, string Name)[]
  * CHANGE THE .tt FILE INSTEAD. */
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 #pragma warning disable SA1649 // File name should match first type name
 
@@ -66,6 +68,52 @@ namespace Arc.Collections.HotMethod
             }
 
             return ~min;
+        }
+
+        public int LowerBound(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
+        {
+            ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) < value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) < value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
+        }
+
+        public int UpperBoundExclusive(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
+        {
+            ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
+            nuint lo = 0;
+            nuint n = (nuint)(uint)span.Length;
+
+            while (n > 1)
+            {
+                nuint half = n >> 1;
+                bool c = Unsafe.Add(ref r, lo + half - 1) <= value;
+                lo += half & (nuint)(0 - (nuint)Unsafe.As<bool, byte>(ref c));
+                n -= half;
+            }
+
+            if (n != 0)
+            {
+                bool c = Unsafe.Add(ref r, lo) <= value;
+                lo += Unsafe.As<bool, byte>(ref c);
+            }
+
+            return (int)lo;
         }
     }
 
