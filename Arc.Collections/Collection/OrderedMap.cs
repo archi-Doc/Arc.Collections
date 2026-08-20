@@ -183,7 +183,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 
     public int Count => this.count;
 
-    public int CompareFactor { get; }
+    public bool Reverse { get; }
 
     public IComparer<TKey> Comparer { get; }
 
@@ -202,7 +202,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// </summary>
     public OrderedMap(IComparer<TKey>? comparer, bool reverse = false)
     {
-        this.CompareFactor = reverse ? -1 : 1;
+        this.Reverse = reverse;
         this.Comparer = comparer ?? Comparer<TKey>.Default;
         this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
     }
@@ -774,7 +774,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         var comparer = this.Comparer;
         var hotMethod = this.HotMethod2;
 
-        if (this.CompareFactor > 0)
+        if (!this.Reverse)
         {
             if (hotMethod is not null)
             {
@@ -1545,7 +1545,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             cmp = this.Comparer.Compare(x, y);
         }
 
-        if (this.CompareFactor > 0)
+        if (!this.Reverse)
         {
             return cmp;
         }
