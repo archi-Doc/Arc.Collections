@@ -3,143 +3,133 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Arc.Collections.HotMethod;
 
 #pragma warning disable SA1124 // Do not use regions
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
+
 /// <summary>
-/// Represents a collection of objects that is maintained in sorted order (ascending by default).
-/// <br/><see cref="OrderedMultiSet{T}"/> uses Red-Black Tree + Linked List structure to store objects.
-/// <br/><see cref="OrderedMultiSet{T}"/> can store duplicate keys.
+/// Represents a collection of objects maintained in sorted order (ascending by default).
+/// <br/><see cref="OrderedMultiSet{T}"/> uses a red-black tree and linked list to store objects.
+/// <br/><see cref="OrderedMultiSet{T}"/> allows duplicate elements.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 public class OrderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
 {
+    private readonly OrderedMultiMap<T, int> map;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
     /// </summary>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+    /// <param name="reverse">true to reverse the default comparison order.</param>
     public OrderedMultiSet(bool reverse = false)
     {
         this.map = new(reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
     /// </summary>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+    /// <param name="comparer">The comparer to use for comparing elements.</param>
+    /// <param name="reverse">true to reverse the comparison order.</param>
     public OrderedMultiSet(IComparer<T> comparer, bool reverse = false)
     {
+        ArgumentNullException.ThrowIfNull(comparer);
+
         this.map = new(comparer, reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
+    /// Initializes a new instance by copying the specified collection.
     /// </summary>
-    /// <param name="collection">The enumerable collection to be copied.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
+    /// <param name="collection">The collection to copy.</param>
+    /// <param name="reverse">true to reverse the default comparison order.</param>
     public OrderedMultiSet(IEnumerable<T> collection, bool reverse = false)
         : this(collection, Comparer<T>.Default, reverse)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedMultiSet{T}"/> class.
+    /// Initializes a new instance by copying the specified collection.
     /// </summary>
-    /// <param name="collection">The enumerable collection to be copied.</param>
-    /// <param name="comparer">The default comparer to use for comparing objects.</param>
-    /// <param name="reverse">true to reverses the comparison provided by the comparer. </param>
-    public OrderedMultiSet(IEnumerable<T> collection, IComparer<T> comparer, bool reverse = false)
+    /// <param name="collection">The collection to copy.</param>
+    /// <param name="comparer">The comparer to use for comparing elements.</param>
+    /// <param name="reverse">true to reverse the comparison order.</param>
+    public OrderedMultiSet(
+        IEnumerable<T> collection,
+        IComparer<T> comparer,
+        bool reverse = false)
     {
-        this.map = new(comparer, reverse);
-        // this.map.CreateNode = static (key, value, color) => new Node(key, color);
+        ArgumentNullException.ThrowIfNull(collection);
+        ArgumentNullException.ThrowIfNull(comparer);
 
-        foreach (var x in collection)
+        this.map = new(comparer, reverse);
+
+        foreach (var item in collection)
         {
-            this.Add(x);
+            this.map.Add(item, 0);
         }
     }
-
-    private OrderedMultiMap<T, int> map;
-
-    /* Inherited Node class is a bit (10-20%) slower bacause of the casting operaiton.
-    public class Node : OrderedMap<T, int>.Node
-    {
-        internal Node(T key, NodeColor color)
-            : base(key, 0, color)
-        {
-        }
-    }*/
 
     #region Main
 
     /// <summary>
-    /// Gets the number of nodes actually contained in the <see cref="OrderedMultiSet{T}"/>.
+    /// Gets the number of elements in the set, including duplicates.
     /// </summary>
     public int Count => this.map.Count;
 
     /// <summary>
-    /// Gets the first node in the <see cref="OrderedMultiSet{T}"/>.
+    /// Gets the first node in the set.
     /// </summary>
     public OrderedMultiMap<T, int>.Node? First => this.map.First;
 
     /// <summary>
-    /// Gets the last node in the <see cref="OrderedMultiSet{T}"/>.
+    /// Gets the last node in the set.
     /// </summary>
     public OrderedMultiMap<T, int>.Node? Last => this.map.Last;
 
-    /*public bool UnsafePresearchForStructKey
-    {
-        get => this.map.UnsafePresearchForStructKey;
-        set => this.map.UnsafePresearchForStructKey = value;
-    }*/
-
     /// <summary>
-    /// Adds an element to a collection. If the element is already in the set, this method returns the stored element without creating a new node, and sets NewlyAdded to false.
+    /// Adds an element to the set.
+    /// <br/>Duplicate elements are allowed.
     /// <br/>O(log n) operation.
     /// </summary>
-    /// <param name="value">The value of the element to add.</param>
-    /// <returns>Node: the added <see cref="OrderedMap{TKey, TValue}.Node"/>.<br/>
-    /// NewlyAdded: true if the node is created.</returns>
+    /// <param name="value">The element to add.</param>
+    /// <returns>The added node and the result reported by the underlying map.</returns>
     public (OrderedMultiMap<T, int>.Node Node, bool NewlyAdded) Add(T value)
-    {
-        var result = this.map.Add(value, 0);
-        return result;
-    }
+        => this.map.Add(value, 0);
 
     /// <summary>
-    /// Determines whether a collection contains a specific value.
+    /// Determines whether the set contains the specified value.
     /// <br/>O(log n) operation.
     /// </summary>
-    /// <param name="value">The value to locate in the collection.</param>
-    /// <returns>true if the collection contains an element with the specified value; otherwise, false.</returns>
-    public bool Contains(T value) => this.map.ContainsKey(value);
+    /// <param name="value">The value to locate.</param>
+    /// <returns>true if at least one matching element exists; otherwise, false.</returns>
+    public bool Contains(T value)
+        => this.map.ContainsKey(value);
 
     /// <summary>
-    /// Removes a specified value from the collection."/>.
+    /// Removes one element matching the specified value.
     /// <br/>O(log n) operation.
     /// </summary>
-    /// <param name="value">The element to remove.</param>
-    /// <returns>true if the element is found and successfully removed.</returns>
-    public bool Remove(T value) => this.map.Remove(value);
+    /// <param name="value">The value to remove.</param>
+    /// <returns>true if an element was removed; otherwise, false.</returns>
+    public bool Remove(T value)
+        => this.map.Remove(value);
 
     /// <summary>
-    /// Removes a specified node from the collection.
-    /// <br/>O(log n) operation.
+    /// Removes the specified node from the set.
     /// </summary>
-    /// <param name="node">The <see cref="OrderedMap{TKey, TValue}.Node"/> to remove.</param>
-    public void RemoveNode(OrderedMultiMap<T, int>.Node node) => this.map.RemoveNode(node);
+    /// <param name="node">The node to remove.</param>
+    public void RemoveNode(OrderedMultiMap<T, int>.Node node)
+        => this.map.RemoveNode(node);
 
     /// <summary>
-    /// Removes all elements from a collection.
+    /// Removes all elements from the set.
     /// </summary>
-    public void Clear() => this.map.Clear();
+    public void Clear()
+        => this.map.Clear();
 
     #endregion
 
@@ -151,17 +141,23 @@ public class OrderedMultiSet<T> : ICollection<T>, IReadOnlyCollection<T>, IColle
 
     object ICollection.SyncRoot => this;
 
-    void ICollection<T>.Add(T item) => this.map.Add(item, 0);
+    void ICollection<T>.Add(T item)
+        => this.map.Add(item, 0);
 
-    void ICollection<T>.CopyTo(T[] array, int arrayIndex) => this.map.Keys.CopyTo(array, arrayIndex);
+    void ICollection<T>.CopyTo(T[] array, int arrayIndex)
+        => this.map.Keys.CopyTo(array, arrayIndex);
 
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)this.map.Keys).CopyTo(array, index);
+    void ICollection.CopyTo(Array array, int index)
+        => ((ICollection)this.map.Keys).CopyTo(array, index);
 
-    public OrderedMultiMap<T, int>.KeyCollection.Enumerator GetEnumerator() => this.map.Keys.GetEnumerator();
+    public OrderedMultiMap<T, int>.KeyCollection.Enumerator GetEnumerator()
+        => this.map.Keys.GetEnumerator();
 
-    IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.map.Keys.GetEnumerator();
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        => this.map.Keys.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator() => this.map.Keys.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator()
+        => this.map.Keys.GetEnumerator();
 
     #endregion
 }
