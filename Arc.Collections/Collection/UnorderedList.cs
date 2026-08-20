@@ -3,10 +3,15 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1401
 
 namespace Arc.Collections;
+
+#pragma warning disable SA1202 // Elements should be ordered by access
+#pragma warning disable SA1204 // Static elements should appear before instance elements
 
 /// <summary>
 /// Represents a list of objects that can be accessed by index.
@@ -14,12 +19,11 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 {
+    private const int DefaultCapacity = 4;
+
     protected T[] items;
     protected int size;
     protected int version;
-
-    private const int MaxSize = 0X7FFFFFFF;
-    private const int DefaultCapacity = 4;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UnorderedList{T}"/> class.
@@ -35,23 +39,12 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
     public UnorderedList(int capacity)
     {
-        if (capacity < 0)
+        if (capacity < 0 || capacity > Array.MaxLength)
         {
             throw new ArgumentOutOfRangeException(nameof(capacity));
         }
-        else if (capacity > MaxSize)
-        {
-            capacity = MaxSize;
-        }
 
-        if (capacity == 0)
-        {
-            this.items = Array.Empty<T>();
-        }
-        else
-        {
-            this.items = new T[capacity];
-        }
+        this.items = capacity == 0 ? Array.Empty<T>() : new T[capacity];
     }
 
     /// <summary>
@@ -60,15 +53,11 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
     public UnorderedList(IEnumerable<T> collection)
     {
-        if (collection == null)
-        {
-            throw new ArgumentNullException(nameof(collection));
-        }
+        ArgumentNullException.ThrowIfNull(collection);
 
-        var c = collection as ICollection<T>;
-        if (c != null)
+        if (collection is ICollection<T> c)
         {
-            int count = c.Count;
+            var count = c.Count;
             if (count == 0)
             {
                 this.items = Array.Empty<T>();
@@ -82,15 +71,12 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
         }
         else
         {
-            this.size = 0;
             this.items = Array.Empty<T>();
 
-            using (var en = collection.GetEnumerator())
+            using var enumerator = collection.GetEnumerator();
+            while (enumerator.MoveNext())
             {
-                while (en.MoveNext())
-                {
-                    this.Add(en.Current);
-                }
+                this.Add(enumerator.Current);
             }
         }
     }
@@ -103,18 +89,24 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Adds an object to the end of the list.
-    /// <br/>O(1) operation.
+    /// <br/>O(1) amortized operation.
     /// </summary>
-    /// <param name="value">The value to be added to the end of the list.</param>
+    /// <param name="value">The value to add.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T value)
     {
-        if (this.size == this.items.Length)
+        var size = this.size;
+        var items = this.items;
+
+        if ((uint)size < (uint)items.Length)
         {
-            this.EnsureCapacity(this.size + 1);
+            items[size] = value;
+            this.size = size + 1;
+            this.version++;
+            return;
         }
 
-        this.items[this.size++] = value;
-        this.version++;
+        this.AddWithResize(value);
     }
 
     /// <summary>
@@ -122,9 +114,14 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     public void Clear()
     {
-        if (this.size > 0)
+        var size = this.size;
+        if (size > 0)
         {
-            Array.Clear(this.items, 0, this.size);
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                Array.Clear(this.items, 0, size);
+            }
+
             this.size = 0;
         }
 
@@ -135,39 +132,40 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// Determines whether an element is in the list.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The value to locate in the list.</param>
-    /// <returns>true if value is found in the list.</returns>
+    /// <param name="value">The value to locate.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool Contains(T value) => this.IndexOf(value) >= 0;
 
     /// <summary>
-    /// Copies the list or a portion of it to an array.
+    /// Copies the elements to an array.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
-    /// <param name="arrayIndex">The zero-based index in array at which copying begins.</param>
-    public void CopyTo(T[] array, int arrayIndex) => Array.Copy(this.items, 0, array, arrayIndex, this.size);
+    /// <param name="array">The destination array.</param>
+    /// <param name="arrayIndex">The zero-based destination index.</param>
+    public void CopyTo(T[] array, int arrayIndex)
+        => Array.Copy(this.items, 0, array, arrayIndex, this.size);
 
     /// <summary>
-    /// Copies the list or a portion of it to an array.
+    /// Copies the elements to an array.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
+    /// <param name="array">The destination array.</param>
     public void CopyTo(T[] array) => this.CopyTo(array, 0);
 
     /// <summary>
-    /// Removes the first occurrence of a specific object from the <see cref="UnorderedList{T}"/>.
+    /// Removes the first occurrence of the specified value.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The object to remove from the <see cref="UnorderedList{T}"/>. </param>
-    /// <returns>true if item is successfully removed.</returns>
+    /// <param name="value">The value to remove.</param>
+    /// <returns><see langword="true"/> if the value was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(T value)
     {
         var index = this.IndexOf(value);
-        if (index >= 0)
+        if (index < 0)
         {
-            this.RemoveAt(index);
-            return true;
+            return false;
         }
 
-        return false;
+        this.RemoveAt(index);
+        return true;
     }
 
     #endregion
@@ -176,22 +174,23 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     public T this[int index]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            // Following trick can reduce the range check by one
             if ((uint)index >= (uint)this.size)
             {
-                throw new ArgumentOutOfRangeException();
+                ThrowIndexOutOfRange();
             }
 
             return this.items[index];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
             if ((uint)index >= (uint)this.size)
             {
-                throw new ArgumentOutOfRangeException();
+                ThrowIndexOutOfRange();
             }
 
             this.items[index] = value;
@@ -200,194 +199,257 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Returns the zero-based index of the first occurrence of a value in the list.
+    /// Returns the zero-based index of the first occurrence of the specified value.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The value to locate in the list.</param>
-    /// <returns>The zero-based index of the first occurrence of item.</returns>
-    public int IndexOf(T value) => Array.IndexOf(this.items, value, 0, this.size);
+    /// <param name="value">The value to locate.</param>
+    /// <returns>The zero-based index if found; otherwise, -1.</returns>
+    public int IndexOf(T value)
+        => Array.IndexOf(this.items, value, 0, this.size);
 
     /// <summary>
-    /// Inserts an element into the <see cref="UnorderedList{T}"/> at the specified index.
+    /// Inserts an element at the specified index.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="index">The zero-based index at which item should be inserted.</param>
-    /// <param name="item">The object to insert.</param>
+    /// <param name="index">The zero-based insertion index.</param>
+    /// <param name="item">The value to insert.</param>
     public void Insert(int index, T item)
     {
-        if ((uint)index > (uint)this.size)
+        var size = this.size;
+
+        if ((uint)index > (uint)size)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        if (this.size == this.items.Length)
+        if (size == this.items.Length)
         {
-            this.EnsureCapacity(this.size + 1);
+            this.Grow(size + 1);
         }
 
-        if (index < this.size)
+        if (index < size)
         {
-            Array.Copy(this.items, index, this.items, index + 1, this.size - index);
+            Array.Copy(this.items, index, this.items, index + 1, size - index);
         }
 
         this.items[index] = item;
-        this.size++;
+        this.size = size + 1;
         this.version++;
     }
 
     /// <summary>
-    /// Removes the element at the specified index of the list.
+    /// Removes the element at the specified index.
     /// <br/>O(n) operation.
     /// </summary>
     /// <param name="index">The zero-based index of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)this.size)
+        var size = this.size;
+
+        if ((uint)index >= (uint)size)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        this.size--;
-        if (index < this.size)
+        size--;
+
+        if (index < size)
         {
-            Array.Copy(this.items, index + 1, this.items, index, this.size - index);
+            Array.Copy(this.items, index + 1, this.items, index, size - index);
         }
 
-        this.items[this.size] = default(T)!;
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            this.items[size] = default!;
+        }
+
+        this.size = size;
         this.version++;
     }
 
     #endregion
 
-    private void EnsureCapacity(int min)
-    {
-        if (this.items.Length < min)
-        {
-            int newCapacity = this.items.Length == 0 ? DefaultCapacity : this.items.Length * 2;
-
-            if ((uint)newCapacity > MaxSize)
-            {
-                newCapacity = MaxSize;
-            }
-
-            if (newCapacity < min)
-            {
-                newCapacity = min;
-            }
-
-            this.Capacity = newCapacity;
-        }
-    }
-
     /// <summary>
-    /// Gets or sets the total number of elements the internal data structure can hold without resizing.
+    /// Gets or sets the number of elements the internal array can hold without resizing.
     /// </summary>
     public int Capacity
     {
         get => this.items.Length;
+
         set
         {
-            if (value < this.size)
+            if ((uint)value > (uint)Array.MaxLength || value < this.size)
             {
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(value));
             }
 
-            if (value != this.items.Length)
+            if (value == this.items.Length)
             {
-                if (value > 0)
-                {
-                    T[] newItems = new T[value];
-                    if (this.size > 0)
-                    {
-                        Array.Copy(this.items, 0, newItems, 0, this.size);
-                    }
-
-                    this.items = newItems;
-                }
-                else
-                {
-                    this.items = Array.Empty<T>();
-                }
+                return;
             }
+
+            if (value == 0)
+            {
+                this.items = Array.Empty<T>();
+                return;
+            }
+
+            var newItems = new T[value];
+
+            if (this.size > 0)
+            {
+                Array.Copy(this.items, 0, newItems, 0, this.size);
+            }
+
+            this.items = newItems;
         }
     }
 
     #region Enumerator
 
-    public Enumerator GetEnumerator() => new Enumerator(this);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Enumerator GetEnumerator() => new(this);
 
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => new Enumerator(this);
 
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => new Enumerator(this);
+    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-    public struct Enumerator : IEnumerator<T>, IEnumerator
+    /// <summary>
+    /// Enumerates the elements of an <see cref="UnorderedList{T}"/>.
+    /// </summary>
+    public struct Enumerator : IEnumerator<T>
     {
-        private UnorderedList<T> list;
+        private readonly UnorderedList<T> list;
+        private readonly int version;
         private int index;
-        private int version;
-        private T? current;
+        private T current;
 
         internal Enumerator(UnorderedList<T> list)
         {
             this.list = list;
-            this.index = 0;
             this.version = list.version;
-            this.current = default(T);
+            this.index = 0;
+            this.current = default!;
+        }
+
+        public readonly T Current => this.current;
+
+        object? IEnumerator.Current
+        {
+            get
+            {
+                if (this.index == 0 || this.index == this.list.size + 1)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.current;
+            }
         }
 
         public void Dispose()
         {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (this.version != this.list.version)
-            {
-                throw ThrowVersionMismatch();
-            }
+            var list = this.list;
 
-            if ((uint)this.index < (uint)this.list.size)
+            if (this.version == list.version &&
+                (uint)this.index < (uint)list.size)
             {
-                this.current = this.list.items[this.index];
+                this.current = list.items[this.index];
                 this.index++;
                 return true;
             }
 
-            this.index = this.list.size + 1;
-            this.current = default(T);
-            return false;
+            return this.MoveNextRare();
         }
 
-        public T Current => this.current!;
-
-        object IEnumerator.Current
-        {
-            get
-            {
-                if (this.index == 0 || this.index == this.list.size + 1)
-                {
-                    throw new IndexOutOfRangeException();
-                }
-
-                return this.Current!;
-            }
-        }
-
-        void System.Collections.IEnumerator.Reset()
+        void IEnumerator.Reset()
         {
             if (this.version != this.list.version)
             {
-                throw ThrowVersionMismatch();
+                ThrowVersionMismatch();
             }
 
             this.index = 0;
-            this.current = default(T);
+            this.current = default!;
         }
 
-        private static Exception ThrowVersionMismatch()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private bool MoveNextRare()
         {
-            throw new InvalidOperationException("List was modified after the enumerator was instantiated.'");
+            if (this.version != this.list.version)
+            {
+                ThrowVersionMismatch();
+            }
+
+            this.index = this.list.size + 1;
+            this.current = default!;
+            return false;
         }
+
+        [DoesNotReturn]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowVersionMismatch()
+            => throw new InvalidOperationException(
+                "List was modified after the enumerator was instantiated.");
+
+        [DoesNotReturn]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowInvalidEnumeratorState()
+            => throw new InvalidOperationException(
+                "Enumeration has either not started or has already finished.");
     }
+
     #endregion
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void AddWithResize(T value)
+    {
+        var size = this.size;
+
+        this.Grow(size + 1);
+
+        this.items[size] = value;
+        this.size = size + 1;
+        this.version++;
+    }
+
+    private void Grow(int min)
+    {
+        if ((uint)min > (uint)Array.MaxLength)
+        {
+            ThrowCapacityExceeded();
+        }
+
+        var newCapacity = this.items.Length == 0
+            ? DefaultCapacity
+            : this.items.Length * 2;
+
+        // The uint comparison also handles integer overflow from doubling.
+        if ((uint)newCapacity > (uint)Array.MaxLength)
+        {
+            newCapacity = Array.MaxLength;
+        }
+
+        if (newCapacity < min)
+        {
+            newCapacity = min;
+        }
+
+        this.Capacity = newCapacity;
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowIndexOutOfRange()
+        => throw new ArgumentOutOfRangeException("index");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowCapacityExceeded()
+        => throw new InvalidOperationException("The list has reached its maximum capacity.");
 }

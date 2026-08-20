@@ -9,7 +9,6 @@ using System.Runtime.CompilerServices;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
 #pragma warning disable SA1401
-
 #pragma warning disable SA1611 // Element parameters should be documented
 #pragma warning disable SA1615 // Element return value should be documented
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
@@ -68,7 +67,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             {
                 var list = this.list;
                 var next = this.next;
-
                 return list is null || ReferenceEquals(next, list.head)
                     ? null
                     : next;
@@ -118,9 +116,34 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         ArgumentNullException.ThrowIfNull(collection);
 
+        // Build the chain locally and close the circle once, instead of paying the
+        // insert-before-head bookkeeping (head lookup, version increment) per element.
+        Node? first = null;
+        Node? last = null;
+        var count = 0;
         foreach (var x in collection)
         {
-            this.AddLast(x);
+            var node = new Node(this, x);
+            if (last is null)
+            {
+                first = node;
+            }
+            else
+            {
+                last.next = node;
+                node.previous = last;
+            }
+
+            last = node;
+            count++;
+        }
+
+        if (first is not null)
+        {
+            first.previous = last;
+            last!.next = first;
+            this.head = first;
+            this.size = count;
         }
     }
 
@@ -186,7 +209,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public void CopyTo(T[] array, int arrayIndex)
     {
         ArgumentNullException.ThrowIfNull(array);
-
         if ((uint)arrayIndex > (uint)array.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -199,7 +221,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
         var node = this.head;
         var end = arrayIndex + this.size;
-
         while (arrayIndex < end)
         {
             array[arrayIndex++] = node!.value;
@@ -216,7 +237,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     void ICollection.CopyTo(Array array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
-
         if (array.Rank != 1)
         {
             throw new ArgumentException("The array must be one-dimensional.", nameof(array));
@@ -252,7 +272,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
             var node = this.head;
             var end = index + this.size;
-
             while (index < end)
             {
                 objects[index++] = node!.value;
@@ -300,6 +319,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public struct Enumerator : IEnumerator<T>
     {
         private readonly UnorderedLinkedList<T> list;
+        private readonly Node? head; // Cached: saves a dependent memory load per MoveNext; a stale value is unreachable because the version check fires first.
         private readonly int version;
         private Node? nextNode;
         private Node? currentNode;
@@ -307,8 +327,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         internal Enumerator(UnorderedLinkedList<T> list)
         {
             this.list = list;
+            this.head = list.head;
             this.version = list.version;
-            this.nextNode = list.head;
+            this.nextNode = this.head;
             this.currentNode = null;
         }
 
@@ -345,12 +366,10 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             }
 
             this.currentNode = node;
-
             var next = node.next;
-            this.nextNode = ReferenceEquals(next, this.list.head)
+            this.nextNode = ReferenceEquals(next, this.head)
                 ? null
                 : next;
-
             return true;
         }
 
@@ -365,7 +384,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
                 ThrowVersionMismatch();
             }
 
-            this.nextNode = this.list.head;
+            this.nextNode = this.head;
             this.currentNode = null;
         }
 
@@ -400,14 +419,13 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         }
 
         var node = head;
-
         if (value is not null)
         {
-            var comparer = EqualityComparer<T>.Default;
-
+            // EqualityComparer<T>.Default is invoked directly (not via a local) so the JIT
+            // reliably devirtualizes and inlines the comparison for value types.
             do
             {
-                if (comparer.Equals(node.value, value))
+                if (EqualityComparer<T>.Default.Equals(node.value, value))
                 {
                     return node;
                 }
@@ -434,12 +452,56 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
+    /// Finds the last node containing the specified value.
+    /// </summary>
+    /// <param name="value">The value to locate.</param>
+    /// <returns>The last matching node, or <see langword="null"/> if not found.</returns>
+    public Node? FindLast(T value)
+    {
+        var head = this.head;
+        if (head is null)
+        {
+            return null;
+        }
+
+        var last = head.previous!;
+        var node = last;
+        if (value is not null)
+        {
+            do
+            {
+                if (EqualityComparer<T>.Default.Equals(node.value, value))
+                {
+                    return node;
+                }
+
+                node = node.previous!;
+            }
+            while (!ReferenceEquals(node, last));
+        }
+        else
+        {
+            do
+            {
+                if (node.value is null)
+                {
+                    return node;
+                }
+
+                node = node.previous!;
+            }
+            while (!ReferenceEquals(node, last));
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Adds a new value after the specified node.
     /// </summary>
     public Node AddAfter(Node node, T value)
     {
         this.ValidateNode(node);
-
         var result = new Node(this, value);
         this.InternalInsertNodeBefore(node.next!, result);
         return result;
@@ -452,7 +514,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         this.ValidateNode(node);
         this.ValidateNewNode(newNode);
-
         this.InternalInsertNodeBefore(node.next!, newNode);
         newNode.list = this;
     }
@@ -463,10 +524,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public Node AddBefore(Node node, T value)
     {
         this.ValidateNode(node);
-
         var result = new Node(this, value);
         this.InternalInsertNodeBefore(node, result);
-
         if (ReferenceEquals(node, this.head))
         {
             this.head = result;
@@ -482,10 +541,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         this.ValidateNode(node);
         this.ValidateNewNode(newNode);
-
         this.InternalInsertNodeBefore(node, newNode);
         newNode.list = this;
-
         if (ReferenceEquals(node, this.head))
         {
             this.head = newNode;
@@ -499,7 +556,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         var result = new Node(this, value);
         var head = this.head;
-
         if (head is null)
         {
             this.InternalInsertNodeToEmptyList(result);
@@ -519,9 +575,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public void AddFirst(Node node)
     {
         this.ValidateNewNode(node);
-
         var head = this.head;
-
         if (head is null)
         {
             this.InternalInsertNodeToEmptyList(node);
@@ -542,7 +596,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         var result = new Node(this, value);
         var head = this.head;
-
         if (head is null)
         {
             this.InternalInsertNodeToEmptyList(result);
@@ -561,9 +614,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public void AddLast(Node node)
     {
         this.ValidateNewNode(node);
-
         var head = this.head;
-
         if (head is null)
         {
             this.InternalInsertNodeToEmptyList(node);
@@ -591,7 +642,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public void MoveToFirst(Node node)
     {
         this.ValidateNode(node);
-
         var head = this.head!;
         if (ReferenceEquals(node, head))
         {
@@ -600,12 +650,10 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
         node.next!.previous = node.previous;
         node.previous!.next = node.next;
-
         node.next = head;
         node.previous = head.previous;
         head.previous!.next = node;
         head.previous = node;
-
         this.head = node;
         this.version++;
     }
@@ -616,9 +664,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public void MoveToLast(Node node)
     {
         this.ValidateNode(node);
-
         var head = this.head!;
-
         if (ReferenceEquals(node, head.previous))
         {
             return;
@@ -626,7 +672,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
         node.next!.previous = node.previous;
         node.previous!.next = node.next;
-
         if (ReferenceEquals(node, head))
         {
             head = node.next!;
@@ -637,7 +682,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         node.previous = head.previous;
         head.previous!.next = node;
         head.previous = node;
-
         this.version++;
     }
 
@@ -674,11 +718,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         Debug.Assert(
             this.head is null && this.size == 0,
             "LinkedList must be empty when this method is called.");
-
         newNode.next = newNode;
         newNode.previous = newNode;
         this.head = newNode;
-
         this.size++;
         this.version++;
     }
@@ -688,10 +730,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     {
         newNode.next = node;
         newNode.previous = node.previous;
-
         node.previous!.next = newNode;
         node.previous = newNode;
-
         this.size++;
         this.version++;
     }
@@ -702,24 +742,20 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         Debug.Assert(
             ReferenceEquals(node.list, this),
             "Deleting a node from another list.");
-
         Debug.Assert(
             this.head is not null,
             "This method must not be called on an empty list.");
-
         if (ReferenceEquals(node.next, node))
         {
             Debug.Assert(
                 this.size == 1 && ReferenceEquals(this.head, node),
                 "A self-referencing node must be the only node in the list.");
-
             this.head = null;
         }
         else
         {
             node.next!.previous = node.previous;
             node.previous!.next = node.next;
-
             if (ReferenceEquals(this.head, node))
             {
                 this.head = node.next;
@@ -727,7 +763,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         }
 
         node.Clear();
-
         this.size--;
         this.version++;
     }
@@ -736,7 +771,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     internal void ValidateNewNode(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
-
         if (node.list is not null)
         {
             ThrowNodeAlreadyBelongsToList();
@@ -747,7 +781,6 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     internal void ValidateNode(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
-
         if (!ReferenceEquals(node.list, this))
         {
             ThrowNodeDoesNotBelongToList();

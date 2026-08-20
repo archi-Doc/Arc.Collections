@@ -22,6 +22,8 @@ public class Program
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(UnorderedMapSlimTest),
+            typeof(UnorderedListBenchmark),
             typeof(UnorderedLinkedListBenchmark),
             typeof(CircularQueueBenchmark),
             typeof(CircularQueueBenchmark2),
@@ -35,7 +37,6 @@ public class Program
             typeof(LimitedArrayTest),
             typeof(RemoveCrLfTest),
             typeof(CountDecimalCharsBenchmark),
-            typeof(UnorderedMapSlimTest),
             typeof(FactoryBenchmark),
             typeof(NewInstanceBenchmark),
             typeof(OrderedMapSetKeyBenchmark),
