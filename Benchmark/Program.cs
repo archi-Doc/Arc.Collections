@@ -17,11 +17,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        DebugRun<StringBuilderBenchmark>();
+        DebugRun<SpanownerBenchmark>();
 
         // var summary = BenchmarkRunner.Run<TestBenchmark>();
         var switcher = new BenchmarkSwitcher(new[]
         {
+            typeof(SpanownerBenchmark),
             typeof(OrderedPublicTest),
             typeof(OrderedMultiMapTest),
             typeof(UtfHashtableBenchmark),
