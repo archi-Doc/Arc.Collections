@@ -37,7 +37,7 @@ public static partial class AppCloseHandler
 
             handler = closeEventHandler;
             AppDomain.CurrentDomain.ProcessExit += ProcessExitCallback;
-            Console.CancelKeyPress += CancelKeyPressCallback;
+            // Console.CancelKeyPress += CancelKeyPressCallback;
 
             if (OperatingSystem.IsWindows())
             {
