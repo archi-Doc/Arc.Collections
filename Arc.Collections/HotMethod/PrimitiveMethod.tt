@@ -38,21 +38,14 @@ using System.Runtime.InteropServices;
 namespace Arc.Collections.HotMethod
 {<# foreach(var t in allTypes) {  #>
 
-    /// <summary>
-    /// Provides binary search operations specialized for <see cref="<#= t.Simple #>"/>.
-    /// </summary>
-    public sealed class <#= t.Name #>Method : IHotMethod<<#= t.Simple #>>
+    internal sealed class <#= t.Name #>Method : IHotMethod<<#= t.Simple #>>
     {
-        /// <summary>
-        /// The singleton instance.
-        /// </summary>
         public static readonly <#= t.Name #>Method Instance = new ();
 
         private <#= t.Name #>Method()
         {
         }
 
-        /// <inheritdoc/>
         public int LowerBound(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
         {
             ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
@@ -76,7 +69,6 @@ namespace Arc.Collections.HotMethod
             return (int)lo;
         }
 
-        /// <inheritdoc/>
         public int UpperBoundExclusive(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
         {
             ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
@@ -101,13 +93,8 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    /// <summary>
-    /// Provides Red-Black tree search operations specialized for <see cref="<#= t.Simple #>"/> keys.
-    /// </summary>
-    /// <typeparam name="TValue">The type of values in the map.</typeparam>
-    public sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
+    internal sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
     {
-        /// <inheritdoc/>
         public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -136,7 +123,6 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        /// <inheritdoc/>
         public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -165,7 +151,6 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        /// <inheritdoc/>
         public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -194,7 +179,6 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        /// <inheritdoc/>
         public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
