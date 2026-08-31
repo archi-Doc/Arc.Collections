@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -19,7 +20,14 @@ namespace Arc.Collections;
 /// Duplicate elements are allowed and preserve their insertion order.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
-public class OrderedList<T> : UnorderedList<T>
+/// <remarks>
+/// The members that would break the sort order (<see cref="Insert(int, T)"/> and the
+/// <see cref="this[int]"/> setter) throw <see cref="InvalidOperationException"/>.<br/>
+/// <see cref="IList{T}"/> is re-implemented so that interface calls also honor the sort order.
+/// Mutating an instance through an <see cref="UnorderedList{T}"/>-typed reference bypasses that
+/// and corrupts the order; do not do it.
+/// </remarks>
+public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 {
     // Cached so hot paths can select a comparison strategy without a ReferenceEquals per call.
     private readonly bool comparerIsDefault;
@@ -95,8 +103,15 @@ public class OrderedList<T> : UnorderedList<T>
         this.size = array.Length;
     }
 
+    /// <summary>
+    /// Gets the comparer used to order the elements.
+    /// </summary>
     public IComparer<T> Comparer { get; }
 
+    /// <summary>
+    /// Gets the specialized comparison implementation for <typeparamref name="T"/>,
+    /// or <see langword="null"/> when none is available.
+    /// </summary>
     public IHotMethod<T>? HotMethod { get; }
 
     /// <summary>
@@ -106,8 +121,53 @@ public class OrderedList<T> : UnorderedList<T>
     /// <param name="value">The value to add.</param>
     public new void Add(T value)
     {
-        this.Insert(this.UpperBoundExclusiveCore(value, 0), value);
+        base.Insert(this.UpperBoundExclusiveCore(value, 0), value);
     }
+
+    /// <summary>
+    /// Adds the elements of the specified collection while maintaining sorted order.
+    /// </summary>
+    /// <param name="collection">The collection whose elements are added.</param>
+    public new void AddRange(IEnumerable<T> collection)
+    {
+        ArgumentNullException.ThrowIfNull(collection);
+        foreach (var x in collection)
+        {
+            this.Add(x);
+        }
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified array while maintaining sorted order.
+    /// </summary>
+    /// <param name="array">The array whose elements are added.</param>
+    public new void AddRange(T[] array)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+        this.AddRange(new ReadOnlySpan<T>(array));
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified span while maintaining sorted order.
+    /// </summary>
+    /// <param name="source">The span whose elements are added.</param>
+    public new void AddRange(ReadOnlySpan<T> source)
+    {
+        foreach (var x in source)
+        {
+            this.Add(x);
+        }
+    }
+
+    /// <summary>
+    /// Not supported: inserting at an arbitrary index would break the sort order.
+    /// Use <see cref="Add(T)"/> instead.
+    /// </summary>
+    /// <param name="index">Not used.</param>
+    /// <param name="item">The value that would have been inserted.</param>
+    /// <exception cref="InvalidOperationException">Always thrown.</exception>
+    public new void Insert(int index, T item)
+        => throw new InvalidOperationException("Elements cannot be inserted at an arbitrary index in an ordered list.");
 
     /// <summary>
     /// Searches for the specified value.
@@ -187,6 +247,14 @@ public class OrderedList<T> : UnorderedList<T>
         return true;
     }
 
+    /// <summary>
+    /// Gets the element at the specified index. The setter is not supported because
+    /// replacing an element would break the sort order.
+    /// </summary>
+    /// <param name="index">The zero-based index of the element.</param>
+    /// <returns>The element at <paramref name="index"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range.</exception>
+    /// <exception cref="InvalidOperationException">The setter is used.</exception>
     public new T this[int index]
     {
         get
@@ -212,6 +280,31 @@ public class OrderedList<T> : UnorderedList<T>
         var index = this.IndexOfFirstCore(value);
         return index >= 0 ? index : -1;
     }
+
+    #region Interface reimplementation
+
+    // UnorderedList<T> implements IList<T> with non-virtual members, so the 'new' members above
+    // would be bypassed by an interface call. Re-implementing the interface here remaps it
+    // without adding a virtual call to the base class hot paths.
+    T IList<T>.this[int index]
+    {
+        get => this[index];
+        set => throw new InvalidOperationException("Elements cannot be replaced directly in an ordered list.");
+    }
+
+    T IReadOnlyList<T>.this[int index] => this[index];
+
+    void ICollection<T>.Add(T value) => this.Add(value);
+
+    bool ICollection<T>.Contains(T value) => this.Contains(value);
+
+    bool ICollection<T>.Remove(T value) => this.Remove(value);
+
+    int IList<T>.IndexOf(T value) => this.IndexOf(value);
+
+    void IList<T>.Insert(int index, T item) => this.Insert(index, item);
+
+    #endregion
 
     #region Search core
 

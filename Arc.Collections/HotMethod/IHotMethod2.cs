@@ -35,8 +35,22 @@ public interface IHotMethod2<TKey, TValue> : IHotMethod2
     /// leaf: the node with the specific value if found, or the nearest parent node if not found.</returns>
     (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
 
+    /// <summary>
+    /// Searches a reverse-ordered tree for the node with the specified key.
+    /// </summary>
+    /// <param name="target">The subtree root to search.</param>
+    /// <param name="key">The key to search for.</param>
+    /// <returns>cmp: -1 =&gt; left, 0 and leaf is not null =&gt; found, 1 =&gt; right.<br/>
+    /// leaf: the node with the specified key if found, or the nearest parent node if not found.</returns>
     (int Cmp, OrderedMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<TKey, TValue>.Node? target, TKey key);
 
+    /// <summary>
+    /// Searches a reverse-ordered tree for the node with the specified key.
+    /// </summary>
+    /// <param name="target">The subtree root to search.</param>
+    /// <param name="key">The key to search for.</param>
+    /// <returns>cmp: -1 =&gt; left, 0 and leaf is not null =&gt; found, 1 =&gt; right.<br/>
+    /// leaf: the node with the specified key if found, or the nearest parent node if not found.</returns>
     (int Cmp, OrderedMultiMap<TKey, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<TKey, TValue>.Node? target, TKey key);
 
     // UnorderedMap<TKey, TValue>.Node? SearchHashtable(UnorderedMap<TKey, TValue>.Node?[] hashtable, TKey key);

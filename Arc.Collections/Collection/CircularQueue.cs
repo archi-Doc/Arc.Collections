@@ -19,6 +19,9 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of elements in the queue.</typeparam>
 public sealed class CircularQueue<T>
 {
+    /// <summary>
+    /// The largest capacity the queue can be created with.
+    /// </summary>
     public const int MaximumCapacity = 1 << 30;
 
     private readonly Slot[] slotArray;

@@ -24,8 +24,19 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     public readonly struct Interface : IDisposable
     {
+        /// <summary>
+        /// The cache that the object is returned to.
+        /// </summary>
         public readonly KeyedObjectCache<TKey, TObject> ObjectCache;
+
+        /// <summary>
+        /// The key associated with the object.
+        /// </summary>
         public readonly TKey Key;
+
+        /// <summary>
+        /// The object held by this instance, or <see langword="null"/> if it has already been returned.
+        /// </summary>
         public readonly TObject? Object;
 
         internal Interface(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
@@ -36,14 +47,18 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         }
 
         /// <summary>
-        /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).
+        /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).<br/>
+        /// If the object cannot be cached because an object with the same key already exists,
+        /// it is disposed when it implements <see cref="IDisposable"/>.
         /// </summary>
-        /// <returns>An tnterface object with the object set to its default value.</returns>
+        /// <returns>An <see cref="Interface"/> with the object set to its default value.</returns>
         public Interface Return()
         {
-            if (this.Object is not null)
-            {
-                this.ObjectCache.Cache(this.Key, this.Object);
+            if (this.Object is not null &&
+                !this.ObjectCache.Cache(this.Key, this.Object) &&
+                this.Object is IDisposable disposable)
+            {// Not cached and therefore no longer owned by anyone.
+                disposable.Dispose();
             }
 
             return new(this.ObjectCache, this.Key, default);
@@ -75,12 +90,21 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="KeyedObjectCache{TKey, TObject}"/> class.<br/>
     /// </summary>
-    /// <param name="cacheSize">The maximum number of objects in the cache.</param>
+    /// <param name="cacheSize">The maximum number of objects in the cache. Must be greater than zero.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cacheSize"/> is less than 1.</exception>
     public KeyedObjectCache(int cacheSize)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(cacheSize, 1);
+
         this.CacheSize = cacheSize;
     }
 
+    /// <summary>
+    /// Creates an <see cref="Interface"/> that returns <paramref name="obj"/> to this cache when disposed.
+    /// </summary>
+    /// <param name="key">The key associated with the object.</param>
+    /// <param name="obj">The object to be returned to the cache, or <see langword="null"/>.</param>
+    /// <returns>An <see cref="Interface"/> instance.</returns>
     public Interface CreateInterface(TKey key, TObject? obj)
         => new(this, key, obj);
 
@@ -119,10 +143,12 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         {
             while (this.linkedList.Count >= this.CacheSize)
             {
-                if (this.linkedList.First is { } first)
-                {
-                    this.DisposeItem(first.Value);
+                if (this.linkedList.First is not { } first)
+                {// Nothing left to evict.
+                    break;
                 }
+
+                this.DisposeItem(first.Value);
             }
 
             if (!this.map.ContainsKey(key))
@@ -137,8 +163,14 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         return false;
     }
 
+    /// <summary>
+    /// Gets the maximum number of objects that the cache can hold.
+    /// </summary>
     public int CacheSize { get; }
 
+    /// <summary>
+    /// Gets the number of objects currently held in the cache.
+    /// </summary>
     public int Count => this.linkedList.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -177,42 +209,24 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     private bool disposed = false; // To detect redundant calls.
 
     /// <summary>
-    /// Finalizes an instance of the <see cref="KeyedObjectCache{TObject, TKey}"/> class.
+    /// Disposes all cached objects that implement <see cref="IDisposable"/> and empties the cache.
     /// </summary>
-    ~KeyedObjectCache()
-    {
-        this.Dispose(false);
-    }
-
-    /// <inheritdoc/>
+    /// <remarks>The cache holds no unmanaged resources, so calling this is optional.</remarks>
     public void Dispose()
     {
-        this.Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// free managed/native resources.
-    /// </summary>
-    /// <param name="disposing">true: free managed resources.</param>
-    private void Dispose(bool disposing)
-    {
-        if (!this.disposed)
+        if (this.disposed)
         {
-            if (disposing)
-            {
-                // free managed resources.
-                using (this.lockObject.EnterScope())
-                {
-                    while (this.linkedList.First is { } first)
-                    {
-                        this.DisposeItem(first.Value);
-                    }
-                }
-            }
+            return;
+        }
 
-            // free native resources here if there are any.
-            this.disposed = true;
+        this.disposed = true;
+
+        using (this.lockObject.EnterScope())
+        {
+            while (this.linkedList.First is { } first)
+            {
+                this.DisposeItem(first.Value);
+            }
         }
     }
     #endregion

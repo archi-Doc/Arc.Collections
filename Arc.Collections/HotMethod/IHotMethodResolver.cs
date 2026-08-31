@@ -27,8 +27,17 @@ public interface IHotMethodResolver
     IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
 }
 
+/// <summary>
+/// Resolves the specialized comparison implementation for a type, if one exists.
+/// </summary>
 public static class HotMethodResolver
 {
+    /// <summary>
+    /// Gets the specialized <see cref="IHotMethod{T}"/> for <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The type to be processed.</typeparam>
+    /// <param name="comparer">The comparer in use. A specialized implementation is returned only for <see cref="Comparer{T}.Default"/>.</param>
+    /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHotMethod<T>? Get<T>(IComparer<T> comparer)
     {
@@ -42,6 +51,13 @@ public static class HotMethodResolver
         return method;
     }
 
+    /// <summary>
+    /// Gets the specialized <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>.
+    /// </summary>
+    /// <typeparam name="TKey">The key type.</typeparam>
+    /// <typeparam name="TValue">The value type.</typeparam>
+    /// <param name="comparer">The comparer in use. A specialized implementation is returned only for <see cref="Comparer{T}.Default"/>.</param>
+    /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IComparer<TKey> comparer)
     {
@@ -55,6 +71,13 @@ public static class HotMethodResolver
         return method;
     }
 
+    /// <summary>
+    /// Gets the specialized <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>.
+    /// </summary>
+    /// <typeparam name="TKey">The key type.</typeparam>
+    /// <typeparam name="TValue">The value type.</typeparam>
+    /// <param name="comparer">The equality comparer in use. A specialized implementation is returned only for <see cref="EqualityComparer{T}.Default"/>.</param>
+    /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IEqualityComparer<TKey> comparer)
     {

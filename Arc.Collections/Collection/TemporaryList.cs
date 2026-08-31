@@ -110,14 +110,25 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
         return array;
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the collection.
+    /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     public readonly Enumerator GetEnumerator() => new(this);
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="TemporaryList{T}"/>.
+    /// </summary>
     public ref struct Enumerator
     {
         private readonly TemporaryList<TObject> temporaryList;
         private int index;
         private TObject? current;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Enumerator"/> struct.
+        /// </summary>
+        /// <param name="temporaryList">The list to enumerate.</param>
         public Enumerator(TemporaryList<TObject> temporaryList)
         {
             this.temporaryList = temporaryList;
@@ -125,12 +136,22 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
             this.current = default;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public TObject Current => this.current!;
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         public bool MoveNext()
         {
             if (++this.index >= this.temporaryList.Count)
@@ -172,6 +193,9 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
             return false;
         }
 
+        /// <summary>
+        /// Sets the enumerator to its initial position, before the first element.
+        /// </summary>
         public void Reset()
         {
             this.index = -1;

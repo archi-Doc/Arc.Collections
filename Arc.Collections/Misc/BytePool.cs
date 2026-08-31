@@ -22,12 +22,18 @@ namespace Arc.Collections;
 /// </summary>
 public class BytePool
 {
+    /// <summary>
+    /// The reference count value that marks an array owned by a single owner.
+    /// </summary>
     public const int SingleCount = int.MaxValue;
     private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16 MB
     private const int DefaultPoolLimit = 256;
     private const int StandardArrayLength = 1024 * 32; // 32 KB (TinyhandSerializer.InitialBufferSize, ByteSequence.DefaultVaultSize)
     private const int StandardPoolLimit = 1024;
 
+    /// <summary>
+    /// The shared default pool.
+    /// </summary>
     public static readonly BytePool Default;
 
     static BytePool()
@@ -278,6 +284,9 @@ public class BytePool
     /// </summary>
     public readonly struct RentMemory : IDisposable
     {
+        /// <summary>
+        /// An empty <see cref="RentMemory"/>.
+        /// </summary>
         public static readonly RentMemory Empty = default;
 
         /// <summary>
@@ -498,6 +507,9 @@ public class BytePool
             return default;
         }
 
+        /// <summary>
+        /// Decrements the reference count (the same as <see cref="Return"/>).
+        /// </summary>
         public void Dispose()
             => this.Return();
     }
@@ -507,6 +519,9 @@ public class BytePool
     /// </summary>
     public readonly struct RentReadOnlyMemory : IDisposable
     {
+        /// <summary>
+        /// An empty <see cref="RentReadOnlyMemory"/>.
+        /// </summary>
         public static readonly RentReadOnlyMemory Empty = default;
 
         /// <summary>
@@ -626,12 +641,13 @@ public class BytePool
         public RentArray? RentArray => this.array;
 
         /// <summary>
-        /// Gets a <see cref="Span{T}"/> from <see cref="RentReadOnlyMemory"/>.
+        /// Gets a <see cref="ReadOnlySpan{T}"/> over the memory.
         /// </summary>
-        public Span<byte> Span => new(this.byteArray, this.start, this.length);
+        /// <remarks>Use <see cref="UnsafeMemory"/> when a writable view is required.</remarks>
+        public ReadOnlySpan<byte> Span => new(this.byteArray, this.start, this.length);
 
         /// <summary>
-        /// Gets a span from <see cref="RentReadOnlyMemory"/>.
+        /// Gets a <see cref="ReadOnlyMemory{T}"/> over the memory.
         /// </summary>
         public ReadOnlyMemory<byte> Memory => new(this.byteArray, this.start, this.length);
 
@@ -710,15 +726,17 @@ public class BytePool
             return default;
         }
 
+        /// <summary>
+        /// Decrements the reference count (the same as <see cref="Return"/>).
+        /// </summary>
         public void Dispose()
             => this.Return();
     }
 
     internal sealed class Bucket
     {
-        public Bucket(BytePool bytePool, int arrayLength, int poolLimit)
+        public Bucket(int arrayLength, int poolLimit)
         {
-            this.bytePool = bytePool;
             this.ArrayLength = arrayLength;
             this.Queue = new(poolLimit);
         }
@@ -730,8 +748,6 @@ public class BytePool
 #pragma warning disable SA1401 // Fields should be private
         internal CircularQueue<RentArray> Queue;
 #pragma warning restore SA1401 // Fields should be private
-
-        private BytePool bytePool;
 
         public override string ToString()
             => $"{this.ArrayLength} (?/{this.PoolLimit})";
@@ -767,7 +783,7 @@ public class BytePool
             }
             else
             {
-                bytePool.buckets[i] = new(bytePool, 1 << (32 - i), limit);
+                bytePool.buckets[i] = new(1 << (32 - i), limit);
                 limit <<= 1;
                 limit = limit > poolLimit ? poolLimit : limit;
             }
@@ -800,7 +816,7 @@ public class BytePool
             }
             else
             {
-                bytePool.buckets[i] = new(bytePool, 1 << (32 - i), poolLimit);
+                bytePool.buckets[i] = new(1 << (32 - i), poolLimit);
             }
         }
 
@@ -813,6 +829,14 @@ public class BytePool
 
     #endregion
 
+    /// <summary>
+    /// Sets the pool limit of the bucket that serves the specified array length,
+    /// creating the bucket if it does not exist yet.
+    /// </summary>
+    /// <param name="arrayLength">The array length identifying the bucket. Values below 1 are ignored.</param>
+    /// <param name="poolLimit">The maximum number of arrays kept in that bucket.</param>
+    /// <remarks>Any arrays already pooled in the bucket are discarded. This is not thread-safe;
+    /// call it during setup, before the pool is shared.</remarks>
     public void SetPoolLimit(int arrayLength, int poolLimit)
     {
         if (arrayLength < 1)
@@ -823,7 +847,7 @@ public class BytePool
         var i = BitOperations.LeadingZeroCount((uint)arrayLength - 1);
         if (this.buckets[i] is null)
         {
-            this.buckets[i] = new(this, 1 << (32 - i), poolLimit);
+            this.buckets[i] = new(1 << (32 - i), poolLimit);
         }
         else
         {
@@ -835,7 +859,8 @@ public class BytePool
     /// Gets a <see cref="RentArray"/> from the pool or allocate a new byte array if not available.<br/>
     /// </summary>
     /// <param name="minimumLength">The minimum length of the byte array.</param>
-    /// <returns>A rent <see cref="RentArray"/>.</returns>
+    /// <returns>A rented <see cref="RentArray"/>. When no bucket serves the requested length,
+    /// a plain byte array is allocated and is not returned to the pool.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RentArray Rent(int minimumLength)
     {
@@ -855,6 +880,10 @@ public class BytePool
         return array;
     }
 
+    /// <summary>
+    /// Calculates the maximum number of bytes the pool can retain when every bucket is full.
+    /// </summary>
+    /// <returns>The upper bound of the pooled memory, in bytes.</returns>
     public long CalculateMaxMemoryUsage()
     {
         var usage = 0L;

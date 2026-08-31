@@ -15,6 +15,10 @@ namespace Arc.Collections;
 
 // Ported from System.IO.Hashing.XxHash3Slim.
 
+/// <summary>
+/// Provides a slim, allocation-free XXH3 (64-bit) implementation.
+/// </summary>
+/// <remarks>Ported from <c>System.IO.Hashing.XxHash3</c>.</remarks>
 [SkipLocalsInit]
 public static unsafe class XxHash3Slim
 {
@@ -97,6 +101,12 @@ public static unsafe class XxHash3Slim
         0xaf, 0xd7, 0xfb, 0xca, 0xbb, 0x4b, 0x40, 0x7e, // DefaultSecretUInt64_23
     ];
 
+    /// <summary>
+    /// Combines two hash values using a rotate-and-multiply mixing step.
+    /// </summary>
+    /// <param name="hash1">The first hash value.</param>
+    /// <param name="hash2">The second hash value.</param>
+    /// <returns>The combined hash value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong CombineRotateMultiply(ulong hash1, ulong hash2)
     {
@@ -113,6 +123,12 @@ public static unsafe class XxHash3Slim
         return Avalanche(state);
     }
 
+    /// <summary>
+    /// Combines two hash values using the XXH3 multiply-fold mixing step.
+    /// </summary>
+    /// <param name="hash1">The first hash value.</param>
+    /// <param name="hash2">The second hash value.</param>
+    /// <returns>The combined hash value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong Combine(ulong hash1, ulong hash2)
     {// CombineMultiplyFold

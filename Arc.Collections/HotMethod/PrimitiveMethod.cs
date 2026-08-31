@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 
 namespace Arc.Collections.HotMethod
 {
-    public sealed class UInt8Method : IHotMethod<byte>
+    internal sealed class UInt8Method : IHotMethod<byte>
     {
         public static readonly UInt8Method Instance = new ();
 
@@ -66,7 +66,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt8Method2<TValue> : IHotMethod2<byte, TValue>
+    internal sealed class UInt8Method2<TValue> : IHotMethod2<byte, TValue>
     {
         public (int Cmp, OrderedMap<byte, TValue>.Node? Leaf) SearchNode(OrderedMap<byte, TValue>.Node? target, byte key)
         {
@@ -181,7 +181,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int8Method : IHotMethod<sbyte>
+    internal sealed class Int8Method : IHotMethod<sbyte>
     {
         public static readonly Int8Method Instance = new ();
 
@@ -236,7 +236,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
+    internal sealed class Int8Method2<TValue> : IHotMethod2<sbyte, TValue>
     {
         public (int Cmp, OrderedMap<sbyte, TValue>.Node? Leaf) SearchNode(OrderedMap<sbyte, TValue>.Node? target, sbyte key)
         {
@@ -351,7 +351,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt16Method : IHotMethod<ushort>
+    internal sealed class UInt16Method : IHotMethod<ushort>
     {
         public static readonly UInt16Method Instance = new ();
 
@@ -406,7 +406,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt16Method2<TValue> : IHotMethod2<ushort, TValue>
+    internal sealed class UInt16Method2<TValue> : IHotMethod2<ushort, TValue>
     {
         public (int Cmp, OrderedMap<ushort, TValue>.Node? Leaf) SearchNode(OrderedMap<ushort, TValue>.Node? target, ushort key)
         {
@@ -521,7 +521,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int16Method : IHotMethod<short>
+    internal sealed class Int16Method : IHotMethod<short>
     {
         public static readonly Int16Method Instance = new ();
 
@@ -576,7 +576,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
+    internal sealed class Int16Method2<TValue> : IHotMethod2<short, TValue>
     {
         public (int Cmp, OrderedMap<short, TValue>.Node? Leaf) SearchNode(OrderedMap<short, TValue>.Node? target, short key)
         {
@@ -691,7 +691,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt32Method : IHotMethod<uint>
+    internal sealed class UInt32Method : IHotMethod<uint>
     {
         public static readonly UInt32Method Instance = new ();
 
@@ -746,7 +746,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt32Method2<TValue> : IHotMethod2<uint, TValue>
+    internal sealed class UInt32Method2<TValue> : IHotMethod2<uint, TValue>
     {
         public (int Cmp, OrderedMap<uint, TValue>.Node? Leaf) SearchNode(OrderedMap<uint, TValue>.Node? target, uint key)
         {
@@ -861,7 +861,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int32Method : IHotMethod<int>
+    internal sealed class Int32Method : IHotMethod<int>
     {
         public static readonly Int32Method Instance = new ();
 
@@ -916,7 +916,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
+    internal sealed class Int32Method2<TValue> : IHotMethod2<int, TValue>
     {
         public (int Cmp, OrderedMap<int, TValue>.Node? Leaf) SearchNode(OrderedMap<int, TValue>.Node? target, int key)
         {
@@ -1031,7 +1031,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt64Method : IHotMethod<ulong>
+    internal sealed class UInt64Method : IHotMethod<ulong>
     {
         public static readonly UInt64Method Instance = new ();
 
@@ -1086,7 +1086,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt64Method2<TValue> : IHotMethod2<ulong, TValue>
+    internal sealed class UInt64Method2<TValue> : IHotMethod2<ulong, TValue>
     {
         public (int Cmp, OrderedMap<ulong, TValue>.Node? Leaf) SearchNode(OrderedMap<ulong, TValue>.Node? target, ulong key)
         {
@@ -1201,7 +1201,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int64Method : IHotMethod<long>
+    internal sealed class Int64Method : IHotMethod<long>
     {
         public static readonly Int64Method Instance = new ();
 
@@ -1256,7 +1256,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
+    internal sealed class Int64Method2<TValue> : IHotMethod2<long, TValue>
     {
         public (int Cmp, OrderedMap<long, TValue>.Node? Leaf) SearchNode(OrderedMap<long, TValue>.Node? target, long key)
         {
@@ -1371,7 +1371,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt128Method : IHotMethod<UInt128>
+    internal sealed class UInt128Method : IHotMethod<UInt128>
     {
         public static readonly UInt128Method Instance = new ();
 
@@ -1426,7 +1426,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class UInt128Method2<TValue> : IHotMethod2<UInt128, TValue>
+    internal sealed class UInt128Method2<TValue> : IHotMethod2<UInt128, TValue>
     {
         public (int Cmp, OrderedMap<UInt128, TValue>.Node? Leaf) SearchNode(OrderedMap<UInt128, TValue>.Node? target, UInt128 key)
         {
@@ -1541,7 +1541,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int128Method : IHotMethod<Int128>
+    internal sealed class Int128Method : IHotMethod<Int128>
     {
         public static readonly Int128Method Instance = new ();
 
@@ -1596,7 +1596,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class Int128Method2<TValue> : IHotMethod2<Int128, TValue>
+    internal sealed class Int128Method2<TValue> : IHotMethod2<Int128, TValue>
     {
         public (int Cmp, OrderedMap<Int128, TValue>.Node? Leaf) SearchNode(OrderedMap<Int128, TValue>.Node? target, Int128 key)
         {
@@ -1711,7 +1711,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class SingleMethod : IHotMethod<float>
+    internal sealed class SingleMethod : IHotMethod<float>
     {
         public static readonly SingleMethod Instance = new ();
 
@@ -1728,7 +1728,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) < value)
+                if (Unsafe.Add(ref r, (nint)mid).CompareTo(value) < 0)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -1751,7 +1751,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                if (Unsafe.Add(ref r, (nint)mid).CompareTo(value) <= 0)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -1766,7 +1766,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class SingleMethod2<TValue> : IHotMethod2<float, TValue>
+    internal sealed class SingleMethod2<TValue> : IHotMethod2<float, TValue>
     {
         public (int Cmp, OrderedMap<float, TValue>.Node? Leaf) SearchNode(OrderedMap<float, TValue>.Node? target, float key)
         {
@@ -1777,12 +1777,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -1805,12 +1805,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -1833,12 +1833,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -1861,12 +1861,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -1881,7 +1881,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class DoubleMethod : IHotMethod<double>
+    internal sealed class DoubleMethod : IHotMethod<double>
     {
         public static readonly DoubleMethod Instance = new ();
 
@@ -1898,7 +1898,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) < value)
+                if (Unsafe.Add(ref r, (nint)mid).CompareTo(value) < 0)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -1921,7 +1921,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                if (Unsafe.Add(ref r, (nint)mid).CompareTo(value) <= 0)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -1936,7 +1936,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
+    internal sealed class DoubleMethod2<TValue> : IHotMethod2<double, TValue>
     {
         public (int Cmp, OrderedMap<double, TValue>.Node? Leaf) SearchNode(OrderedMap<double, TValue>.Node? target, double key)
         {
@@ -1947,12 +1947,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -1975,12 +1975,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -2003,12 +2003,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -2031,12 +2031,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (key.CompareTo(x.Key) > 0)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (key.CompareTo(x.Key) < 0)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -2051,7 +2051,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class DateTimeMethod : IHotMethod<DateTime>
+    internal sealed class DateTimeMethod : IHotMethod<DateTime>
     {
         public static readonly DateTimeMethod Instance = new ();
 
@@ -2106,7 +2106,7 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    public sealed class DateTimeMethod2<TValue> : IHotMethod2<DateTime, TValue>
+    internal sealed class DateTimeMethod2<TValue> : IHotMethod2<DateTime, TValue>
     {
         public (int Cmp, OrderedMap<DateTime, TValue>.Node? Leaf) SearchNode(OrderedMap<DateTime, TValue>.Node? target, DateTime key)
         {

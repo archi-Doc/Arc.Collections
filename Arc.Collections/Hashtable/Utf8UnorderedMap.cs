@@ -30,6 +30,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     private const int StartOfFreeList = -3;
     private const int MaximumCapacity = 1 << 30;
 
+    /// <summary>
+    /// Represents a node in the map.
+    /// </summary>
     public struct Node
     {
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
@@ -43,8 +46,14 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
+        /// <summary>
+        /// Gets the UTF-8 key stored in the node.
+        /// </summary>
         public byte[] Key => this.key;
 
+        /// <summary>
+        /// Gets the value stored in the node.
+        /// </summary>
         public TValue Value => this.value;
     }
 
@@ -67,6 +76,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf8UnorderedMap{TValue}"/> class.
     /// </summary>
+    /// <param name="minimumSize">The minimum required capacity.</param>
     public Utf8UnorderedMap(uint minimumSize = 0)
     {
         if (minimumSize > MaximumCapacity)
@@ -98,24 +108,34 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Adds or updates a key/value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(byte[] key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
     /// Adds or updates a key/value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(ReadOnlySpan<byte> key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
     /// Attempts to add a key/value pair without overwriting an existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(byte[] key, TValue value)
         => this.TryInsert(key, value, false);
 
     /// <summary>
     /// Attempts to add a key/value pair without overwriting an existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(ReadOnlySpan<byte> key, TValue value)
         => this.TryInsert(key, value, false);
 
@@ -140,6 +160,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Determines whether the map contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(byte[] key)
     {
@@ -150,6 +172,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Determines whether the map contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(ReadOnlySpan<byte> key)
         => this.TryGetValue(key, out _);
@@ -157,6 +181,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Determines whether the map contains the specified value.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var nodes = this._nodes;
@@ -191,6 +217,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(byte[] key)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -200,6 +228,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(ReadOnlySpan<byte> key)
     {
         var hashCode = GetHashCode(key);
@@ -253,6 +283,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(byte[] key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -286,6 +319,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -320,6 +356,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// with a default value when the key does not exist.<br/>
     /// This performs the hash computation and chain walk only once.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
     /// <returns>
     /// A reference to the value slot. The reference is invalidated by any subsequent
     /// addition to or removal from the map; do not hold it across mutations.
@@ -371,6 +409,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
+    /// <returns>A reference to the value slot. It is invalidated by any subsequent addition or removal.</returns>
     public ref TValue GetValueRefOrAddDefault(ReadOnlySpan<byte> key, out bool exists)
     {
         var nodes = this._nodes;
@@ -599,6 +640,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Returns an enumerator for the map.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -608,6 +650,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     IEnumerator IEnumerable.GetEnumerator()
         => new Enumerator(this);
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="Utf8UnorderedMap{TValue}"/>.
+    /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<byte[], TValue>>
     {
         // The node array and count are snapshotted. Mutating the map during
@@ -625,6 +670,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
             this._current = default;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public KeyValuePair<byte[], TValue> Current => this._current;
 
         object IEnumerator.Current
@@ -640,6 +688,10 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         public bool MoveNext()
         {
             var nodes = this._nodes;
@@ -663,6 +715,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
             return false;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }

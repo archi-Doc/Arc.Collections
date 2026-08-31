@@ -32,15 +32,45 @@ public class OrderedKeyValueList<TKey, TValue> :
     // Cached so hot paths can select a comparison strategy without a ReferenceEquals per call.
     private readonly bool comparerIsDefault;
 
+    /// <summary>
+    /// The backing key array. Only the first <see cref="Count"/> entries are in use.
+    /// </summary>
     protected TKey[] keys;
+
+    /// <summary>
+    /// The backing value array. Only the first <see cref="Count"/> entries are in use.
+    /// </summary>
     protected TValue[] values;
+
+    /// <summary>
+    /// The cached <see cref="KeyList"/> view, created on first use.
+    /// </summary>
     protected KeyList? keyList;
+
+    /// <summary>
+    /// The cached <see cref="ValueList"/> view, created on first use.
+    /// </summary>
     protected ValueList? valueList;
+
+    /// <summary>
+    /// The number of entries in use.
+    /// </summary>
     protected int size;
+
+    /// <summary>
+    /// The modification counter used to invalidate enumerators.
+    /// </summary>
     protected int version;
 
+    /// <summary>
+    /// Gets the comparer used to order the keys.
+    /// </summary>
     public IComparer<TKey> Comparer { get; }
 
+    /// <summary>
+    /// Gets the specialized comparison implementation for <typeparamref name="TKey"/>,
+    /// or <see langword="null"/> when none is available.
+    /// </summary>
     public IHotMethod<TKey>? HotMethod { get; }
 
     /// <summary>
@@ -131,6 +161,10 @@ public class OrderedKeyValueList<TKey, TValue> :
         this.size = count;
     }
 
+    /// <summary>
+    /// Gets or sets the number of entries the internal arrays can hold without resizing.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than <see cref="Count"/>.</exception>
     public int Capacity
     {
         get => this.keys.Length;
@@ -166,8 +200,14 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
     }
 
+    /// <summary>
+    /// Gets the number of elements in the collection.
+    /// </summary>
     public int Count => this.size;
 
+    /// <summary>
+    /// Gets a read-only, index-accessible view of the keys, in sort order.
+    /// </summary>
     public IList<TKey> Keys => this.GetKeyListHelper();
 
     ICollection<TKey> IDictionary<TKey, TValue>.Keys => this.GetKeyListHelper();
@@ -176,6 +216,9 @@ public class OrderedKeyValueList<TKey, TValue> :
 
     IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => this.GetKeyListHelper();
 
+    /// <summary>
+    /// Gets a read-only, index-accessible view of the values, ordered by their keys.
+    /// </summary>
     public IList<TValue> Values => this.GetValueListHelper();
 
     ICollection<TValue> IDictionary<TKey, TValue>.Values => this.GetValueListHelper();
@@ -242,6 +285,13 @@ public class OrderedKeyValueList<TKey, TValue> :
         return this.UpperBoundExclusiveCore(key, 0) - 1;
     }
 
+    /// <summary>
+    /// Adds a key-value pair, keeping the list sorted.
+    /// Entries with an equal key are inserted after the existing ones.
+    /// </summary>
+    /// <param name="key">The key to add.</param>
+    /// <param name="value">The value to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public void Add(TKey key, TValue value)
     {
         if (key is null)
@@ -308,6 +358,9 @@ public class OrderedKeyValueList<TKey, TValue> :
         throw new ArgumentException("The value has an incompatible type.", nameof(value));
     }
 
+    /// <summary>
+    /// Removes all entries from the list.
+    /// </summary>
     public void Clear()
     {
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
@@ -329,6 +382,11 @@ public class OrderedKeyValueList<TKey, TValue> :
         return IsCompatibleKey(key) && this.ContainsKey((TKey)key);
     }
 
+    /// <summary>
+    /// Determines whether the list contains the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsKey(TKey key)
     {
         if (key is null)
@@ -339,6 +397,12 @@ public class OrderedKeyValueList<TKey, TValue> :
         return this.IndexOfFirstCore(key) >= 0;
     }
 
+    /// <summary>
+    /// Determines whether the list contains the specified value.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="value">The value to locate.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         return this.IndexOfValue(value) >= 0;
@@ -418,6 +482,10 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the collection.
+    /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     public Enumerator GetEnumerator()
         => new(this, Enumerator.KeyValuePair);
 
@@ -430,6 +498,13 @@ public class OrderedKeyValueList<TKey, TValue> :
     IEnumerator IEnumerable.GetEnumerator()
         => new Enumerator(this, Enumerator.KeyValuePair);
 
+    /// <summary>
+    /// Gets the value of the first entry with the specified key, or adds a new entry.
+    /// The setter always adds an entry, because duplicate keys are allowed.
+    /// </summary>
+    /// <param name="key">The key of the entry.</param>
+    /// <returns>The value of the first entry with <paramref name="key"/>.</returns>
+    /// <exception cref="KeyNotFoundException">The key does not exist (getter only).</exception>
     public TValue this[TKey key]
     {
         get
@@ -513,11 +588,19 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <summary>
     /// Returns the index of the first occurrence of the specified value.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns>The zero-based index of the first occurrence, or -1 if not found.</returns>
     public int IndexOfValue(TValue value)
     {
         return Array.IndexOf(this.values, value, 0, this.size);
     }
 
+    /// <summary>
+    /// Attempts to get the value of the first entry with the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate.</param>
+    /// <param name="value">When this method returns, the value of the first matching entry; otherwise, the default value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         if (key is null)
@@ -615,6 +698,8 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <summary>
     /// Removes the first entry with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(TKey key)
     {
         if (key is null)
@@ -635,6 +720,9 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <summary>
     /// Removes the first entry matching both the specified key and value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(TKey key, TValue value)
     {
         if (key is null)
@@ -708,6 +796,9 @@ public class OrderedKeyValueList<TKey, TValue> :
         return this.keys.Length;
     }
 
+    /// <summary>
+    /// Sets the capacity to the actual number of entries, if that is less than 90% of the current capacity.
+    /// </summary>
     public void TrimExcess()
     {
         var threshold = (int)(this.keys.Length * 0.9);
@@ -1042,6 +1133,9 @@ public class OrderedKeyValueList<TKey, TValue> :
 
     #region Enumerator
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
     {
         internal const int KeyValuePair = 1;
@@ -1064,6 +1158,9 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.value = default;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public KeyValuePair<TKey, TValue> Current
             => new(this.key!, this.value!);
 
@@ -1105,6 +1202,10 @@ public class OrderedKeyValueList<TKey, TValue> :
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         public bool MoveNext()
         {
             var list = this.list;
@@ -1128,6 +1229,9 @@ public class OrderedKeyValueList<TKey, TValue> :
             return false;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
             this.index = 0;
@@ -1285,6 +1389,9 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
     }
 
+    /// <summary>
+    /// Represents a read-only, index-accessible view of the keys of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// </summary>
     public sealed class KeyList : IList<TKey>, ICollection
     {
         private readonly OrderedKeyValueList<TKey, TValue> list;
@@ -1294,29 +1401,60 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.list = list;
         }
 
+        /// <summary>
+        /// Gets the number of elements in the collection.
+        /// </summary>
         public int Count => this.list.size;
 
+        /// <summary>
+        /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+        /// </summary>
         public bool IsReadOnly => true;
 
         bool ICollection.IsSynchronized => false;
 
         object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
+        /// <summary>
+        /// Gets the key at the specified index. The setter is not supported.
+        /// </summary>
+        /// <param name="index">The zero-based index.</param>
+        /// <returns>The key at <paramref name="index"/>.</returns>
+        /// <exception cref="NotSupportedException">The setter is used.</exception>
         public TKey this[int index]
         {
             get => this.list.GetKey(index);
             set => throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="key">Not used.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Add(TKey key)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Clear()
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Determines whether the view contains the specified key.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <returns><see langword="true"/> if found; otherwise, <see langword="false"/>.</returns>
         public bool Contains(TKey key)
             => this.list.ContainsKey(key);
 
+        /// <summary>
+        /// Copies the keys to an array, in order.
+        /// </summary>
+        /// <param name="array">The destination array.</param>
+        /// <param name="arrayIndex">The zero-based destination index.</param>
         public void CopyTo(TKey[] array, int arrayIndex)
             => Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.size);
 
@@ -1338,25 +1476,54 @@ public class OrderedKeyValueList<TKey, TValue> :
             }
         }
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="index">Not used.</param>
+        /// <param name="value">The value that would have been inserted.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Insert(int index, TKey value)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         public IEnumerator<TKey> GetEnumerator()
             => new SortedListKeyEnumerator(this.list);
 
         IEnumerator IEnumerable.GetEnumerator()
             => new SortedListKeyEnumerator(this.list);
 
+        /// <summary>
+        /// Returns the index of the first occurrence of the specified key.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <returns>The zero-based index, or -1 if not found.</returns>
         public int IndexOf(TKey key)
             => this.list.IndexOfKey(key);
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="key">Not used.</param>
+        /// <returns>This method never returns.</returns>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public bool Remove(TKey key)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="index">Not used.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void RemoveAt(int index)
             => throw new NotSupportedException();
     }
 
+    /// <summary>
+    /// Represents a read-only, index-accessible view of the values of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// </summary>
     public sealed class ValueList : IList<TValue>, ICollection
     {
         private readonly OrderedKeyValueList<TKey, TValue> list;
@@ -1366,29 +1533,60 @@ public class OrderedKeyValueList<TKey, TValue> :
             this.list = list;
         }
 
+        /// <summary>
+        /// Gets the number of elements in the collection.
+        /// </summary>
         public int Count => this.list.size;
 
+        /// <summary>
+        /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+        /// </summary>
         public bool IsReadOnly => true;
 
         bool ICollection.IsSynchronized => false;
 
         object ICollection.SyncRoot => ((ICollection)this.list).SyncRoot;
 
+        /// <summary>
+        /// Gets the value at the specified index. The setter is not supported.
+        /// </summary>
+        /// <param name="index">The zero-based index.</param>
+        /// <returns>The value at <paramref name="index"/>.</returns>
+        /// <exception cref="NotSupportedException">The setter is used.</exception>
         public TValue this[int index]
         {
             get => this.list.GetByIndex(index);
             set => throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="value">Not used.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Add(TValue value)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Clear()
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Determines whether the view contains the specified value.
+        /// </summary>
+        /// <param name="value">The value to locate.</param>
+        /// <returns><see langword="true"/> if found; otherwise, <see langword="false"/>.</returns>
         public bool Contains(TValue value)
             => this.list.ContainsValue(value);
 
+        /// <summary>
+        /// Copies the values to an array, in order.
+        /// </summary>
+        /// <param name="array">The destination array.</param>
+        /// <param name="arrayIndex">The zero-based destination index.</param>
         public void CopyTo(TValue[] array, int arrayIndex)
             => Array.Copy(this.list.values, 0, array, arrayIndex, this.list.size);
 
@@ -1410,21 +1608,47 @@ public class OrderedKeyValueList<TKey, TValue> :
             }
         }
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="index">Not used.</param>
+        /// <param name="value">The value that would have been inserted.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void Insert(int index, TValue value)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         public IEnumerator<TValue> GetEnumerator()
             => new SortedListValueEnumerator(this.list);
 
         IEnumerator IEnumerable.GetEnumerator()
             => new SortedListValueEnumerator(this.list);
 
+        /// <summary>
+        /// Returns the index of the first occurrence of the specified value.
+        /// </summary>
+        /// <param name="value">The value to locate.</param>
+        /// <returns>The zero-based index, or -1 if not found.</returns>
         public int IndexOf(TValue value)
             => Array.IndexOf(this.list.values, value, 0, this.list.size);
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="value">Not used.</param>
+        /// <returns>This method never returns.</returns>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public bool Remove(TValue value)
             => throw new NotSupportedException();
 
+        /// <summary>
+        /// Not supported: the view is read-only.
+        /// </summary>
+        /// <param name="index">Not used.</param>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public void RemoveAt(int index)
             => throw new NotSupportedException();
     }

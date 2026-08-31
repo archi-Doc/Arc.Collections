@@ -39,8 +39,14 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.Color = color;
         }
 
+        /// <summary>
+        /// Gets the key stored in the node.
+        /// </summary>
         public TKey Key { get; internal set; }
 
+        /// <summary>
+        /// Gets the value stored in the node.
+        /// </summary>
         public TValue Value { get; internal set; }
 
         internal Node? Parent { get; set; }
@@ -143,8 +149,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         /// <summary>
-        /// Changes the value without validation or version tracking.
+        /// Changes the value without validation or version tracking, so outstanding enumerators stay valid.
         /// </summary>
+        /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UnsafeChangeValue(TValue value)
             => this.Value = value;
@@ -165,6 +172,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
         internal bool IsSingleNode => this.ListPrevious is null;
 
+        /// <summary>
+        /// Returns a string representation of the node.
+        /// </summary>
+        /// <returns>The node color followed by its value.</returns>
         public override string ToString()
             => this.Color.ToString() + ": " + this.Value?.ToString();
 
@@ -209,12 +220,25 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private int version;
     private int count;
 
+    /// <summary>
+    /// Gets the number of elements in the collection.
+    /// </summary>
     public int Count => this.count;
 
+    /// <summary>
+    /// Gets a value indicating whether the collection is sorted in reverse order.
+    /// </summary>
     public bool Reverse { get; }
 
+    /// <summary>
+    /// Gets the comparer used to order the keys.
+    /// </summary>
     public IComparer<TKey> Comparer => this.comparer;
 
+    /// <summary>
+    /// Gets the specialized tree-search implementation for <typeparamref name="TKey"/>,
+    /// or <see langword="null"/> when none is available.
+    /// </summary>
     public IHotMethod2<TKey, TValue>? HotMethod2 => this.hotMethod2;
 
     /// <summary>
@@ -235,11 +259,20 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         get => new(this);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
+    /// </summary>
+    /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
     public OrderedMultiMap(bool reverse = false)
         : this(Comparer<TKey>.Default, reverse)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class.
+    /// </summary>
+    /// <param name="comparer">The comparer to use for the keys, or <see langword="null"/> for <see cref="Comparer{T}.Default"/>.</param>
+    /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
     public OrderedMultiMap(IComparer<TKey>? comparer, bool reverse = false)
     {
         this.Reverse = reverse;
@@ -247,11 +280,22 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         this.hotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.comparer);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class from a dictionary.
+    /// </summary>
+    /// <param name="dictionary">The dictionary whose entries are copied.</param>
+    /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
     public OrderedMultiMap(IDictionary<TKey, TValue> dictionary, bool reverse = false)
         : this(dictionary, Comparer<TKey>.Default, reverse)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OrderedMultiMap{TKey, TValue}"/> class from a dictionary.
+    /// </summary>
+    /// <param name="dictionary">The dictionary whose entries are copied.</param>
+    /// <param name="comparer">The comparer to use for the keys, or <see langword="null"/> for <see cref="Comparer{T}.Default"/>.</param>
+    /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
     public OrderedMultiMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey>? comparer, bool reverse = false)
         : this(comparer, reverse)
     {
@@ -285,6 +329,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
     }
 
+    /// <summary>
+    /// Gets or sets the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key of the value.</param>
+    /// <returns>The value of the first node with <paramref name="key"/>.</returns>
+    /// <exception cref="KeyNotFoundException">The key does not exist (getter only).</exception>
     public TValue this[TKey key]
     {
         get
@@ -302,10 +352,21 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         set => this.Add(key, value);
     }
 
+    /// <summary>
+    /// Determines whether the collection contains the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey? key)
         => this.FindFirstNode(key) is not null;
 
+    /// <summary>
+    /// Determines whether the collection contains the specified value.
+    /// <br/>O(n) operation.
+    /// </summary>
+    /// <param name="value">The value to locate.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var node = this.First;
@@ -338,6 +399,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         return false;
     }
 
+    /// <summary>
+    /// Attempts to get the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate.</param>
+    /// <param name="value">When this method returns, the value of the first matching node; otherwise, the default value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -368,6 +435,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         this.version++;
     }
 
+    /// <summary>
+    /// Copies the key-value pairs to an array, in map order.
+    /// </summary>
+    /// <param name="array">The destination array.</param>
+    /// <param name="index">The zero-based destination index.</param>
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -391,6 +463,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
     }
 
+    /// <summary>
+    /// Removes the first node with the specified key.
+    /// </summary>
+    /// <param name="key">The key to remove.</param>
+    /// <returns><see langword="true"/> if a node was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey? key)
     {
@@ -404,6 +481,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         return true;
     }
 
+    /// <summary>
+    /// Removes the first node with the specified key and value.
+    /// </summary>
+    /// <param name="key">The key to remove.</param>
+    /// <param name="value">The value to match.</param>
+    /// <returns><see langword="true"/> if a node was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key, TValue value)
     {
@@ -420,18 +503,28 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Adds a new value. Duplicate keys are allowed.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value)
         => this.Probe(key, value, null);
 
     /// <summary>
     /// Adds a new value, optionally reusing an unused node.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="reuse">An unused node to reuse when possible.</param>
+    /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse)
         => this.Probe(key, value, reuse);
 
     /// <summary>
     /// Changes the key while preserving the node object.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key was changed; otherwise, <see langword="false"/>.</returns>
     public bool SetNodeKey(Node node, TKey key)
     {
         if (node.IsUnused)
@@ -482,6 +575,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Changes the value of an active node without invalidating enumerators.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="value">The value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNodeValue(Node node, TValue value)
     {
@@ -494,6 +589,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Removes the specified node.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void RemoveNode(Node node)
     {
         if (node.IsUnused)
@@ -935,6 +1031,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Finds the first node with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The first matching node, or <see langword="null"/> if not found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Node? FindFirstNode(TKey? key)
     {
@@ -945,6 +1043,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Finds a node with the specified key and value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The matching node, or <see langword="null"/> if not found.</returns>
     public Node? FindNode(TKey? key, TValue value)
     {
         var result = this.SearchFirstNode(this.root, key);
@@ -979,6 +1080,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Gets the first node equal to or after the specified key in map order.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The first node at or after the specified key in collection order, or <see langword="null"/> if none exists.</returns>
     public Node? GetLowerBound(TKey? key)
     {
         var (cmp, node) = this.SearchFirstNode(this.root, key);
@@ -993,6 +1096,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Gets the last node equal to or before the specified key in map order.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The last node at or before the specified key in collection order, or <see langword="null"/> if none exists.</returns>
     public Node? GetUpperBound(TKey? key)
     {
         var (cmp, node) = this.SearchFirstNode(this.root, key);
@@ -1011,6 +1116,13 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         return node.Previous;
     }
 
+    /// <summary>
+    /// Gets the nodes delimiting the inclusive range between two keys.
+    /// </summary>
+    /// <param name="lower">The lower key.</param>
+    /// <param name="upper">The upper key.</param>
+    /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before
+    /// <paramref name="upper"/>, or <c>(null, null)</c> if the range is empty.</returns>
     public (Node? Lower, Node? Upper) GetRange(TKey? lower, TKey? upper)
     {
         var lowerNode = this.GetLowerBound(lower);
@@ -1032,6 +1144,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Enumerates nodes with the specified key without allocation.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>An allocation-free enumerable over the matching nodes.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NodeEnumerable EnumerateNode(TKey? key)
         => new(this, key);
@@ -1039,6 +1153,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Enumerates values with the specified key without allocation.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>An allocation-free enumerable over the matching values.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MatchedValueEnumerable EnumerateValue(TKey? key)
         => new(this, key);
@@ -1057,6 +1173,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.key = key;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator()
             => new(this.map, this.key);
@@ -1067,6 +1187,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map, this.key);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<Node>
         {
             private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1084,6 +1207,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 this.next = map.FindFirstNode(key);
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly Node Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1108,6 +1234,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 }
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             public bool MoveNext()
             {
                 if (this.version != this.map.version)
@@ -1136,6 +1266,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 return true;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1167,6 +1300,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.key = key;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator()
             => new(this.map, this.key);
@@ -1177,6 +1314,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map, this.key);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
             private NodeEnumerable.Enumerator enumerator;
@@ -1186,6 +1326,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 this.enumerator = new NodeEnumerable.Enumerator(map, key);
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TValue Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1197,10 +1340,17 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                     ? node.Value
                     : default;
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
                 => this.enumerator.MoveNext();
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1217,6 +1367,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Returns an allocation-free enumerator.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator()
         => new(this);
@@ -1228,6 +1379,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     IEnumerator IEnumerable.GetEnumerator()
         => new Enumerator(this);
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
         private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1243,6 +1397,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.next = GetFirst(map.root);
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public readonly KeyValuePair<TKey, TValue> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1262,6 +1419,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -1282,6 +1443,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             return true;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
@@ -1311,6 +1475,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
     }
 
+    /// <summary>
+    /// Provides an allocation-free enumerable over the keys of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// </summary>
     public readonly struct KeyEnumerable : IEnumerable<TKey>
     {
         private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1320,6 +1487,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.map = map;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator()
             => new(this.map);
@@ -1330,6 +1501,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
             private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1345,6 +1519,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 this.next = GetFirst(map.root);
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TKey Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1360,6 +1537,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 }
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -1380,6 +1561,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 return true;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1410,6 +1594,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
     }
 
+    /// <summary>
+    /// Provides an allocation-free enumerable over the values of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// </summary>
     public readonly struct ValueEnumerable : IEnumerable<TValue>
     {
         private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1419,6 +1606,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             this.map = map;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator()
             => new(this.map);
@@ -1429,6 +1620,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
             private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1444,6 +1638,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 this.next = GetFirst(map.root);
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TValue Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1459,6 +1656,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 }
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -1479,6 +1680,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 return true;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1635,6 +1839,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Validates the Red-Black Tree and the duplicate-group linked lists.
     /// </summary>
+    /// <returns><see langword="true"/> if the internal structure is valid; otherwise, <see langword="false"/>.</returns>
     public bool Validate()
     {
         if (this.root is null)

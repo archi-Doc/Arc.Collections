@@ -28,7 +28,7 @@ public interface IUtf8Convertible<T>
     ///  Gets the maximum length of the utf-8 encoded data.<br/>
     ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.
     /// </summary>
-    /// <returns>The maximum utf-8 encoded length.</returns>
+    /// <value>The maximum utf-8 encoded length.</value>
     static abstract int MaxStringLength { get; }
 
     /// <summary>

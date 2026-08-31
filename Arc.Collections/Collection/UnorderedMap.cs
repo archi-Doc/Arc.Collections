@@ -32,6 +32,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// </summary>
     public struct Node
     {
+        /// <summary>
+        /// The <c>previous</c> value that marks a node as removed and available for reuse.
+        /// </summary>
         public const int UnusedNode = -2;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
@@ -42,12 +45,26 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
+        /// <summary>
+        /// Determines whether the node currently holds an element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsValid() => this.previous != UnusedNode;
 
+        /// <summary>
+        /// Determines whether the node has been removed.
+        /// </summary>
+        /// <returns><see langword="true"/> if the node is unused; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsInvalid() => this.previous == UnusedNode;
 
+        /// <summary>
+        /// Gets the key stored in the node.
+        /// </summary>
         public readonly TKey? Key => this.key;
 
+        /// <summary>
+        /// Gets the value stored in the node.
+        /// </summary>
         public readonly TValue Value => this.value;
     }
 
@@ -74,6 +91,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
     public UnorderedMap(int capacity)
         : this(capacity, null, false)
     {
@@ -82,6 +100,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified comparer.
     /// </summary>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     public UnorderedMap(IEqualityComparer<TKey>? comparer)
         : this(0, comparer, false)
     {
@@ -90,6 +109,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified duplicate-key behavior.
     /// </summary>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedMap(bool allowDuplicate)
         : this(0, null, allowDuplicate)
     {
@@ -98,6 +118,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity and comparer.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer)
         : this(capacity, comparer, false)
     {
@@ -106,6 +128,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity and duplicate-key behavior.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedMap(int capacity, bool allowDuplicate)
         : this(capacity, null, allowDuplicate)
     {
@@ -114,6 +138,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity, comparer, and duplicate-key behavior.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer, bool allowDuplicate)
     {
         this.Initialize(capacity);
@@ -186,8 +213,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
-    /// The returned array may be replaced when the map is resized.
+    /// Only nodes with <see cref="Node.IsValid"/> are active, and the array may be
+    /// replaced when the map is resized; do not hold it across mutations.
     /// </summary>
+    /// <returns>The internal node array and the number of node slots in use.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (Node[] Nodes, int Max) UnsafeGetNodes()
         => (this.nodes, this.nodeCount);
@@ -195,6 +224,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Adds an element, or returns the existing node when duplicate keys are disabled.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The node index, and a flag that is <see langword="true"/> when the element was newly added.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (int NodeIndex, bool NewlyAdded) Add(TKey? key, TValue value)
         => this.Probe(key, value);
@@ -202,6 +234,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Determines whether the specified key exists.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey? key)
         => this.FindFirstNode(key) >= 0;
@@ -209,6 +243,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Determines whether the specified key and value exist.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(TKey? key, TValue value)
         => this.FindNode(key, value) >= 0;
@@ -216,6 +253,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Determines whether the specified value exists.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var nodes = this.nodes;
@@ -256,6 +295,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -322,6 +364,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Finds the first node with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
     /// <returns>The node index, or -1 if not found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int FindFirstNode(TKey? key)
@@ -377,6 +420,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Finds the first node with the specified key and value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     /// <returns>The node index, or -1 if not found.</returns>
     public int FindNode(TKey? key, TValue value)
     {
@@ -449,6 +494,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Removes the first element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey? key)
     {
@@ -466,6 +513,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Removes the first element with the specified key and value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey? key, TValue value)
     {
@@ -482,7 +532,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
     /// <summary>
     /// Removes the specified node in O(1) time.
+    /// Does nothing when the index is out of range or the node is already unused.
     /// </summary>
+    /// <param name="nodeIndex">The node index.</param>
     public void RemoveNode(int nodeIndex)
     {
         if ((uint)nodeIndex >= (uint)this.nodeCount)
@@ -552,6 +604,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Updates the key of the specified node while preserving its node index.
     /// </summary>
+    /// <param name="nodeIndex">The node index.</param>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key was changed; otherwise, <see langword="false"/>.</returns>
     public bool SetNodeKey(int nodeIndex, TKey? key)
     {
         if ((uint)nodeIndex >= (uint)this.nodeCount)
@@ -663,6 +718,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Updates the value of the specified node.
     /// </summary>
+    /// <param name="nodeIndex">The node index.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeValue(int nodeIndex, TValue value)
     {
@@ -680,6 +738,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Changes a node value without validation or version tracking.
     /// </summary>
+    /// <param name="nodeIndex">The node index.</param>
+    /// <param name="value">The value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void UnsafeChangeValue(int nodeIndex, TValue value)
         => this.nodes[nodeIndex].value = value;
@@ -713,6 +773,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Enumerates node indexes matching the specified key without allocation.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>An allocation-free enumerable over the matching nodes.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NodeEnumerable EnumerateNode(TKey? key)
         => new(this, key);
@@ -720,6 +782,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Enumerates values matching the specified key without allocation.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>An allocation-free enumerable over the matching values.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MatchedValueEnumerable EnumerateValue(TKey? key)
         => new(this, key);
@@ -729,6 +793,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Returns an allocation-free enumerator.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -759,6 +824,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             this.index = 0;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public readonly KeyValuePair<TKey, TValue> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -787,6 +855,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -814,6 +886,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             return false;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
@@ -841,6 +916,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             this.map = map;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map);
 
@@ -850,6 +929,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
             private readonly UnorderedMap<TKey, TValue> map;
@@ -867,6 +949,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 this.index = 0;
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TKey Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -891,6 +976,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 }
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -918,6 +1007,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 return false;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -946,6 +1038,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             this.map = map;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map);
 
@@ -955,6 +1051,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
             private readonly UnorderedMap<TKey, TValue> map;
@@ -972,6 +1071,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 this.index = 0;
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TValue Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -996,6 +1098,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 }
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -1023,6 +1129,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 return false;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1053,6 +1162,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             this.key = key;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map, this.key);
 
@@ -1062,6 +1175,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map, this.key);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<int>
         {
             private readonly UnorderedMap<TKey, TValue> map;
@@ -1103,6 +1219,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 this.nextIndex = this.firstIndex;
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly int Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1118,6 +1237,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             object IEnumerator.Current
                 => this.GetCurrentIndexChecked();
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             public bool MoveNext()
             {
                 if (this.version != this.map.version)
@@ -1185,6 +1308,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 return false;
             }
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }
@@ -1250,6 +1376,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             this.key = key;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator for the collection.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator() => new(this.map, this.key);
 
@@ -1259,6 +1389,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         IEnumerator IEnumerable.GetEnumerator()
             => new Enumerator(this.map, this.key);
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
             private NodeEnumerable.Enumerator enumerator;
@@ -1268,6 +1401,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 this.enumerator = new NodeEnumerable.Enumerator(map, key);
             }
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
             public readonly TValue Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1277,10 +1413,17 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             object? IEnumerator.Current
                 => this.enumerator.GetCurrentValueChecked();
 
+            /// <summary>
+            /// Advances the enumerator to the next element.
+            /// </summary>
+            /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
                 => this.enumerator.MoveNext();
 
+            /// <summary>
+            /// Releases the resources used by the enumerator. This is a no-op.
+            /// </summary>
             public void Dispose()
             {
             }

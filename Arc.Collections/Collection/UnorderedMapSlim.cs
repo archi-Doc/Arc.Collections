@@ -47,10 +47,20 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
+        /// <summary>
+        /// Gets the key stored in the node.
+        /// </summary>
         public readonly TKey Key => this.key;
 
+        /// <summary>
+        /// Gets the value stored in the node.
+        /// </summary>
         public readonly TValue Value => this.value;
 
+        /// <summary>
+        /// Determines whether the node currently holds an element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsValid() => this.next >= -1;
     }
 
@@ -69,6 +79,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Initializes an empty map with the specified minimum capacity.
     /// </summary>
+    /// <param name="minimumSize">The minimum required capacity.</param>
     public UnorderedMapSlim(uint minimumSize = 0)
     {
         if (minimumSize > MaximumCapacity)
@@ -118,12 +129,15 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// Only nodes with <see cref="Node.IsValid"/> are active; the array may be replaced
     /// when the map is resized.
     /// </summary>
+    /// <returns>The internal node array and the number of node slots in use.</returns>
     public (Node[] Nodes, int Max) UnsafeGetNodes()
         => (this._nodes, this._count);
 
     /// <summary>
     /// Adds or updates an element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(TKey key, TValue value)
         => this.TryInsert(key, value, true);
@@ -131,6 +145,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Attempts to add an element without overwriting an existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAdd(TKey key, TValue value)
         => this.TryInsert(key, value, false);
@@ -138,6 +155,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Determines whether the map contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey key)
         => this.FindIndex(key) >= 0;
@@ -145,6 +164,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Determines whether the map contains the specified value.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var nodes = this._nodes;
@@ -180,6 +201,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -267,6 +291,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key)
         => this.Remove(key, out _);
@@ -274,6 +300,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Removes the element with the specified key and returns its value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         if (key is null)
@@ -352,6 +381,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Returns an allocation-free enumerator.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -381,6 +411,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             this.index = 0;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public readonly KeyValuePair<TKey, TValue> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -405,6 +438,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -425,6 +462,9 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             return false;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
