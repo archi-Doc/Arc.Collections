@@ -42,6 +42,7 @@ public class Program
             typeof(RemoveCrBenchmark),
             typeof(WhiteSpaceBenchmark),
             typeof(CountLeadingSpacesBenchmark),
+            typeof(ByteSumBenchmark),
             typeof(LimitedArrayTest),
             typeof(RemoveCrLfTest),
             typeof(CountDecimalCharsBenchmark),
