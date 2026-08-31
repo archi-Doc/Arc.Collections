@@ -69,7 +69,7 @@ public class SlidingListTest
         s.StartPosition.Is(6);
         s.EndPosition.Is(10);
 
-        var prop = s.GetType().GetField("itemsPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var prop = s.GetType().GetField("startPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         prop!.SetValue(s, int.MaxValue - 1);
         s.StartPosition.Is(int.MaxValue - 1);
         s.EndPosition.Is(2);

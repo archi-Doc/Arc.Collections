@@ -1,74 +1,113 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
 
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+
+/// <summary>
+/// Represents a fixed-capacity ring buffer whose elements are identified by a <b>position</b>
+/// instead of a physical index.
+/// </summary>
+/// <typeparam name="T">The type of the elements. Must be a reference type, because <see langword="null"/> is used internally to mark an empty slot.</typeparam>
+/// <remarks>
+/// A position is a 31-bit unsigned value (<c>0</c> to <see cref="int.MaxValue"/>) that increases as elements are
+/// added and wraps around to <c>0</c> after <see cref="int.MaxValue"/>. Positions returned by <see cref="Add(T)"/>
+/// remain valid until the element leaves the window, so they can be stored and used later as stable handles.<br/>
+/// The window of valid positions is <c>[<see cref="StartPosition"/>, StartPosition + <see cref="Capacity"/>)</c>.
+/// It advances when the elements at the head are removed (see <see cref="TrySlide"/>), which discards the
+/// positions that fall behind it.<br/>
+/// Removing an element from the middle leaves a hole. <see cref="Consumed"/> counts the slots in use including
+/// holes, whereas <see cref="ICollection{T}.Count"/> counts only the live elements; enumeration,
+/// <see cref="ToArray"/> and <see cref="CopyTo(T[], int)"/> skip holes.<br/>
+/// <b>Note:</b> because this class addresses elements by position, the whole <see cref="IList{T}"/> surface
+/// (<see cref="this[int]"/>, <see cref="IndexOf(T)"/>, <see cref="Insert(int, T)"/>, <see cref="RemoveAt(int)"/>)
+/// takes and returns positions rather than zero-based indexes.<br/>
+/// Instance members are not thread-safe.
+/// </remarks>
 public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     where T : class
 {
     private const int PositionMask = 0x7FFFFFFF;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SlidingList{T}"/> class with the specified capacity.
+    /// </summary>
+    /// <param name="capacity">The maximum number of elements the list can hold. The capacity is fixed unless <see cref="Resize(int)"/> is called.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public SlidingList(int capacity)
     {
-        this.items = new T?[capacity];
+        if (capacity < 0)
+        {
+            throw ThrowHelper.CapacityOutOfRange();
+        }
+
+        this.items = capacity == 0 ? Array.Empty<T?>() : new T?[capacity];
     }
 
     #region FieldAndProperty
 
     private T?[] items;
-    private int itemsPosition; // The position of the first element in items.
+    private int startPosition; // The position of items[headIndex] (always masked, 0..PositionMask).
     private int headIndex; // The head index in items (the first used item).
+    private int consumed; // The number of slots (including holes) occupied from headIndex.
+    private int count; // The number of live (non-null) elements.
     private int version;
 
     /// <summary>
-    /// Gets the position of the first element contained in the <see cref="SlidingList{T}"/>.
+    /// Gets the position of the first slot in use, which is also the lower bound of the valid position window.
     /// </summary>
-    public int StartPosition => PositionMask & (this.itemsPosition + this.headIndex);
+    /// <remarks>When the list is empty this is the position the next added element will receive.</remarks>
+    public int StartPosition => this.startPosition;
 
     /// <summary>
-    /// Gets the position of the last element contained in the <see cref="SlidingList{T}"/>.
+    /// Gets the position one past the last slot in use, that is, the exclusive end of <see cref="Consumed"/>.
     /// </summary>
-    public int EndPosition => PositionMask & (this.itemsPosition + this.headIndex + this.Consumed);
+    /// <remarks>This is the position that <see cref="Add(T)"/> will return next, provided <see cref="CanAdd"/> is <see langword="true"/>.</remarks>
+    public int EndPosition => PositionMask & (this.startPosition + this.consumed);
 
     /// <summary>
-    /// Gets the maximum number of elements that <see cref="SlidingList{T}"/> can hold.
+    /// Gets the maximum number of elements that the <see cref="SlidingList{T}"/> can hold, and the size of the position window.
     /// </summary>
     public int Capacity => this.items.Length;
 
-    /* /// <summary>
-    /// Gets the number of elements contained in the <see cref="SlidingList{T}"/>.
+    /// <summary>
+    /// Gets the number of slots in use, counting both live elements and the holes left by removed elements.
     /// </summary>
-    // public int Count { get; private set; }*/
-
-    int ICollection<T>.Count => this.Consumed;
-
-    int IReadOnlyCollection<T>.Count => this.Consumed;
+    /// <remarks>This is the distance from <see cref="StartPosition"/> to <see cref="EndPosition"/>, and never exceeds <see cref="Capacity"/>.</remarks>
+    public int Consumed => this.consumed;
 
     /// <summary>
-    /// Gets the number of consumed elements in the <see cref="SlidingList{T}"/>.
+    /// Gets a value indicating whether the <see cref="SlidingList{T}"/> has a free slot, and therefore whether <see cref="Add(T)"/> will succeed.
     /// </summary>
-    public int Consumed { get; private set; }
+    /// <remarks>A hole in the middle of the window does not count as free space; only <see cref="TrySlide"/> reclaims slots.</remarks>
+    public bool CanAdd => this.consumed < this.items.Length;
 
     /// <summary>
-    /// Gets a value indicating whether there is space in the <see cref="SlidingList{T}"/> and if a new element can be added.
+    /// Gets the number of live elements, excluding the holes counted by <see cref="Consumed"/>.
     /// </summary>
-    public bool CanAdd => this.Consumed < this.items.Length;
+    int ICollection<T>.Count => this.count;
+
+    /// <inheritdoc cref="ICollection{T}.Count"/>
+    int IReadOnlyCollection<T>.Count => this.count;
 
     /// <summary>
-    /// Gets the first element of the <see cref="SlidingList{T}"/>, or a default value if the <see cref="SlidingList{T}"/> contains no elements.
+    /// Gets the element at <see cref="StartPosition"/>, or <see langword="null"/> if the <see cref="SlidingList{T}"/> is empty.
     /// </summary>
+    /// <remarks>
+    /// <b>This getter is not read-only:</b> it calls <see cref="TrySlide"/> to drop any leading holes, which may
+    /// advance <see cref="StartPosition"/> and invalidate outstanding enumerators.
+    /// </remarks>
     public T? FirstOrDefault
     {
         get
         {
-            if (this.Consumed == 0)
+            if (this.consumed == 0)
             {
-                return default;
+                return null;
             }
 
             this.TrySlide();
@@ -79,306 +118,419 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     #endregion
 
     /// <summary>
-    /// Copies the elements of <see cref="SlidingList{T}"/> to a new array.
+    /// Copies the live elements to a new array, in order from <see cref="StartPosition"/>, skipping holes.
+    /// <br/>O(n) operation.
     /// </summary>
-    /// <returns>An array containing copies of the elements of the <see cref="SlidingList{T}"/>.</returns>
-    public T?[] ToArray()
+    /// <returns>A new array of length <see cref="ICollection{T}.Count"/>, or an empty array if there is no live element.</returns>
+    public T[] ToArray()
     {
-        var array = new T?[this.Consumed];
-        var j = 0;
-        for (var i = 0; i < this.Consumed; i++)
+        var count = this.count;
+        if (count == 0)
         {
-            if (this.items[this.ClipIndex(this.headIndex + i)] is { } item)
+            return Array.Empty<T>();
+        }
+
+        var array = new T[count];
+        if (count == this.consumed)
+        {// No holes: bulk copy (1 or 2 memmove).
+            CopyWindow(this.items, this.headIndex, count, array!);
+            return array;
+        }
+
+        var items = this.items;
+        var length = items.Length;
+        var i = this.headIndex;
+        var j = 0;
+        for (var remaining = this.consumed; remaining > 0; remaining--)
+        {
+            var item = items[i];
+            if (++i == length)
             {
-                array[j++] = item;
-                if (j == this.Consumed)
+                i = 0;
+            }
+
+            if (item is not null)
+            {
+                array[j] = item;
+                if (++j == count)
                 {
                     break;
                 }
             }
         }
 
-        if (j != this.Consumed)
-        {
-            Array.Resize(ref array, j);
-        }
-
         return array;
     }
 
     /// <summary>
-    /// Changes the number of elements of the <see cref="SlidingList{T}"/> to the specified new size.
+    /// Changes the <see cref="Capacity"/> of the <see cref="SlidingList{T}"/>, preserving the elements and their positions.
+    /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="capacity">The size of the <see cref="SlidingList{T}"/>.</param>
-    /// <returns><see langword="true"/>; Success.</returns>
+    /// <param name="capacity">The new capacity. It must be at least <see cref="Consumed"/>.</param>
+    /// <returns><see langword="true"/> if the capacity was changed or already equal to <paramref name="capacity"/>;
+    /// <see langword="false"/> if <paramref name="capacity"/> is smaller than <see cref="Consumed"/>, in which case the list is left untouched.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public bool Resize(int capacity)
     {
-        if (this.items.Length == capacity)
+        if (capacity < 0)
+        {
+            throw ThrowHelper.CapacityOutOfRange();
+        }
+
+        var items = this.items;
+        if (items.Length == capacity)
         {// Identical
             return true;
         }
-        else if (this.Consumed > capacity)
+        else if (this.consumed > capacity)
         {
             return false;
         }
 
-        var array = new T?[capacity];
-        var j = 0;
-        for (var i = 0; i < this.Consumed; i++)
-        {
-            array[j++] = this.items[this.ClipIndex(this.headIndex + i)];
-        }
-
+        var array = capacity == 0 ? Array.Empty<T?>() : new T?[capacity];
+        CopyWindow(items, this.headIndex, this.consumed, array);
         this.items = array;
-        this.itemsPosition += this.headIndex;
-        this.headIndex = 0;
+        this.headIndex = 0; // startPosition is unchanged: it still designates items[0].
         this.version++;
-
         return true;
     }
 
     /// <summary>
-    /// Slide the <see cref="SlidingList{T}"/> by the number of empty elements at the beginning.
+    /// Advances the window past the holes at its head, freeing those slots for <see cref="Add(T)"/>.
     /// </summary>
-    /// <returns>The number of slides made.</returns>
+    /// <returns>The number of slots the window advanced by; <c>0</c> if the first slot holds a live element or the list is empty.</returns>
+    /// <remarks>The positions skipped this way become invalid. A non-zero result invalidates outstanding enumerators.</remarks>
     public int TrySlide()
     {
-        if (this.items[this.headIndex] is not null ||
-            this.Consumed == 0)
+        var consumed = this.consumed;
+        if (consumed == 0)
         {
             return 0;
         }
 
-        var count = 0;
-        for (var i = this.headIndex; i < this.headIndex + this.Consumed; i++)
+        var items = this.items;
+        var length = items.Length;
+        var i = this.headIndex;
+        var n = 0;
+        while (items[i] is null)
         {
-            if (this.items[this.ClipIndex(i)] is null)
+            if (++i == length)
             {
-                count++;
+                i = 0;
             }
-            else
+
+            if (++n == consumed)
             {
                 break;
             }
         }
 
-        this.headIndex += count;
-        if (this.headIndex >= this.items.Length)
+        if (n == 0)
         {
-            this.headIndex -= this.items.Length;
-            this.itemsPosition += this.items.Length;
+            return 0;
         }
 
-        this.Consumed -= count;
+        this.headIndex = i;
+        this.startPosition = PositionMask & (this.startPosition + n);
+        this.consumed = consumed - n;
         this.version++;
-
-        return count;
+        return n;
     }
 
     /// <summary>
-    /// Inserts an element into an available space in the list. If insertion is not possible, returns -1.
+    /// Adds an element at <see cref="EndPosition"/>, at the tail of the window.
     /// </summary>
-    /// <param name="value">The value to be added.</param>
-    /// <returns>The position of the new element.</returns>
+    /// <param name="value">The value to add.</param>
+    /// <returns>The position of the new element, or <c>-1</c> if the list is full (see <see cref="CanAdd"/>).</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
     public int Add(T value)
     {
-        if (!this.CanAdd)
+        if (value is null)
         {
+            throw ThrowHelper.ValueNull();
+        }
+
+        var consumed = this.consumed;
+        var items = this.items;
+        if (consumed >= items.Length)
+        {// No space
             return -1;
         }
 
-        var i = this.ClipIndex(this.headIndex + this.Consumed);
-        this.items[i] = value;
-        this.Consumed++;
+        var i = this.headIndex + consumed;
+        if (i >= items.Length)
+        {
+            i -= items.Length;
+        }
+
+        items[i] = value;
+        this.consumed = consumed + 1;
+        this.count++;
         this.version++;
-        return this.IndexToPosition(i);
+        return PositionMask & (this.startPosition + consumed);
     }
 
     /// <summary>
-    /// Removes the element at the specified position.
+    /// Removes the element at the specified position, leaving a hole unless it is the first slot.
     /// </summary>
     /// <param name="position">The position of the element to remove.</param>
-    /// <returns><see langword="true"/>; Success.</returns>
+    /// <returns><see langword="true"/> if an element was removed; <see langword="false"/> if <paramref name="position"/>
+    /// is outside the window or the slot is already empty.</returns>
+    /// <remarks>Removing the element at <see cref="StartPosition"/> also calls <see cref="TrySlide"/>.</remarks>
     public bool Remove(int position)
     {
-        var index = this.PositionToIndex(position);
-        if (index < 0)
+        var offset = this.PositionToOffset(position);
+        if (offset < 0)
         {
             return false;
         }
 
+        var index = this.OffsetToIndex(offset);
         if (this.items[index] is null)
         {
             return false;
         }
 
-        this.items[index] = default;
-
-        if (index == this.headIndex)
+        this.items[index] = null;
+        this.count--;
+        this.version++;
+        if (offset == 0)
         {
             this.TrySlide();
         }
 
-        this.version++;
         return true;
     }
 
     /// <summary>
-    /// Gets the value of the element at the specified position.
+    /// Gets the element at the specified position.
     /// </summary>
     /// <param name="position">The position of the element.</param>
-    /// <returns>The value.</returns>
+    /// <returns>The element, or <see langword="null"/> if <paramref name="position"/> is outside the window or the slot is empty.</returns>
     public T? Get(int position)
     {
-        var index = this.PositionToIndex(position);
-        if (index < 0)
-        {
-            return default;
-        }
-
-        return this.items[index];
+        var offset = this.PositionToOffset(position);
+        return offset < 0 ? null : this.items[this.OffsetToIndex(offset)];
     }
 
     /// <summary>
-    /// Sets the value of the element at the specified position.
+    /// Sets the element at the specified position, which may be any position inside the window, not only one already in use.
     /// </summary>
     /// <param name="position">The position of the element.</param>
-    /// <param name="value">The value of the element.</param>
-    /// <returns><see langword="true"/>; Success.</returns>
+    /// <param name="value">The value to store.</param>
+    /// <returns><see langword="true"/> if the value was stored; <see langword="false"/> if <paramref name="position"/> is outside the window.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+    /// <remarks>Setting a position beyond <see cref="EndPosition"/> extends <see cref="Consumed"/> and leaves the slots in between as holes.</remarks>
     public bool Set(int position, T value)
     {
-        var index = this.PositionToIndex(position);
-        if (index < 0)
+        if (value is null)
         {
-            return default;
+            throw ThrowHelper.ValueNull();
         }
 
-        int dif;
-        if (index >= this.headIndex)
+        var offset = this.PositionToOffset(position);
+        if (offset < 0)
         {
-            dif = index - this.headIndex;
-        }
-        else
-        {
-            dif = this.headIndex - index;
+            return false;
         }
 
-        if (dif > this.Consumed)
+        var index = this.OffsetToIndex(offset);
+        if (this.items[index] is null)
         {
-            this.Consumed = dif;
+            this.count++;
         }
 
         this.items[index] = value;
+        if (offset >= this.consumed)
+        {
+            this.consumed = offset + 1;
+        }
+
+        this.version++;
         return true;
     }
 
+    /// <summary>
+    /// Converts a position into an offset from <see cref="StartPosition"/>.
+    /// </summary>
+    /// <param name="position">The position to convert.</param>
+    /// <returns>The offset in the range <c>[0, Capacity)</c>, or <c>-1</c> if <paramref name="position"/> is outside the window.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int IndexToPosition(int index)
+    private int PositionToOffset(int position)
     {
-        if (index >= this.headIndex)
+        if (position < 0)
         {
-            return PositionMask & (this.itemsPosition + index);
+            return -1;
         }
-        else
-        {
-            return PositionMask & (this.itemsPosition + this.items.Length + index);
-        }
+
+        // (position - startPosition) modulo 2^31. Always non-negative.
+        var offset = PositionMask & (position - this.startPosition);
+        return offset < this.items.Length ? offset : -1;
     }
 
+    /// <summary>
+    /// Converts an offset from <see cref="StartPosition"/> into an index in <see cref="items"/>.
+    /// </summary>
+    /// <param name="offset">The offset, which must be in the range <c>[0, Capacity)</c>.</param>
+    /// <returns>The corresponding index in <see cref="items"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int PositionToIndex(int position)
+    private int OffsetToIndex(int offset)
     {
-        int index;
-        var start = this.StartPosition;
-        var end = PositionMask & (this.itemsPosition + this.headIndex + this.items.Length);
-        if (start < end)
-        {
-            if (start <= position && position < end)
-            {
-                index = position - start + this.headIndex;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if (start <= position)
-            {
-                index = position - start + this.headIndex;
-            }
-            else if (position < end)
-            {
-                index = PositionMask & (position - start + this.headIndex);
-            }
-            else
-            {
-                return -1;
-            }
-        }
-
+        var index = this.headIndex + offset;
         return index < this.items.Length ? index : index - this.items.Length;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int ClipIndex(int index) => index < this.items.Length ? index : index - this.items.Length;
+    /// <summary>
+    /// Copies a window of a ring buffer to the head of a destination array, unwrapping it into one or two block copies.
+    /// </summary>
+    /// <param name="source">The ring buffer to copy from.</param>
+    /// <param name="head">The index in <paramref name="source"/> at which the window starts.</param>
+    /// <param name="consumed">The number of slots to copy. It must not exceed the length of either array.</param>
+    /// <param name="destination">The array to copy to.</param>
+    private static void CopyWindow(T?[] source, int head, int consumed, T?[] destination)
+    {
+        if (consumed == 0)
+        {
+            return;
+        }
+
+        var first = source.Length - head;
+        if (first >= consumed)
+        {
+            Array.Copy(source, head, destination, 0, consumed);
+        }
+        else
+        {
+            Array.Copy(source, head, destination, 0, first);
+            Array.Copy(source, 0, destination, first, consumed - first);
+        }
+    }
 
     #region ICollection
 
+    /// <summary>
+    /// Gets a value indicating whether the <see cref="SlidingList{T}"/> is read-only. Always <see langword="false"/>.
+    /// </summary>
     public bool IsReadOnly => false;
 
     /// <summary>
-    /// Removes all elements from the list.
+    /// Removes all elements from the <see cref="SlidingList{T}"/>.
     /// </summary>
+    /// <remarks>Positions are not reset: the empty window starts at the former <see cref="EndPosition"/>, so positions
+    /// handed out before the call are never reused.</remarks>
     public void Clear()
     {
         Array.Clear(this.items, 0, this.items.Length);
-        this.itemsPosition = 0;
+        this.startPosition = PositionMask & (this.startPosition + this.consumed);
         this.headIndex = 0;
-        this.Consumed = 0;
+        this.consumed = 0;
+        this.count = 0;
         this.version++;
     }
 
     /// <summary>
-    /// Determines whether an element is in the list.
+    /// Determines whether an element is in the <see cref="SlidingList{T}"/>, using <see cref="EqualityComparer{T}.Default"/>.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The value to locate in the list.</param>
-    /// <returns>true if value is found in the list.</returns>
+    /// <param name="value">The value to locate.</param>
+    /// <returns><see langword="true"/> if <paramref name="value"/> is found; otherwise, <see langword="false"/>.
+    /// A <see langword="null"/> argument always returns <see langword="false"/>.</returns>
     public bool Contains(T value) => this.IndexOf(value) >= 0;
 
     /// <summary>
-    /// Copies the list or a portion of it to an array.
+    /// Copies the live elements to an array, in order from <see cref="StartPosition"/>, skipping holes.
+    /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
-    /// <param name="arrayIndex">The zero-based index in array at which copying begins.</param>
-    public void CopyTo(T[] array, int arrayIndex) => Array.Copy(this.ToArray(), 0, array, arrayIndex, this.items.Length);
+    /// <param name="array">The one-dimensional array that is the destination of the copied elements.</param>
+    /// <param name="arrayIndex">The zero-based index in <paramref name="array"/> at which copying begins.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="arrayIndex"/> is out of range, or <paramref name="array"/> has
+    /// less than <see cref="ICollection{T}.Count"/> elements available from <paramref name="arrayIndex"/>.</exception>
+    public void CopyTo(T[] array, int arrayIndex)
+    {
+        if (array is null)
+        {
+            throw ThrowHelper.ArrayNull();
+        }
+
+        var count = this.count;
+        if ((uint)arrayIndex > (uint)array.Length || array.Length - arrayIndex < count)
+        {
+            throw ThrowHelper.ArrayTooSmall();
+        }
+
+        if (count == 0)
+        {
+            return;
+        }
+
+        if (count == this.consumed)
+        {// No holes: bulk copy.
+            var items = this.items;
+            var head = this.headIndex;
+            var first = items.Length - head;
+            if (first >= count)
+            {
+                Array.Copy(items, head, array, arrayIndex, count);
+            }
+            else
+            {
+                Array.Copy(items, head, array, arrayIndex, first);
+                Array.Copy(items, 0, array, arrayIndex + first, count - first);
+            }
+
+            return;
+        }
+
+        var source = this.items;
+        var length = source.Length;
+        var i = this.headIndex;
+        var j = arrayIndex;
+        for (var remaining = this.consumed; remaining > 0; remaining--)
+        {
+            var item = source[i];
+            if (++i == length)
+            {
+                i = 0;
+            }
+
+            if (item is not null)
+            {
+                array[j++] = item;
+                if (j - arrayIndex == count)
+                {
+                    break;
+                }
+            }
+        }
+    }
 
     /// <summary>
-    /// Copies the list or a portion of it to an array.
+    /// Copies the live elements to the beginning of an array, in order from <see cref="StartPosition"/>, skipping holes.
+    /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from list.</param>
+    /// <param name="array">The one-dimensional array that is the destination of the copied elements.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="array"/> has less than <see cref="ICollection{T}.Count"/> elements.</exception>
     public void CopyTo(T[] array) => this.CopyTo(array, 0);
 
     /// <summary>
-    /// Removes the first occurrence of a specific object from the <see cref="UnorderedList{T}"/>.
+    /// Removes the first occurrence of a specific object, searching from <see cref="StartPosition"/>.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The object to remove from the <see cref="UnorderedList{T}"/>. </param>
-    /// <returns>true if item is successfully removed.</returns>
+    /// <param name="value">The object to remove.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(T value)
     {
-        var index = this.IndexOf(value);
-        if (index >= 0)
-        {
-            this.RemoveAt(index);
-            return true;
-        }
-
-        return false;
+        var position = this.IndexOf(value);
+        return position >= 0 && this.Remove(position);
     }
 
+    /// <summary>
+    /// Adds an element at <see cref="EndPosition"/>. The element is silently dropped if the list is full;
+    /// use <see cref="Add(T)"/> to detect that case.
+    /// </summary>
+    /// <param name="item">The value to add.</param>
     void ICollection<T>.Add(T item)
         => this.Add(item);
 
@@ -386,137 +538,232 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
 
     #region IList
 
+    /// <summary>
+    /// Gets or sets the element at the specified position. The parameter is a position, not a zero-based index.
+    /// </summary>
+    /// <param name="position">The position of the element.</param>
+    /// <returns>The element at <paramref name="position"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window, or, when getting,
+    /// the slot is empty. Use <see cref="Get(int)"/> or <see cref="Set(int, T)"/> to test instead of throwing.</exception>
+    /// <exception cref="ArgumentNullException">The value being set is <see langword="null"/>.</exception>
     public T this[int position]
     {
-        get => this.Get(position) ?? throw new ArgumentOutOfRangeException();
-
-        set => this.Set(position, value);
+        get => this.Get(position) ?? throw ThrowHelper.PositionOutOfRange();
+        set
+        {
+            if (!this.Set(position, value))
+            {
+                throw ThrowHelper.PositionOutOfRange();
+            }
+        }
     }
 
     /// <summary>
-    /// Returns the zero-based index of the first occurrence of a value in the list.
+    /// Searches from <see cref="StartPosition"/> and returns the position of the first occurrence of a value,
+    /// using <see cref="EqualityComparer{T}.Default"/>. The result is a position, not a zero-based index.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The value to locate in the list.</param>
-    /// <returns>The zero-based index of the first occurrence of item.</returns>
-    public int IndexOf(T value) => Array.IndexOf(this.items, value);
-
-    /// <summary>
-    /// Inserts an element into the <see cref="UnorderedList{T}"/> at the specified index.
-    /// <br/>O(n) operation.
-    /// </summary>
-    /// <param name="position">The zero-based index at which item should be inserted.</param>
-    /// <param name="item">The object to insert.</param>
-    public void Insert(int position, T item) => this.Set(position, item);
-
-    /// <summary>
-    /// Removes the element at the specified index of the list.
-    /// <br/>O(n) operation.
-    /// </summary>
-    /// <param name="index">The zero-based index of the element to remove.</param>
-    public void RemoveAt(int index)
+    /// <param name="value">The value to locate.</param>
+    /// <returns>The position of the first occurrence of <paramref name="value"/>, or <c>-1</c> if it is not found
+    /// or <paramref name="value"/> is <see langword="null"/>.</returns>
+    public int IndexOf(T value)
     {
-        if (index < 0 || index >= this.items.Length)
+        if (value is null)
         {
-            throw new ArgumentOutOfRangeException();
+            return -1;
         }
 
-        this.items[index] = default;
-        if (index == this.headIndex)
+        var items = this.items;
+        var length = items.Length;
+        var consumed = this.consumed;
+        var i = this.headIndex;
+        var comparer = EqualityComparer<T>.Default;
+        for (var offset = 0; offset < consumed; offset++)
         {
-            this.TrySlide();
+            var item = items[i];
+            if (++i == length)
+            {
+                i = 0;
+            }
+
+            if (item is not null && comparer.Equals(item, value))
+            {
+                return PositionMask & (this.startPosition + offset);
+            }
         }
 
-        this.version++;
+        return -1;
+    }
+
+    /// <summary>
+    /// Stores an element at the specified position. Unlike <see cref="IList{T}.Insert(int, T)"/>, this overwrites
+    /// the slot and does not shift the subsequent elements; it is equivalent to <see cref="Set(int, T)"/>.
+    /// </summary>
+    /// <param name="position">The position at which the item is stored.</param>
+    /// <param name="item">The object to store.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
+    public void Insert(int position, T item) => this[position] = item;
+
+    /// <summary>
+    /// Removes the element at the specified position. The parameter is a position, not a zero-based index;
+    /// it is <see cref="Remove(int)"/> with an exception instead of a <see langword="false"/> result.
+    /// </summary>
+    /// <param name="position">The position of the element to remove.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window, or the slot is already empty.</exception>
+    public void RemoveAt(int position)
+    {
+        if (!this.Remove(position))
+        {
+            throw ThrowHelper.PositionOutOfRange();
+        }
     }
 
     #endregion
 
     #region Enumerator
 
+    /// <summary>
+    /// Returns an enumerator that iterates the live elements in order from <see cref="StartPosition"/>, skipping holes.
+    /// </summary>
+    /// <returns>An <see cref="Enumerator"/> for the <see cref="SlidingList{T}"/>.</returns>
     public Enumerator GetEnumerator() => new Enumerator(this);
 
+    /// <inheritdoc cref="GetEnumerator"/>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => new Enumerator(this);
 
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => new Enumerator(this);
+    /// <inheritdoc cref="GetEnumerator"/>
+    IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
+    /// <summary>
+    /// Enumerates the live elements of a <see cref="SlidingList{T}"/>, skipping holes.
+    /// </summary>
+    /// <remarks>This is a mutable struct, so it must not be copied. Any modification of the list during
+    /// enumeration, <see cref="TrySlide"/> included, causes the next <see cref="MoveNext"/> to throw.</remarks>
     public struct Enumerator : IEnumerator<T>, IEnumerator
     {
-        private SlidingList<T> list;
-        private int index;
-        private int last;
+        private readonly SlidingList<T> list;
+        private int index; // The index in items.
+        private int remaining; // The number of slots left to scan.
         private int version;
         private T? current;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Enumerator"/> struct.
+        /// </summary>
+        /// <param name="list">The list to enumerate.</param>
         internal Enumerator(SlidingList<T> list)
         {
             this.list = list;
             this.index = list.headIndex;
-            this.last = list.headIndex + this.list.Consumed;
+            this.remaining = list.consumed;
             this.version = list.version;
-            this.current = default(T);
+            this.current = null;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next live element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator moved to the next element; <see langword="false"/> if it passed the end.</returns>
+        /// <exception cref="InvalidOperationException">The list was modified after the enumerator was created.</exception>
         public bool MoveNext()
         {
-            if (this.version != this.list.version)
+            var list = this.list;
+            if (this.version != list.version)
             {
-                throw ThrowVersionMismatch();
+                throw ThrowHelper.VersionMismatch();
             }
 
-            while (this.index != this.last)
+            var items = list.items;
+            var length = items.Length;
+            var i = this.index;
+            var remaining = this.remaining;
+            while (remaining > 0)
             {
-                if (this.list.items[this.list.ClipIndex(this.index)] is { } item)
+                var item = items[i];
+                if (++i == length)
                 {
-                    this.index++;
+                    i = 0;
+                }
+
+                remaining--;
+                if (item is not null)
+                {
+                    this.index = i;
+                    this.remaining = remaining;
                     this.current = item;
                     return true;
                 }
-                else
-                {
-                    this.index++;
-                }
             }
 
-            this.current = default(T);
+            this.index = i;
+            this.remaining = 0;
+            this.current = null;
             return false;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
+        /// <remarks>The value is undefined before the first <see cref="MoveNext"/> and after it returns <see langword="false"/>.</remarks>
         public T Current => this.current!;
 
-        object IEnumerator.Current
-        {
-            get
-            {
-                if (this.index == 0 || this.index == this.last)
-                {
-                    throw new IndexOutOfRangeException();
-                }
+        /// <inheritdoc cref="Current"/>
+        object IEnumerator.Current => this.current!;
 
-                return this.Current!;
-            }
-        }
-
-        void System.Collections.IEnumerator.Reset()
+        /// <summary>
+        /// Sets the enumerator back to its initial position, before the first element.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">The list was modified after the enumerator was created.</exception>
+        void IEnumerator.Reset()
         {
             if (this.version != this.list.version)
             {
-                throw ThrowVersionMismatch();
+                throw ThrowHelper.VersionMismatch();
             }
 
-            this.index = 0;
-            this.current = default(T);
+            this.index = this.list.headIndex;
+            this.remaining = this.list.consumed;
+            this.current = null;
         }
     }
 
-    private static Exception ThrowVersionMismatch()
-    {
-        throw new InvalidOperationException("List was modified after the enumerator was instantiated.'");
-    }
-
     #endregion
+
+    /// <summary>
+    /// Exception factories. Keeping them out of line keeps the hot paths small enough for the JIT to inline.
+    /// </summary>
+    private static class ThrowHelper
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception VersionMismatch()
+            => new InvalidOperationException("List was modified after the enumerator was instantiated.");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception CapacityOutOfRange()
+            => new ArgumentOutOfRangeException("capacity", "Capacity must be a non-negative value.");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception ValueNull()
+            => new ArgumentNullException("value");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception ArrayNull()
+            => new ArgumentNullException("array");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception ArrayTooSmall()
+            => new ArgumentException("The destination array is too small.", "array");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception PositionOutOfRange()
+            => new ArgumentOutOfRangeException("position");
+    }
 }
