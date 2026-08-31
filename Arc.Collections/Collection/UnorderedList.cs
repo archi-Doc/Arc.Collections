@@ -22,8 +22,19 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 {
     private const int DefaultCapacity = 4;
 
+    /// <summary>
+    /// The backing array. Only the first <see cref="Count"/> elements are in use.
+    /// </summary>
     protected T[] items;
+
+    /// <summary>
+    /// The number of elements in use.
+    /// </summary>
     protected int size;
+
+    /// <summary>
+    /// The modification counter used to invalidate enumerators.
+    /// </summary>
     protected int version;
 
     /// <summary>
@@ -82,8 +93,14 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     #region ICollection
 
+    /// <summary>
+    /// Gets the number of elements in the collection.
+    /// </summary>
     public int Count => this.size;
 
+    /// <summary>
+    /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+    /// </summary>
     public bool IsReadOnly => false;
 
     /// <summary>
@@ -219,6 +236,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Copies the elements to a new array.
     /// </summary>
+    /// <returns>A new array containing the elements.</returns>
     public T[] ToArray()
     {
         var size = this.size;
@@ -254,6 +272,12 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     #region IList
 
+    /// <summary>
+    /// Gets or sets the element at the specified index.
+    /// </summary>
+    /// <param name="index">The zero-based index of the element.</param>
+    /// <returns>The element at <paramref name="index"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range.</exception>
     public T this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -420,6 +444,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <br/>The span is invalidated by any operation that adds, inserts, removes, or changes capacity;
     /// do not use it after such an operation, and do not add or remove elements while holding it.
     /// </summary>
+    /// <returns>A span over the elements.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<T> AsSpan() => new(this.items, 0, this.size);
 
@@ -427,11 +452,16 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// Gets a read-only span over the elements currently in the list.
     /// See <see cref="AsSpan"/> for the invalidation rules.
     /// </summary>
+    /// <returns>A read-only span over the elements.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<T> AsReadOnlySpan() => new(this.items, 0, this.size);
 
     #region Enumerator
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the collection.
+    /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -465,6 +495,9 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
             this.current = default!;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public readonly T Current => this.current;
 
         object? IEnumerator.Current
@@ -480,10 +513,17 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
             }
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {

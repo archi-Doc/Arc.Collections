@@ -24,6 +24,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified duplicate behavior.
     /// </summary>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(bool allowDuplicate = false)
         : this(0, null, allowDuplicate)
     {
@@ -32,6 +33,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified capacity.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(int capacity, bool allowDuplicate = false)
         : this(capacity, null, allowDuplicate)
     {
@@ -40,6 +43,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified comparer.
     /// </summary>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(IEqualityComparer<T>? comparer, bool allowDuplicate = false)
         : this(0, comparer, allowDuplicate)
     {
@@ -48,6 +53,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified capacity, comparer, and duplicate behavior.
     /// </summary>
+    /// <param name="capacity">The capacity.</param>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(int capacity, IEqualityComparer<T>? comparer, bool allowDuplicate)
     {
         this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicate);
@@ -56,6 +64,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes a set containing the specified elements.
     /// </summary>
+    /// <param name="collection">The collection whose elements are copied.</param>
     public UnorderedSet(IEnumerable<T> collection)
         : this(collection, null, false)
     {
@@ -64,6 +73,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes a set containing the specified elements using the specified comparer.
     /// </summary>
+    /// <param name="collection">The collection whose elements are copied.</param>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer)
         : this(collection, comparer, false)
     {
@@ -72,6 +83,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes a set containing the specified elements using the specified duplicate behavior.
     /// </summary>
+    /// <param name="collection">The collection whose elements are copied.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(IEnumerable<T> collection, bool allowDuplicate)
         : this(collection, null, allowDuplicate)
     {
@@ -80,6 +93,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes a set containing the specified elements using the specified comparer and duplicate behavior.
     /// </summary>
+    /// <param name="collection">The collection whose elements are copied.</param>
+    /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
     public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool allowDuplicate)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -118,6 +134,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Adds the specified element to the set.
     /// </summary>
+    /// <param name="item">The element.</param>
     /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(T? item)
@@ -126,6 +143,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Determines whether the set contains the specified element.
     /// </summary>
+    /// <param name="item">The element.</param>
+    /// <returns><see langword="true"/> if the element is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T? item)
         => this.map.ContainsKey(item);
@@ -133,6 +152,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Removes one matching element from the set.
     /// </summary>
+    /// <param name="item">The element.</param>
     /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(T? item)
@@ -148,6 +168,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Copies the elements to a new array.
     /// </summary>
+    /// <returns>A new array containing the elements.</returns>
     public T[] ToArray()
     {
         var array = new T[this.Count];
@@ -158,6 +179,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Copies the elements to the specified array.
     /// </summary>
+    /// <param name="array">The destination array.</param>
+    /// <param name="index">The zero-based index.</param>
     public void CopyTo(T[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -183,6 +206,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Returns an allocation-free enumerator.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public UnorderedMap<T, byte>.KeyEnumerable.Enumerator GetEnumerator()
         => this.map.Keys.GetEnumerator();

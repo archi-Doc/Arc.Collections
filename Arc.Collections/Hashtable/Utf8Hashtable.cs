@@ -68,6 +68,7 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all values.
     /// </summary>
+    /// <returns>A new array containing the elements.</returns>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
@@ -91,6 +92,7 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all key-value pairs.
     /// </summary>
+    /// <returns>A new array containing the key-value pairs.</returns>
     public KeyValuePair<byte[], TValue>[] ToKeyValuePairs()
     {
         using (this.lockObject.EnterScope())
@@ -114,6 +116,9 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to add a key-value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(byte[] key, TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -123,12 +128,17 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to add a key-value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(ReadOnlySpan<byte> key, TValue value)
         => this.AddInternal(key, value, false, out _);
 
     /// <summary>
     /// Adds or updates a key-value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(byte[] key, TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -138,12 +148,17 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Adds or updates a key-value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(ReadOnlySpan<byte> key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
     /// <summary>
     /// Gets the existing value or adds a newly created value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
+    /// <returns>The existing value, or the newly created value.</returns>
     /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
     /// it must not call back into this hashtable.</remarks>
     public TValue GetOrAdd(byte[] key, Func<byte[], TValue> valueFactory)
@@ -162,6 +177,9 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Gets the existing value or adds a newly created value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
+    /// <returns>The existing value, or the newly created value.</returns>
     /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
     /// it must not call back into this hashtable.</remarks>
     public TValue GetOrAdd(ReadOnlySpan<byte> key, Func<byte[], TValue> valueFactory)
@@ -179,6 +197,9 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(byte[] key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -206,6 +227,9 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -231,6 +255,8 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Determines whether the hashtable contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(byte[] key)
         => this.TryGetValue(key, out _);
@@ -238,6 +264,8 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Determines whether the hashtable contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(ReadOnlySpan<byte> key)
         => this.TryGetValue(key, out _);
@@ -245,6 +273,7 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to remove the value with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(byte[] key)
     {
@@ -255,6 +284,8 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to remove the value with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(byte[] key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -265,6 +296,7 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to remove the value with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(ReadOnlySpan<byte> key)
         => this.TryRemove(key, out _);
@@ -272,6 +304,8 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Attempts to remove the value with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
     {

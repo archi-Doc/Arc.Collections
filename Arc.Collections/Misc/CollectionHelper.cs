@@ -4,9 +4,19 @@ using System.Numerics;
 
 namespace Arc.Collections;
 
+/// <summary>
+/// Provides helper methods for sizing collection storage.
+/// </summary>
 public static class CollectionHelper
 {
+    /// <summary>
+    /// The smallest power-of-two capacity returned by <see cref="CalculatePowerOfTwoCapacity(uint)"/>.
+    /// </summary>
     public const uint MinimumCapacity = 8;
+
+    /// <summary>
+    /// The largest power-of-two capacity returned by <see cref="CalculatePowerOfTwoCapacity(uint)"/>.
+    /// </summary>
     public const uint MaximumCapacity = 1u << 30;
 
     /*public static T? GetOption<T>(this IConversionOptions conversionOptions)
@@ -65,7 +75,14 @@ public static class CollectionHelper
         return 1 << (32 - BitOperations.LeadingZeroCount((uint)minimumSize - 1));
     }
 
+    /// <summary>
+    /// The largest array length that <see cref="ExpandPrime(int)"/> can return.
+    /// </summary>
     public const int MaxPrimeArrayLength = 0x7FEFFFFD;
+
+    /// <summary>
+    /// A table of prime numbers used to size prime-bucketed hash tables.
+    /// </summary>
     public static readonly int[] Primes =
     {
         3, 5, 7, 11, 17, 29, 43, 67, 101, 151, 227, 347, 521, 787, 1181, 1777, 2671, 4007,
@@ -75,6 +92,11 @@ public static class CollectionHelper
         342574909, 513862367, 770793589, 1156190419, 1734285653,
     };
 
+    /// <summary>
+    /// Gets the smallest prime in <see cref="Primes"/> that is greater than or equal to the specified value.
+    /// </summary>
+    /// <param name="min">The minimum required value.</param>
+    /// <returns>The matching prime, or the largest entry of <see cref="Primes"/> if none is large enough.</returns>
     public static int GetPrime(int min)
     {
         for (var i = 0; i < Primes.Length; i++)
@@ -88,6 +110,11 @@ public static class CollectionHelper
         return Primes[Primes.Length - 1];
     }
 
+    /// <summary>
+    /// Gets the prime capacity to grow to, roughly doubling the specified size.
+    /// </summary>
+    /// <param name="oldSize">The current size.</param>
+    /// <returns>The new capacity, capped at <see cref="MaxPrimeArrayLength"/>.</returns>
     public static int ExpandPrime(int oldSize)
     {
         int newSize = 2 * oldSize;

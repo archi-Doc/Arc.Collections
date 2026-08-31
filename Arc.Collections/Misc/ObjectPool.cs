@@ -20,6 +20,9 @@ namespace Arc.Collections;
 public sealed class ObjectPool<T> : IDisposable
     where T : class
 {
+    /// <summary>
+    /// The default maximum number of objects kept in the pool.
+    /// </summary>
     public const int DefaultPoolSize = 32;
 
     /// <summary>
@@ -88,7 +91,10 @@ public sealed class ObjectPool<T> : IDisposable
 
     private bool disposed = false; // To detect redundant calls.
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Disposes every pooled object that implements <see cref="IDisposable"/> and empties the pool.
+    /// </summary>
+    /// <remarks>Must not be called concurrently with <see cref="Rent"/> or <see cref="Return"/>.</remarks>
     public void Dispose()
     {
         if (this.disposed)

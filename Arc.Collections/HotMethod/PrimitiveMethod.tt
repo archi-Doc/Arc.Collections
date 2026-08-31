@@ -5,21 +5,23 @@
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
 <#
-var allTypes = new (string Simple, string Name)[]
+// Total: use CompareTo() instead of the relational operators, so that the ordering matches
+// Comparer<T>.Default for IEEE-754 types (NaN and negative zero).
+var allTypes = new (string Simple, string Name, bool Total)[]
 {
-    ("byte", "UInt8"),
-    ("sbyte", "Int8"),
-    ("ushort", "UInt16"),
-    ("short", "Int16"),
-    ("uint", "UInt32"),
-    ("int", "Int32"),
-    ("ulong", "UInt64"),
-    ("long", "Int64"),
-    ("UInt128", "UInt128"),
-    ("Int128", "Int128"),
-    ("float", "Single"),
-    ("double", "Double"),
-    ("DateTime", "DateTime"),
+    ("byte", "UInt8", false),
+    ("sbyte", "Int8", false),
+    ("ushort", "UInt16", false),
+    ("short", "Int16", false),
+    ("uint", "UInt32", false),
+    ("int", "Int32", false),
+    ("ulong", "UInt64", false),
+    ("long", "Int64", false),
+    ("UInt128", "UInt128", false),
+    ("Int128", "Int128", false),
+    ("float", "Single", true),
+    ("double", "Double", true),
+    ("DateTime", "DateTime", false),
 };
 #>
 // Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
@@ -36,14 +38,21 @@ using System.Runtime.InteropServices;
 namespace Arc.Collections.HotMethod
 {<# foreach(var t in allTypes) {  #>
 
+    /// <summary>
+    /// Provides binary search operations specialized for <see cref="<#= t.Simple #>"/>.
+    /// </summary>
     public sealed class <#= t.Name #>Method : IHotMethod<<#= t.Simple #>>
     {
+        /// <summary>
+        /// The singleton instance.
+        /// </summary>
         public static readonly <#= t.Name #>Method Instance = new ();
 
         private <#= t.Name #>Method()
         {
         }
 
+        /// <inheritdoc/>
         public int LowerBound(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
         {
             ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
@@ -53,7 +62,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) < value)
+                if (<#= Cmp(t.Total, "Unsafe.Add(ref r, (nint)mid)", "<", "value") #>)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -67,6 +76,7 @@ namespace Arc.Collections.HotMethod
             return (int)lo;
         }
 
+        /// <inheritdoc/>
         public int UpperBoundExclusive(ReadOnlySpan<<#= t.Simple #>> span, <#= t.Simple #> value)
         {
             ref <#= t.Simple #> r = ref MemoryMarshal.GetReference(span);
@@ -76,7 +86,7 @@ namespace Arc.Collections.HotMethod
             {
                 nuint half = count >> 1;
                 nuint mid = lo + half;
-                if (Unsafe.Add(ref r, (nint)mid) <= value)
+                if (<#= Cmp(t.Total, "Unsafe.Add(ref r, (nint)mid)", "<=", "value") #>)
                 {
                     lo = mid + 1;
                     count -= half + 1;
@@ -91,8 +101,13 @@ namespace Arc.Collections.HotMethod
         }
     }
 
+    /// <summary>
+    /// Provides Red-Black tree search operations specialized for <see cref="<#= t.Simple #>"/> keys.
+    /// </summary>
+    /// <typeparam name="TValue">The type of values in the map.</typeparam>
     public sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
     {
+        /// <inheritdoc/>
         public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -102,12 +117,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (<#= Cmp(t.Total, "key", "<", "x.Key") #>)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (<#= Cmp(t.Total, "key", ">", "x.Key") #>)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -121,6 +136,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
+        /// <inheritdoc/>
         public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -130,12 +146,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (<#= Cmp(t.Total, "key", ">", "x.Key") #>)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (<#= Cmp(t.Total, "key", "<", "x.Key") #>)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -149,6 +165,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
+        /// <inheritdoc/>
         public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -158,12 +175,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key < x.Key)
+                if (<#= Cmp(t.Total, "key", "<", "x.Key") #>)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key > x.Key)
+                else if (<#= Cmp(t.Total, "key", ">", "x.Key") #>)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -177,6 +194,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
+        /// <inheritdoc/>
         public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
@@ -186,12 +204,12 @@ namespace Arc.Collections.HotMethod
             while (x != null)
             {
                 p = x;
-                if (key > x.Key)
+                if (<#= Cmp(t.Total, "key", ">", "x.Key") #>)
                 {
                     x = x.Left;
                     cmp = -1;
                 }
-                else if (key < x.Key)
+                else if (<#= Cmp(t.Total, "key", "<", "x.Key") #>)
                 {
                     x = x.Right;
                     cmp = 1;
@@ -207,3 +225,11 @@ namespace Arc.Collections.HotMethod
     }
 <# } #>
 }
+<#+
+string Cmp(bool total, string left, string op, string right)
+{
+    return total
+        ? left + ".CompareTo(" + right + ") " + op + " 0"
+        : left + " " + op + " " + right;
+}
+#>

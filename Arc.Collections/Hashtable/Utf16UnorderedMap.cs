@@ -29,6 +29,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     private const int StartOfFreeList = -3;
     private const int MaximumCapacity = 1 << 30;
 
+    /// <summary>
+    /// Represents a node in the map.
+    /// </summary>
     public struct Node
     {
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
@@ -42,8 +45,14 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         internal TValue value;
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
+        /// <summary>
+        /// Gets the UTF-16 key stored in the node.
+        /// </summary>
         public string Key => this.key;
 
+        /// <summary>
+        /// Gets the value stored in the node.
+        /// </summary>
         public TValue Value => this.value;
     }
 
@@ -66,6 +75,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf16UnorderedMap{TValue}"/> class.
     /// </summary>
+    /// <param name="minimumSize">The minimum required capacity.</param>
     public Utf16UnorderedMap(uint minimumSize = 0)
     {
         if (minimumSize > MaximumCapacity)
@@ -97,24 +107,34 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Adds or updates a key/value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(string key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
     /// Adds or updates a key/value pair.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
     public void Add(ReadOnlySpan<char> key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
     /// Attempts to add a key/value pair without overwriting an existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(string key, TValue value)
         => this.TryInsert(key, value, false);
 
     /// <summary>
     /// Attempts to add a key/value pair without overwriting an existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
     public bool TryAdd(ReadOnlySpan<char> key, TValue value)
         => this.TryInsert(key, value, false);
 
@@ -139,6 +159,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Determines whether the map contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(string key)
     {
@@ -149,6 +171,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Determines whether the map contains the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(ReadOnlySpan<char> key)
         => this.TryGetValue(key, out _);
@@ -156,6 +180,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Determines whether the map contains the specified value.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public bool ContainsValue(TValue value)
     {
         var nodes = this._nodes;
@@ -190,6 +216,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -199,6 +227,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Removes the element with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(ReadOnlySpan<char> key)
     {
         var hashCode = GetHashCode(key);
@@ -252,6 +282,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -284,6 +317,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -375,6 +411,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// See <see cref="GetValueRefOrAddDefault(string, out bool)"/> for details and the
     /// reference invalidation rules.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
+    /// <returns>A reference to the value slot. It is invalidated by any subsequent addition or removal.</returns>
     public ref TValue GetValueRefOrAddDefault(ReadOnlySpan<char> key, out bool exists)
     {
         var nodes = this._nodes;
@@ -604,6 +643,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Returns an enumerator for the map.
     /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -613,6 +653,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     IEnumerator IEnumerable.GetEnumerator()
         => new Enumerator(this);
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="Utf16UnorderedMap{TValue}"/>.
+    /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<string, TValue>>
     {
         // The node array and count are snapshotted; the map performs no version checks,
@@ -631,6 +674,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
             this._current = default;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public KeyValuePair<string, TValue> Current => this._current;
 
         object IEnumerator.Current
@@ -646,6 +692,10 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
             }
         }
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         public bool MoveNext()
         {
             var nodes = this._nodes;
@@ -668,6 +718,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
             return false;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }

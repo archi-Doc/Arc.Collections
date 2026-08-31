@@ -30,7 +30,7 @@ public interface IStringConvertible<T>
     ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.<br/>
     ///  If not implemented, please return -1 instead of throwing an exception.
     /// </summary>
-    /// <returns>The maximum utf-16 encoded length.</returns>
+    /// <value>The maximum utf-16 encoded length.</value>
     static abstract int MaxStringLength { get; }
 
     /// <summary>

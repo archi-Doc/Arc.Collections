@@ -25,8 +25,19 @@ public static class BaseHelper
     /// </summary>
     public const int StackallocThreshold = 1024;
 
+    /// <summary>
+    /// The line feed character (<c>\n</c>).
+    /// </summary>
     public const char LfChar = '\n';
+
+    /// <summary>
+    /// The carriage return character (<c>\r</c>).
+    /// </summary>
     public const char CrChar = '\r';
+
+    /// <summary>
+    /// The space character.
+    /// </summary>
     public const char SpaceChar = ' ';
 
     /// <summary>
@@ -49,6 +60,10 @@ public static class BaseHelper
     /// </summary>
     public const int UInt64MaxDecimalChars = 20;
 
+    /// <summary>
+    /// A 256-entry lookup table indicating whether a character in the range U+0000 to U+00FF
+    /// is a separator or whitespace character. See <see cref="IsSeparator(char)"/>.
+    /// </summary>
     public static readonly bool[] SeparatorCharFlag = [
         false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
@@ -269,7 +284,7 @@ public static class BaseHelper
         {
             var val = span[i];
 
-            if (val < 0xFF)
+            if (val <= 0xFF)
             {
                 if (SeparatorCharFlag[val])
                 {
@@ -305,7 +320,7 @@ public static class BaseHelper
     /// </returns>
     public static bool IsSeparator(char val)
     {
-        if (val < 0xFF)
+        if (val <= 0xFF)
         {
             return SeparatorCharFlag[val];
         }
@@ -1065,28 +1080,10 @@ public static class BaseHelper
             return string.Empty;
         }
 
-        char[]? rentArray = null;
-        Span<char> span = length <= Arc.BaseHelper.StackallocThreshold ?
-            stackalloc char[length] : (rentArray = ArrayPool<char>.Shared.Rent(length));
-
-        try
-        {
-            if (obj.TryFormat(span, out var written, conversionOptions))
-            {
-                return new string(span.Slice(0, written));
-            }
-            else
-            {
-                return string.Empty;
-            }
-        }
-        finally
-        {
-            if (rentArray != null)
-            {
-                ArrayPool<char>.Shared.Return(rentArray);
-            }
-        }
+        using var owner = new Arc.Collections.SpanOwner<char>(stackalloc char[StackallocThreshold], length);
+        return obj.TryFormat(owner.Span, out var written, conversionOptions)
+            ? new string(owner.Span.Slice(0, written))
+            : string.Empty;
     }
 
     /// <summary>
@@ -1111,32 +1108,16 @@ public static class BaseHelper
             return Array.Empty<byte>();
         }
 
-        char[]? rentArray = null;
-        Span<char> span = length <= Arc.BaseHelper.StackallocThreshold ?
-            stackalloc char[length] : (rentArray = ArrayPool<char>.Shared.Rent(length));
+        using var owner = new Arc.Collections.SpanOwner<char>(stackalloc char[StackallocThreshold], length);
+        if (!obj.TryFormat(owner.Span, out var written, conversionOptions))
+        {
+            return Array.Empty<byte>();
+        }
 
-        try
-        {
-            if (obj.TryFormat(span, out var written, conversionOptions))
-            {
-                var result = span.Slice(0, written);
-                var count = Encoding.UTF8.GetByteCount(result);
-                var array = new byte[count];
-                length = Encoding.UTF8.GetBytes(result, array);
-                Debug.Assert(length == array.Length, string.Empty);
-                return array;
-            }
-            else
-            {
-                return Array.Empty<byte>();
-            }
-        }
-        finally
-        {
-            if (rentArray != null)
-            {
-                ArrayPool<char>.Shared.Return(rentArray);
-            }
-        }
+        var result = owner.Span.Slice(0, written);
+        var array = new byte[Encoding.UTF8.GetByteCount(result)];
+        length = Encoding.UTF8.GetBytes(result, array);
+        Debug.Assert(length == array.Length, string.Empty);
+        return array;
     }
 }

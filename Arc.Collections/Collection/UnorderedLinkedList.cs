@@ -86,6 +86,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         /// <summary>
         /// Changes the value without modifying the list structure.
         /// </summary>
+        /// <param name="value">The value.</param>
         public void UnsafeChangeValue(T value) => this.value = value;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -97,8 +98,19 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         }
     }
 
+    /// <summary>
+    /// The first node of the doubly linked circular list, or <see langword="null"/> if empty.
+    /// </summary>
     protected Node? head; // Doubly linked circular list.
+
+    /// <summary>
+    /// The number of nodes in the list.
+    /// </summary>
     protected int size;
+
+    /// <summary>
+    /// The modification counter used to invalidate enumerators.
+    /// </summary>
     protected int version;
 
     /// <summary>
@@ -159,10 +171,19 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     #region ICollection
 
+    /// <summary>
+    /// Gets the number of elements in the collection.
+    /// </summary>
     public int Count => this.size;
 
+    /// <summary>
+    /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+    /// </summary>
     public bool IsReadOnly => false;
 
+    /// <summary>
+    /// Gets a value indicating whether access to the list is synchronized. Always <see langword="false"/>.
+    /// </summary>
     public bool IsSynchronized => false;
 
     object ICollection.SyncRoot => this;
@@ -306,6 +327,10 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     #region Enumerator
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the collection.
+    /// </summary>
+    /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator() => new(this);
 
@@ -333,6 +358,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             this.currentNode = null;
         }
 
+        /// <summary>
+        /// Gets the element at the current position of the enumerator.
+        /// </summary>
         public T Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -350,6 +378,10 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
         object? IEnumerator.Current => this.Current;
 
+        /// <summary>
+        /// Advances the enumerator to the next element.
+        /// </summary>
+        /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -373,6 +405,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
             return true;
         }
 
+        /// <summary>
+        /// Releases the resources used by the enumerator. This is a no-op.
+        /// </summary>
         public void Dispose()
         {
         }
@@ -499,6 +534,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a new value after the specified node.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The new node.</returns>
     public Node AddAfter(Node node, T value)
     {
         this.ValidateNode(node);
@@ -510,6 +548,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds the specified node after an existing node.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="newNode">The node to add.</param>
     public void AddAfter(Node node, Node newNode)
     {
         this.ValidateNode(node);
@@ -521,6 +561,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a new value before the specified node.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The new node.</returns>
     public Node AddBefore(Node node, T value)
     {
         this.ValidateNode(node);
@@ -537,6 +580,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds the specified node before an existing node.
     /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="newNode">The node to add.</param>
     public void AddBefore(Node node, Node newNode)
     {
         this.ValidateNode(node);
@@ -552,6 +597,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a value at the start of the list.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns>The new node.</returns>
     public Node AddFirst(T value)
     {
         var result = new Node(this, value);
@@ -572,6 +619,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a node at the start of the list.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void AddFirst(Node node)
     {
         this.ValidateNewNode(node);
@@ -592,6 +640,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a value at the end of the list.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns>The new node.</returns>
     public Node AddLast(T value)
     {
         var result = new Node(this, value);
@@ -611,6 +661,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a node at the end of the list.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void AddLast(Node node)
     {
         this.ValidateNewNode(node);
@@ -630,6 +681,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Removes the specified node.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void Remove(Node node)
     {
         this.ValidateNode(node);
@@ -639,6 +691,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Moves the specified node to the start of the list.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void MoveToFirst(Node node)
     {
         this.ValidateNode(node);
@@ -661,6 +714,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Moves the specified node to the end of the list.
     /// </summary>
+    /// <param name="node">The node.</param>
     public void MoveToLast(Node node)
     {
         this.ValidateNode(node);
