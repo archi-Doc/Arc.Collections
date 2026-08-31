@@ -8,6 +8,17 @@ namespace XunitTest;
 
 public class BaseHelperTest
 {
+    [Theory]
+    [InlineData("", 0)]
+    [InlineData("text", 0)]
+    [InlineData(" text", 1)]
+    [InlineData("                text", 16)]
+    [InlineData("                                ", 32)]
+    public void CountLeadingSpacesTest(string input, int expected)
+    {
+        BaseHelper.CountLeadingSpaces(input).Is(expected);
+    }
+
     [Fact]
     public void RemoveCrTest()
     {
@@ -59,6 +70,7 @@ public class BaseHelperTest
         BaseHelper.RemoveCrLf("\r\nA\nB\r\nC").Is("ABC");
         BaseHelper.RemoveCrLf("ABC\n012\r\n345").Is("ABC012345");
         BaseHelper.RemoveCrLf("\r\nA\rBC\r\n012\n345\n\n").Is("ABC012345");
+        BaseHelper.RemoveCrLf("A\rB").Is("AB");
     }
 
     [Fact]

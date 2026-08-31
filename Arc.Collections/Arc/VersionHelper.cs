@@ -25,9 +25,11 @@ public static class VersionHelper
     /// <param name="assemblyName">The name of the assembly to search for.</param>
     public static void SetAssembly(string assemblyName)
     {
+        ArgumentNullException.ThrowIfNull(assemblyName);
+
         foreach (var x in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (x.ManifestModule.Name.Contains(assemblyName))
+            if (x.ManifestModule.Name.Contains(assemblyName, StringComparison.Ordinal))
             {
                 Update(x);
                 break;

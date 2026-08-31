@@ -211,4 +211,24 @@ public class Utf8ValidatorTests
         var result = BaseHelper.GetValidUtf8Length(bytes);
         Assert.Equal(0, result);
     }
+
+    [Fact]
+    public void OrphanContinuationByte_ReturnsPrefixLength()
+    {
+        byte[] bytes = [0x41, 0x80];
+
+        var result = BaseHelper.GetValidUtf8Length(bytes);
+
+        Assert.Equal(1, result);
+    }
+
+    [Fact]
+    public void ExtraContinuationByte_ReturnsCompleteSequenceLength()
+    {
+        byte[] bytes = [0xC2, 0x80, 0x80];
+
+        var result = BaseHelper.GetValidUtf8Length(bytes);
+
+        Assert.Equal(2, result);
+    }
 }

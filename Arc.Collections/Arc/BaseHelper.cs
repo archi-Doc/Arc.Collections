@@ -5,7 +5,6 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -103,70 +102,10 @@ public static class BaseHelper
     /// The number of consecutive space characters (SpaceChar) at the beginning of the span.<br/>
     /// Returns 0 if the span is empty or does not start with a space character.
     /// </returns>
-    public static unsafe int CountLeadingSpaces(ReadOnlySpan<char> span)
+    public static int CountLeadingSpaces(ReadOnlySpan<char> span)
     {
-        var length = span.Length;
-        if (length == 0 || span[0] != SpaceChar)
-        {
-            return 0;
-        }
-
-        var i = 0;
-        if (length < 8)
-        {
-            i = 1;
-            while (i < length && span[i] == SpaceChar)
-            {
-                i++;
-            }
-
-            return i;
-        }
-
-        fixed (char* p = span)
-        {
-            if (Avx2.IsSupported)
-            {
-                Vector256<ushort> spaces = Vector256.Create((ushort)SpaceChar);
-                while (i <= length - 16)
-                {
-                    Vector256<ushort> chunk = Avx.LoadVector256((ushort*)(p + i));
-                    Vector256<ushort> eq = Avx2.CompareEqual(chunk, spaces);
-                    uint nonSpaceMask = ~(uint)Avx2.MoveMask(eq.AsByte()) & 0x55555555u;
-                    if (nonSpaceMask != 0)
-                    {
-                        return i + (BitOperations.TrailingZeroCount(nonSpaceMask) >> 1);
-                    }
-
-                    i += 16;
-                }
-            }
-
-            if (Sse2.IsSupported)
-            {
-                Vector128<ushort> spaces = Vector128.Create((ushort)SpaceChar);
-
-                while (i <= length - 8)
-                {
-                    Vector128<ushort> chunk = Sse2.LoadVector128((ushort*)(p + i));
-                    Vector128<ushort> eq = Sse2.CompareEqual(chunk, spaces);
-                    uint nonSpaceMask = ~(uint)Sse2.MoveMask(eq.AsByte()) & 0x5555u;
-                    if (nonSpaceMask != 0)
-                    {
-                        return i + (BitOperations.TrailingZeroCount(nonSpaceMask) >> 1);
-                    }
-
-                    i += 8;
-                }
-            }
-
-            while (i < length && p[i] == SpaceChar)
-            {
-                i++;
-            }
-        }
-
-        return i;
+        var index = span.IndexOfAnyExcept(SpaceChar);
+        return index < 0 ? span.Length : index;
     }
 
     /// <summary>
@@ -186,15 +125,7 @@ public static class BaseHelper
     {
         if (includeEmptyLines)
         {
-            var count = 1;
-            for (var i = 0; i < source.Length; i++)
-            {
-                if (source[i] == LfChar)
-                {
-                    count++;
-                }
-            }
-
+            var count = source.Count(LfChar) + 1;
             var result = new string[count];
             var resultIndex = 0;
             var start = 0;
@@ -455,7 +386,11 @@ public static class BaseHelper
     public static int CircularCompareTo(this ulong value1, ulong value2)
     {
         var diff = value1 - value2;
-        if (diff > 0x8000_0000_0000_0000)
+        if (diff == 0x8000_0000_0000_0000)
+        {
+            return value1.CompareTo(value2);
+        }
+        else if (diff > 0x8000_0000_0000_0000)
         {
             return -1;
         }
@@ -479,7 +414,11 @@ public static class BaseHelper
     public static int CircularCompareTo(this uint value1, uint value2)
     {
         var diff = value1 - value2;
-        if (diff > 0x8000_0000)
+        if (diff == 0x8000_0000)
+        {
+            return value1.CompareTo(value2);
+        }
+        else if (diff > 0x8000_0000)
         {
             return -1;
         }
@@ -548,11 +487,6 @@ public static class BaseHelper
             return input;
         }
 
-        if (!input.Contains(value))
-        {
-            return input;
-        }
-
         var newlineCount = input.AsSpan().Count(value);
         if (newlineCount == 0)
         {
@@ -560,14 +494,14 @@ public static class BaseHelper
         }
 
         var resultLength = input.Length - newlineCount;
-        return string.Create(resultLength, input, (span, src) =>
+        return string.Create(resultLength, (Input: input, Value: value), static (span, state) =>
         {
             var position = 0;
-            for (var i = 0; i < src.Length; i++)
+            foreach (var c in state.Input)
             {
-                if (src[i] != value)
+                if (c != state.Value)
                 {
-                    span[position++] = src[i];
+                    span[position++] = c;
                 }
             }
         });
@@ -588,23 +522,19 @@ public static class BaseHelper
             return string.Empty;
         }
 
-        if (!input.Contains(LfChar))
+        var firstNewline = input.AsSpan().IndexOfAny(CrChar, LfChar);
+        if (firstNewline < 0)
         {
             return input;
         }
 
-        var newlineCount = 0;
-        for (var i = 0; i < input.Length; i++)
+        var newlineCount = 1;
+        for (var i = firstNewline + 1; i < input.Length; i++)
         {
             if (input[i] == CrChar || input[i] == LfChar)
             {
                 newlineCount++;
             }
-        }
-
-        if (newlineCount == 0)
-        {
-            return input;
         }
 
         var resultLength = input.Length - newlineCount;
@@ -630,28 +560,22 @@ public static class BaseHelper
     public static int GetValidUtf8Length(ReadOnlySpan<byte> bytes)
     {
         var length = bytes.Length;
-        var i = length - 1;
         if (length == 0)
         {// Empty buffer
             return 0;
         }
 
+        var i = length - 1;
         if (bytes[i] <= 0x7F)
         {// ASCII byte
             return length;
         }
 
-        if ((bytes[i] & 0b1100_0000) == 0b1000_0000)
+        var continuationCount = 0;
+        while (i >= 0 && (bytes[i] & 0b1100_0000) == 0b1000_0000)
         {
+            continuationCount++;
             i--;
-            if (i >= 0 && (bytes[i] & 0b1100_0000) == 0b1000_0000)
-            {
-                i--;
-                if (i >= 0 && (bytes[i] & 0b1100_0000) == 0b1000_0000)
-                {
-                    i--;
-                }
-            }
         }
 
         if (i < 0)
@@ -659,32 +583,31 @@ public static class BaseHelper
             return 0;
         }
 
-        int seqLen;
+        int sequenceLength;
         if ((bytes[i] & 0b1110_0000) == 0b1100_0000)
         {
-            seqLen = 2;
+            sequenceLength = 2;
         }
         else if ((bytes[i] & 0b1111_0000) == 0b1110_0000)
         {
-            seqLen = 3;
+            sequenceLength = 3;
         }
         else if ((bytes[i] & 0b1111_1000) == 0b1111_0000)
         {
-            seqLen = 4;
+            sequenceLength = 4;
         }
         else
         {
-            return length;
+            return i + 1;
         }
 
-        if (length < i + seqLen)
+        var expectedContinuationCount = sequenceLength - 1;
+        if (continuationCount < expectedContinuationCount)
         {
             return i;
         }
-        else
-        {
-            return length;
-        }
+
+        return continuationCount == expectedContinuationCount ? length : i + sequenceLength;
     }
 
     /// <summary>
@@ -692,37 +615,43 @@ public static class BaseHelper
     /// </summary>
     /// <param name="data">The read-only span of signed bytes to sum.</param>
     /// <returns>The sum of all elements in the span as a 32-bit signed integer.</returns>
-    public static unsafe int Sum(ReadOnlySpan<sbyte> data)
+    public static int Sum(ReadOnlySpan<sbyte> data)
     {
-        int sum = 0;
+        long sum = 0;
         int i = 0;
 
         if (Avx2.IsSupported && data.Length >= 32)
         {
-            var accumulator = Vector256<int>.Zero;
+            var signBit = Vector256.Create((byte)0x80);
+            var accumulator = Vector256<ulong>.Zero;
+            var start = i;
 
             for (; i <= data.Length - 32; i += 32)
             {
-                var bytes = Avx2.LoadVector256((sbyte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(data.Slice(i))));
-
-                var low16 = Avx2.ConvertToVector256Int16(bytes.GetLower());
-                var high16 = Avx2.ConvertToVector256Int16(bytes.GetUpper());
-
-                var low32_1 = Avx2.ConvertToVector256Int32(low16.GetLower());
-                var low32_2 = Avx2.ConvertToVector256Int32(low16.GetUpper());
-                var high32_1 = Avx2.ConvertToVector256Int32(high16.GetLower());
-                var high32_2 = Avx2.ConvertToVector256Int32(high16.GetUpper());
-
-                accumulator = Avx2.Add(accumulator, low32_1);
-                accumulator = Avx2.Add(accumulator, low32_2);
-                accumulator = Avx2.Add(accumulator, high32_1);
-                accumulator = Avx2.Add(accumulator, high32_2);
+                var values = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.As<sbyte, byte>(ref Unsafe.Add(ref MemoryMarshal.GetReference(data), i)));
+                var shifted = Avx2.Xor(values, signBit);
+                var partialSums = Avx2.SumAbsoluteDifferences(shifted, Vector256<byte>.Zero).AsUInt64();
+                accumulator = Avx2.Add(accumulator, partialSums);
             }
 
-            var x = Avx2.HorizontalAdd(accumulator, accumulator);
-            x = Avx2.HorizontalAdd(x, x);
-            var sum128 = Sse2.Add(x.GetLower(), x.GetUpper());
-            sum = Sse2.ConvertToInt32(sum128);
+            sum += (long)(accumulator.GetElement(0) + accumulator.GetElement(1) + accumulator.GetElement(2) + accumulator.GetElement(3)) - ((long)(i - start) * 128);
+        }
+
+        if (Sse2.IsSupported)
+        {
+            var signBit = Vector128.Create((byte)0x80);
+            var accumulator = Vector128<ulong>.Zero;
+            var start = i;
+
+            for (; i <= data.Length - 16; i += 16)
+            {
+                var values = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.As<sbyte, byte>(ref Unsafe.Add(ref MemoryMarshal.GetReference(data), i)));
+                var shifted = Sse2.Xor(values, signBit);
+                var partialSums = Sse2.SumAbsoluteDifferences(shifted, Vector128<byte>.Zero).AsUInt64();
+                accumulator = Sse2.Add(accumulator, partialSums);
+            }
+
+            sum += (long)(accumulator.GetElement(0) + accumulator.GetElement(1)) - ((long)(i - start) * 128);
         }
 
         for (; i < data.Length; i++)
@@ -730,7 +659,7 @@ public static class BaseHelper
             sum += data[i];
         }
 
-        return sum;
+        return unchecked((int)sum);
     }
 
     /// <summary>
@@ -738,29 +667,37 @@ public static class BaseHelper
     /// </summary>
     /// <param name="data">The read-only span of unsigned bytes to sum.</param>
     /// <returns>The sum of all elements in the span as a 32-bit unsigned integer.</returns>
-    public static unsafe ulong Sum(ReadOnlySpan<byte> data)
+    public static ulong Sum(ReadOnlySpan<byte> data)
     {
         ulong acc = 0;
         ref byte p = ref MemoryMarshal.GetReference(data);
         int len = data.Length;
         int i = 0;
 
-        if (Sse2.IsSupported)
+        if (Avx2.IsSupported)
         {
+            var accumulator = Vector256<ulong>.Zero;
             for (; i + 32 <= len; i += 32)
             {
                 var v256 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref p, i));
-                var sadLo = Sse2.SumAbsoluteDifferences(v256.GetLower(), Vector128<byte>.Zero).AsUInt64();
-                var sadHi = Sse2.SumAbsoluteDifferences(v256.GetUpper(), Vector128<byte>.Zero).AsUInt64();
-                acc += sadLo.GetElement(0) + sadLo.GetElement(1) + sadHi.GetElement(0) + sadHi.GetElement(1);
+                var sad = Avx2.SumAbsoluteDifferences(v256, Vector256<byte>.Zero).AsUInt64();
+                accumulator = Avx2.Add(accumulator, sad);
             }
 
+            acc += accumulator.GetElement(0) + accumulator.GetElement(1) + accumulator.GetElement(2) + accumulator.GetElement(3);
+        }
+
+        if (Sse2.IsSupported)
+        {
+            var accumulator = Vector128<ulong>.Zero;
             for (; i + 16 <= len; i += 16)
             {
                 var v128 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref p, i));
                 var sad = Sse2.SumAbsoluteDifferences(v128, Vector128<byte>.Zero).AsUInt64();
-                acc += sad.GetElement(0) + sad.GetElement(1);
+                accumulator = Sse2.Add(accumulator, sad);
             }
+
+            acc += accumulator.GetElement(0) + accumulator.GetElement(1);
         }
 
         for (; i < len; i++)
@@ -991,9 +928,9 @@ public static class BaseHelper
                 return false;
             }
 
-            using var ms = new MemoryStream();
-            stream.CopyTo(ms);
-            data = ms.ToArray();
+            var length = checked((int)stream.Length);
+            data = GC.AllocateUninitializedArray<byte>(length);
+            stream.ReadExactly(data);
             return true;
         }
         catch
@@ -1012,7 +949,7 @@ public static class BaseHelper
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowSizeMismatchException(string argumentName, int size)
     {
-        throw new ArgumentOutOfRangeException($"The {nameof(argumentName)} length must be {size} bytes.");
+        throw new ArgumentOutOfRangeException(argumentName, $"The {argumentName} length must be {size} bytes.");
     }
 
     /// <summary>
@@ -1052,170 +989,6 @@ public static class BaseHelper
             return trimmed;
         }
     }
-
-    /*
-#pragma warning disable SA1503 // Braces should not be omitted
-    private const int P1 = 10;
-    private const int P2 = 100;
-    private const int P3 = 1000;
-    private const int P4 = 10000;
-    private const int P5 = 100000;
-    private const int P6 = 1000000;
-    private const int P7 = 10000000;
-    private const int P8 = 100000000;
-    private const int P9 = 1000000000;
-    private const long P10 = 10000000000;
-    private const long P11 = 100000000000;
-    private const long P12 = 1000000000000;
-    private const long P13 = 10000000000000;
-    private const long P14 = 100000000000000;
-    private const long P15 = 1000000000000000;
-    private const long P16 = 10000000000000000;
-    private const long P17 = 100000000000000000;
-    private const long P18 = 1000000000000000000;
-
-    /// <summary>
-    /// Gets the length of the string representation of the specified number.
-    /// </summary>
-    /// <param name="number">The number to get the string length for.</param>
-    /// <returns>The length of the string representation of the number.</returns>
-    public static int CountDecimalChars(int number)
-    {
-        int add = 0;
-        if (number < 0)
-        {
-            add = 1;
-            number = -number;
-        }
-
-        // 1,2,3,4,5,6,7,8,9,10
-        if (number < P4)
-        {// 1,2,3,4
-            if (number < P2)
-            {// 1,2
-                if (number < P1) return 1 + add;
-                else return 2 + add;
-            }
-            else
-            {// 3,4
-                if (number < P3) return 3 + add;
-                else return 4 + add;
-            }
-        }
-        else
-        {// 5,6,7,8,9,10
-            if (number < P6)
-            {// 5,6
-                if (number < P5) return 5 + add;
-                else return 6 + add;
-            }
-            else
-            {// 7,8,9,10
-                if (number < P8)
-                {// 7,8
-                    if (number < P7) return 7 + add;
-                    else return 8 + add;
-                }
-                else
-                {// 9,10
-                    if (number < P9) return 9 + add;
-                    else return 10 + add;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Gets the length of the string representation of the specified number.
-    /// </summary>
-    /// <param name="number">The number to get the string length for.</param>
-    /// <returns>The length of the string representation of the number.</returns>
-    public static int CountDecimalChars(long number)
-    {
-        int add = 0;
-        if (number < 0)
-        {
-            add = 1;
-            number = -number;
-        }
-
-        // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
-        if (number < P8)
-        {// 1,2,3,4,5,6,7, 8
-            if (number < P4)
-            {// 1,2,3,4
-                if (number < P2)
-                {// 1,2
-                    if (number < P1) return 1 + add;
-                    else return 2 + add;
-                }
-                else
-                {// 3,4
-                    if (number < P3) return 3 + add;
-                    else return 4 + add;
-                }
-            }
-            else
-            {// 5,6,7,8
-                if (number < P6)
-                {// 5, 6
-                    if (number < P5) return 5 + add;
-                    else return 6 + add;
-                }
-                else
-                {// 7, 8
-                    if (number < P7) return 7 + add;
-                    else return 8 + add;
-                }
-            }
-        }
-        else
-        {// 9,10,11,12,13,14,15,16,17,18,19
-            if (number < P12)
-            {// 9,10,11,12
-                if (number < P10)
-                {// 9, 10
-                    if (number < P9) return 9 + add;
-                    else return 10 + add;
-                }
-                else
-                {// 11, 12
-                    if (number < P11) return 11 + add;
-                    else return 12 + add;
-                }
-            }
-            else
-            {// 13,14,15,16,17,18,19
-                if (number < P15)
-                {// 13,14,15
-                    if (number < P13)
-                    {// 13
-                        return 13 + add;
-                    }
-                    else
-                    {// 14, 15
-                        if (number < P14) return 14 + add;
-                        else return 15 + add;
-                    }
-                }
-                else
-                {// 16,17,18,19
-                    if (number < P17)
-                    {// 16, 17
-                        if (number < P16) return 16 + add;
-                        else return 17 + add;
-                    }
-                    else
-                    {// 18, 19
-                        if (number < P18) return 18 + add;
-                        else return 19 + add;
-                    }
-                }
-            }
-        }
-    }
-#pragma warning restore SA1503 // Braces should not be omitted
-    */
 
     /// <summary>
     /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="instance"/> parameter.

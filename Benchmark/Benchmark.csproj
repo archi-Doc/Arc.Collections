@@ -18,4 +18,8 @@
     <ProjectReference Include="..\Arc.Collections\Arc.Collections.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Benchmark\TemplateBenchmark - Copy.cs" />
+  </ItemGroup>
+
 </Project>

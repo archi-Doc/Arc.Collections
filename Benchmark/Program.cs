@@ -41,6 +41,7 @@ public class Program
             typeof(TemporaryListBenchmark),
             typeof(RemoveCrBenchmark),
             typeof(WhiteSpaceBenchmark),
+            typeof(CountLeadingSpacesBenchmark),
             typeof(LimitedArrayTest),
             typeof(RemoveCrLfTest),
             typeof(CountDecimalCharsBenchmark),
