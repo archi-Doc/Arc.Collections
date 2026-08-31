@@ -51,7 +51,7 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
 
     public Struct128(int int0)
     {
-        this.Long0 = (int)int0;
+        this.Long0 = int0;
         this.Long1 = 0;
     }
 
@@ -69,7 +69,6 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
 
     public Struct128(ref Struct128 struct128)
     {
-        // struct128.AsSpan().CopyTo(this.UnsafeAsSpan());
         this.Long0 = struct128.Long0;
         this.Long1 = struct128.Long1;
     }
@@ -78,25 +77,20 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     {
         if (span.Length < Length)
         {
-            throw new ArgumentException($"Length of a byte array must be at least {Length}");
+            throw new ArgumentException($"Length of a byte array must be at least {Length}.", nameof(span));
         }
 
-        this.Long0 = BitConverter.ToInt64(span);
-        span = span.Slice(8);
-        this.Long1 = BitConverter.ToInt64(span);
+        this = MemoryMarshal.Read<Struct128>(span);
     }
 
     public bool TryWriteBytes(Span<byte> destination)
     {
         if (destination.Length < Length)
         {
-            throw new ArgumentException($"Length of a byte array must be at least {Length}");
+            return false;
         }
 
-        var d = destination;
-        BitConverter.TryWriteBytes(d, this.Long0);
-        d = d.Slice(8);
-        BitConverter.TryWriteBytes(d, this.Long1);
+        MemoryMarshal.Write(destination, in this);
         return true;
     }
 
@@ -105,18 +99,16 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
         => MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref Unsafe.AsRef(in this), 1));
 
     public bool IsZero
-        => this.Long0 == 0 && this.Long1 == 0;
+        => this.UInt128 == 0;
 
     public bool Equals(Struct128 other)
-        => this.Long0 == other.Long0 && this.Long1 == other.Long1;
+        => this.UInt128 == other.UInt128;
 
     public override bool Equals(object? obj)
         => obj is Struct128 other && this.Equals(other);
 
     public override int GetHashCode()
     {
-        // return (int)Arc.Crypto.XxHash3Slim.Hash64(this.AsSpan());
-        // return (((((this.Int0 * 397) ^ this.Int1) * 397) ^ this.Int2) * 397) ^ this.Int3; // Fast, but...
         return HashCode.Combine(this.Long0, this.Long1);
     }
 
@@ -169,8 +161,4 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
 
     public static bool operator !=(Struct128 left, Struct128 right)
         => !left.Equals(right);
-
-    /*[UnscopedRef]
-    private Span<byte> UnsafeAsSpan()
-        => MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref Unsafe.AsRef(in this), 1));*/
 }
