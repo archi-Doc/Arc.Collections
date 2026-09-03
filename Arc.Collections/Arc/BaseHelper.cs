@@ -246,7 +246,7 @@ public static class BaseHelper
     /// <returns>
     /// <c>true</c> if the type implements <see cref="IStringConvertible{T}"/> where <c>T</c> is the type itself; otherwise, <c>false</c>.
     /// </returns>
-    public static bool ImplementsIStringConvertible(Type t)
+    public static bool ImplementsIStringConvertible([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type t)
     {
         foreach (var interfaces in t.GetInterfaces())
         {

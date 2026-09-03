@@ -1,11 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
-using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Arc.Collections.HotMethod;
 
@@ -38,25 +34,6 @@ internal sealed class PrimitiveResolver : IHotMethodResolver
         { typeof(DateTime), DateTimeMethod.Instance },
     };
 
-    private static readonly Dictionary<Type, Type> TypeToMethod2 = new()
-    {
-        // Primitive
-        { typeof(byte), typeof(UInt8Method2<>) },
-        { typeof(sbyte), typeof(Int8Method2<>) },
-        { typeof(ushort), typeof(UInt16Method2<>) },
-        { typeof(short), typeof(Int16Method2<>) },
-        { typeof(uint), typeof(UInt32Method2<>) },
-        { typeof(int), typeof(Int32Method2<>) },
-        { typeof(ulong), typeof(UInt64Method2<>) },
-        { typeof(long), typeof(Int64Method2<>) },
-        { typeof(UInt128), typeof(UInt128Method2<>) },
-        { typeof(Int128), typeof(Int128Method2<>) },
-        { typeof(float), typeof(SingleMethod2<>) },
-        { typeof(double), typeof(DoubleMethod2<>) },
-        // { typeof(string), typeof(StringMethod2<>) }, // Slow
-        { typeof(DateTime), typeof(DateTimeMethod2<>) },
-    };
-
     private PrimitiveResolver()
     {
     }
@@ -64,6 +41,80 @@ internal sealed class PrimitiveResolver : IHotMethodResolver
     public IHotMethod<T>? TryGet<T>()
     {
         return MethodCache<T>.Method;
+    }
+
+    public IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
+    {
+        return MethodCache2<TKey, TValue>.Method;
+    }
+
+    /// <summary>
+    /// Creates the <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>, if one exists.<br/>
+    /// The closed generic types are named explicitly (instead of <see cref="Type.MakeGenericType(Type[])"/>)
+    /// so that Native AOT can generate the code ahead of time.
+    /// </summary>
+    /// <typeparam name="TKey">The key type.</typeparam>
+    /// <typeparam name="TValue">The value type.</typeparam>
+    /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
+    private static object? CreateMethod2<TKey, TValue>()
+    {
+        // Primitive
+        if (typeof(TKey) == typeof(byte))
+        {
+            return new UInt8Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(sbyte))
+        {
+            return new Int8Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(ushort))
+        {
+            return new UInt16Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(short))
+        {
+            return new Int16Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(uint))
+        {
+            return new UInt32Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(int))
+        {
+            return new Int32Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(ulong))
+        {
+            return new UInt64Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(long))
+        {
+            return new Int64Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(UInt128))
+        {
+            return new UInt128Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(Int128))
+        {
+            return new Int128Method2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(float))
+        {
+            return new SingleMethod2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(double))
+        {
+            return new DoubleMethod2<TValue>();
+        }
+        else if (typeof(TKey) == typeof(DateTime))
+        {
+            return new DateTimeMethod2<TValue>();
+        }
+        else
+        {// typeof(string) => StringMethod2<TValue> is intentionally not handled (slow).
+            return null;
+        }
     }
 
     private static class MethodCache<T>
@@ -79,21 +130,13 @@ internal sealed class PrimitiveResolver : IHotMethodResolver
         }
     }
 
-    public IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
-    {
-        return MethodCache2<TKey, TValue>.Method;
-    }
-
     private static class MethodCache2<TKey, TValue>
     {
         public static readonly IHotMethod2<TKey, TValue>? Method;
 
         static MethodCache2()
         {
-            if (PrimitiveResolver.TypeToMethod2.TryGetValue(typeof(TKey), out var type))
-            {
-                MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>)Activator.CreateInstance(type.MakeGenericType(typeof(TValue)))!;
-            }
+            MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>?)PrimitiveResolver.CreateMethod2<TKey, TValue>();
         }
     }
 }

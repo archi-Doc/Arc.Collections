@@ -29,7 +29,8 @@ public static class VersionHelper
 
         foreach (var x in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (x.ManifestModule.Name.Contains(assemblyName, StringComparison.Ordinal))
+            // Assembly.GetName() is used instead of ManifestModule.Name, since the latter is not available in single-file/Native AOT apps.
+            if (x.GetName().Name?.Contains(assemblyName, StringComparison.Ordinal) == true)
             {
                 Update(x);
                 break;
