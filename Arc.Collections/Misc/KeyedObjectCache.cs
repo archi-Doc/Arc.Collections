@@ -7,21 +7,25 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// A fast and thread-safe cache of objects (uses <see cref="UnorderedMap{TKey, TValue}"/> and <see cref="UnorderedLinkedList{T}"/>).<br/>
-/// You can cache used objects and retrieve them the next time by specifying the <typeparamref name="TKey"/>.<br/>
-/// This is for classes with very high costs, such as encryption.<br/>
-/// <br/>
-/// If <typeparamref name="TObject"/> implements <see cref="IDisposable"/>, <see cref="KeyedObjectCache{TKey, TObject}"/> calls <see cref="IDisposable.Dispose"/> when the instance is no longer needed.<br/>
-/// This class can also be disposed, although this is not always necessary.
+/// Caches reusable objects by key and transfers ownership when they are retrieved.
 /// </summary>
 /// <typeparam name="TKey">The type of the key used to retrieve an object from the cache.</typeparam>
 /// <typeparam name="TObject">The type of objects contained in the cache.</typeparam>
+/// <remarks>
+/// Stores at most one object per key and evicts the oldest cached object when full.
+/// Cached objects implementing <see cref="IDisposable" /> are disposed on eviction or cache disposal.
+/// Cache operations are thread-safe; callers manage objects they retrieve.
+/// </remarks>
 public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     where TKey : IEquatable<TKey>
 {
     /// <summary>
-    /// A helper interface for acquiring and returning objects.
+    /// Returns an object to its cache when disposed.
     /// </summary>
+    /// <remarks>
+    /// Return or dispose a lease once. This readonly struct retains its fields after returning;
+    /// copies refer to the same object and must not be returned independently.
+    /// </remarks>
     public readonly struct Interface : IDisposable
     {
         /// <summary>
@@ -35,7 +39,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         public readonly TKey Key;
 
         /// <summary>
-        /// The object held by this instance, or <see langword="null"/> if it has already been returned.
+        /// The object held by this lease. Returning the lease does not change this field.
         /// </summary>
         public readonly TObject? Object;
 
@@ -48,7 +52,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
 
         /// <summary>
         /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).<br/>
-        /// If the object cannot be cached because an object with the same key already exists,
+        /// If the object cannot be cached because its key already exists or the cache is disposed,
         /// it is disposed when it implements <see cref="IDisposable"/>.
         /// </summary>
         /// <returns>An <see cref="Interface"/> with the object set to its default value.</returns>
@@ -109,10 +113,10 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         => new(this, key, obj);
 
     /// <summary>
-    /// Gets an instance from the cache by specifying the key.
+    /// Removes an object from the cache and transfers ownership to the caller.
     /// </summary>
     /// <param name="key">The key used to retrieve an object from the cache.</param>
-    /// <returns>An instance of type <typeparamref name="TObject"/>.</returns>
+    /// <returns>The cached object, or the default value if the key is absent.</returns>
     public TObject? TryGet(TKey key)
     {
         Item? item;
@@ -131,16 +135,22 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     }
 
     /// <summary>
-    /// Add an instance to the cache by specifying the key.
+    /// Transfers ownership of an object to the cache, evicting the oldest cached object if full.
     /// </summary>
     /// <param name="key">The key of the object to cache.</param>
     /// <param name="obj">The object to cache.</param>
     /// <returns><see langword="true"/>; The object is successfully cached.<br/>
-    /// <see langword="false"/>; An object with the same key already exists.</returns>
+    /// <see langword="false"/>; An object with the same key already exists, or the cache has been disposed.
+    /// The caller retains ownership when this method returns <see langword="false"/>.</returns>
     public bool Cache(TKey key, TObject obj)
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.disposed || this.map.ContainsKey(key))
+            {
+                return false;
+            }
+
             while (this.linkedList.Count >= this.CacheSize)
             {
                 if (this.linkedList.First is not { } first)
@@ -151,16 +161,11 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
                 this.DisposeItem(first.Value);
             }
 
-            if (!this.map.ContainsKey(key))
-            {
-                var item = new Item(obj);
-                (item.MapIndex, _) = this.map.Add(key, item);
-                item.LinkedListNode = this.linkedList.AddLast(item);
-                return true;
-            }
+            var item = new Item(obj);
+            (item.MapIndex, _) = this.map.Add(key, item);
+            item.LinkedListNode = this.linkedList.AddLast(item);
+            return true;
         }
-
-        return false;
     }
 
     /// <summary>
@@ -214,15 +219,15 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <remarks>The cache holds no unmanaged resources, so calling this is optional.</remarks>
     public void Dispose()
     {
-        if (this.disposed)
-        {
-            return;
-        }
-
-        this.disposed = true;
-
         using (this.lockObject.EnterScope())
         {
+            if (this.disposed)
+            {
+                return;
+            }
+
+            this.disposed = true;
+
             while (this.linkedList.First is { } first)
             {
                 this.DisposeItem(first.Value);

@@ -6,48 +6,47 @@ using System.Diagnostics.CodeAnalysis;
 namespace Arc;
 
 /// <summary>
-/// An interface for converting between an object and a utf-16 string.<br/>
-/// Required: TryParse() and TryFormat()<br/>
-/// Either one is required: GetStringLength() or MaxStringLength.
+/// Defines span-based parsing and formatting of UTF-16 text.
 /// </summary>
 /// <typeparam name="T">The type of object to be converted.</typeparam>
+/// <remarks>
+/// Implement all members. At least one of <see cref="GetStringLength" /> and
+/// <see cref="MaxStringLength" /> must provide a nonnegative length in characters;
+/// the other may return -1. Formatting options may affect the required length.
+/// </remarks>
 public interface IStringConvertible<T>
     where T : IStringConvertible<T>
 {
     /// <summary>
-    /// Convert a <see cref="char"/> (utf-16) span to an object.<br/>
-    /// Depending on the application, the source can be longer than the default string length.
+    /// Attempts to parse an instance from a UTF-16 span and reports the consumed characters.
     /// </summary>
-    /// <param name="source">The source utf-16 span.</param>
-    /// <param name="object">An object converted from the utf-16 span.</param>
+    /// <param name="source">The source UTF-16 span.</param>
+    /// <param name="object">An object converted from the UTF-16 span.</param>
     /// <param name="read">The number of chars read from the source span.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
     static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? @object, out int read, IConversionOptions? conversionOptions = default);
 
     /// <summary>
-    ///  Gets the maximum length of the utf-16 encoded data.<br/>
-    ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.<br/>
-    ///  If not implemented, please return -1 instead of throwing an exception.
+    /// Gets the maximum formatted length in characters, or -1 when unavailable.
     /// </summary>
-    /// <value>The maximum utf-16 encoded length.</value>
+    /// <value>The maximum number of characters, or -1 when unavailable.</value>
     static abstract int MaxStringLength { get; }
 
     /// <summary>
-    ///  Get the actual length of the utf-16 encoded data.<br/>
-    ///  Note that the length may change depending on the implementation of <see cref="IConversionOptions"/> and <see cref="TryFormat(Span{char}, out int, IConversionOptions?)"/>.<br/>
-    ///  Implementation of either <see cref="GetStringLength"/> or <see cref="MaxStringLength"/> is required.<br/>
-    ///  If not implemented, please return -1 instead of throwing an exception.
+    /// Gets the formatted length in characters, or -1 when unavailable.
+    /// Conversion options may change the required length.
     /// </summary>
-    /// <returns>The actual utf-16 encoded length.</returns>
+    /// <returns>The number of characters, or -1 when unavailable.</returns>
     int GetStringLength();
 
     /// <summary>
-    /// Convert an object to a <see cref="char"/> (utf-16) span.
+    /// Formats this instance into a UTF-16 span.
     /// </summary>
-    /// <param name="destination">The destination span of <see cref="char"/> (utf-16).<br/>
-    /// Allocate an array of a length greater than or equal to <seealso cref="GetStringLength"/> or <seealso cref="MaxStringLength"/>.</param>
-    /// <param name="written">The number of bytes that were written in destination.</param>
+    /// <param name="destination">The destination span of <see cref="char"/> (UTF-16).<br/>
+    /// Use a nonnegative length from <see cref="GetStringLength"/> or <see cref="MaxStringLength"/>,
+    /// allowing for any additional space required by the conversion options.</param>
+    /// <param name="written">The number of UTF-16 characters written to the destination.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
     bool TryFormat(Span<char> destination, out int written, IConversionOptions? conversionOptions = default);

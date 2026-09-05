@@ -8,11 +8,11 @@ using System.Runtime.InteropServices;
 namespace Arc;
 
 /// <summary>
-/// Represents an unconventional struct designed to handle 128-bit (16-byte) data.
+/// Stores 128 bits of binary data with overlapping numeric field views.
 /// </summary>
 /// <remarks>
-/// This structure supports multiple constructors for initialization, methods for byte conversion,<br/>
-/// and implements <see cref="IEquatable{T}"/> and <see cref="IComparable{T}"/> interfaces.
+/// Byte conversions use native byte order. Comparison is lexicographic over the signed
+/// 64-bit fields in field order, rather than unsigned 128-bit numeric order.
 /// </remarks>
 [StructLayout(LayoutKind.Explicit)]
 public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<Struct128>
@@ -150,7 +150,7 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     }
 
     /// <summary>
-    /// Attempts to write this value to the destination span in little-endian byte order.
+    /// Attempts to write this value to the destination span in native byte order.
     /// </summary>
     /// <param name="destination">The destination span.</param>
     /// <returns><see langword="true"/> if the value was written; <see langword="false"/> if the span is shorter than <see cref="Length"/>.</returns>

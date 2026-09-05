@@ -16,7 +16,7 @@ using System.Text;
 namespace Arc;
 
 /// <summary>
-/// Provides helper methods for various base operations.
+/// Provides span, text, numeric, and embedded-resource helpers.
 /// </summary>
 public static class BaseHelper
 {
@@ -567,11 +567,11 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Estimates the number of bytes that form a valid UTF-8 string in the byte array.<br/>
-    /// Only the trailing bytes are inspected; the entire byte array is not validated.
+    /// Estimates a prefix length that excludes an incomplete trailing UTF-8 sequence.
+    /// Only the trailing bytes are inspected; this does not validate UTF-8 text.
     /// </summary>
-    /// <param name="bytes">A byte span used to obtain the number of valid bytes.</param>
-    /// <returns>Returns the number of valid bytes.</returns>
+    /// <param name="bytes">The byte span to inspect.</param>
+    /// <returns>The estimated prefix length in bytes, without a validity guarantee.</returns>
     public static int GetValidUtf8Length(ReadOnlySpan<byte> bytes)
     {
         var length = bytes.Length;

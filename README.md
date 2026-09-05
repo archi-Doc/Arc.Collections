@@ -1,110 +1,271 @@
-﻿## Arc.Collections
+﻿# Arc.Collections
+
 ![Nuget](https://img.shields.io/nuget/v/Arc.Collections) ![Build and Test](https://github.com/archi-Doc/Arc.Collections/workflows/Build%20and%20Test/badge.svg)
 
-日本語ドキュメントは[こちら](/doc/README.jp.md)
+日本語ドキュメントは[こちら](doc/README.jp.md)
 
-Arc.Collections is a fast C# collection library. It provides drop-in alternatives to the generic
-collections in `System.Collections.Generic` that expose a `Node` interface, plus a set of
-pooling, buffer and hashing utilities.
+Arc.Collections is a C# collection library with node-based access, sorted and duplicate-key
+collections, specialized hash tables, and pooling, buffer, and hashing utilities.
 
-Target framework: **.NET 10**. The public API lives in the `Arc.Collections` and `Arc` namespaces.
+The current source targets **.NET 10**. Most types are in `Arc.Collections`; general helpers are
+in `Arc`, and specialized comparison contracts are in `Arc.Collections.HotMethod`.
+Interfaces and mutation semantics vary by collection; these are not universally drop-in
+replacements for `System.Collections.Generic`.
 
 I know it's reinventing the wheels, but these classes are necessary for implementing [CrossLink](https://github.com/archi-Doc/CrossLink). And reinventing the wheels is a kind of fun for me :)
 
+## Quick start
 
+Install the package in your application:
 
-## Quick Start
-
-Install `Arc.Collections` using the Package Manager Console.
-
+```sh
+dotnet add package Arc.Collections
 ```
-Install-Package Arc.Collections
-```
-
-Sample code. You can use these classes in the same way as the generic collection classes.
 
 ```csharp
+using System;
 using Arc.Collections;
+
+var values = new OrderedSet<int>(new[] { 2, 1, 3 });
+values.Add(4);
+values.Add(0);
+Console.WriteLine(string.Join(", ", values)); // 0, 1, 2, 3, 4
+
+var map = new OrderedMap<int, string>();
+var (node, added) = map.Add(2, "two");
+map.Add(1, "one");
+Console.WriteLine(node.Previous!.Value); // one
+map.RemoveNode(node);
 ```
-
-```csharp
-var array = new int[] { 2, 1, 3, };
-var os = new OrderedSet<int>(array);
-
-ConsoleWriteIEnumerable("Array:", array); // 2, 1, 3
-ConsoleWriteIEnumerable("OrderedSet:", os); // 1, 2, 3
-
-Console.WriteLine("Add 4, 0");
-os.Add(4);
-os.Add(0);
-ConsoleWriteIEnumerable("OrderedSet:", os); // 0, 1, 2, 3, 4
-
-static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
-{
-    Console.WriteLine(string.Format("{0,-12}", header) + string.Join(", ", e));
-}
-```
-
-
 
 ## Collections
 
-| Collection                                                   | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `UnorderedList<T>`<br />(equivalent to `List<T>`)             | A list of objects that can be accessed by index. `AsSpan()` gives the fastest way to enumerate it. |
-| `UnorderedLinkedList<T>`<br />(`LinkedList<T>`)               | A doubly linked list which has a `Node` interface.           |
-| `OrderedList<T>`                                             | A list of objects that can be accessed by index and maintained in sorted order. `IComparable<T>` or `IComparer<T>` is required. |
-| `OrderedKeyValueList<TKey, TValue>`<br />(`SortedList<TKey, TValue>`) | A list of key-value pairs that can be accessed by index and maintained in sorted order. Duplicate keys are allowed. `IComparable<TKey>` or `IComparer<TKey>` is required. |
-| `OrderedMap<TKey, TValue>`<br />(`SortedDictionary<TKey, TValue>`) | A collection of key/value pairs sorted on the key (Red-Black Tree). The difference from `SortedDictionary<TKey, TValue>` is that `OrderedMap<TKey, TValue>` has a `Node` interface and `TKey` can be null. `IComparable<TKey>` or `IComparer<TKey>` is required. |
-| `OrderedSet<T>`<br />(`SortedSet<T>`)                        | A collection of unique objects maintained in sorted order. `OrderedSet<T>` is a thin wrapper over `OrderedMap<T, byte>` (the value is not used). |
-| `OrderedMultiMap<TKey, TValue>`                              | A collection of key/value pairs sorted on the key. Duplicate keys are allowed and keep their insertion order. |
-| `OrderedMultiSet<T>`                                         | A collection of objects maintained in sorted order. Duplicate objects are allowed. |
-| `UnorderedMap<TKey, TValue>`<br />(`Dictionary<TKey, TValue>`) | A collection of key/value pairs stored in a hash table. It is a bit slower than `Dictionary<TKey, TValue>`, but it has a node index interface, allows a null key, and can be configured to allow duplicate keys. |
-| `UnorderedSet<T>`                                            | A thin wrapper over `UnorderedMap<T, byte>` (the value is not used). Duplicate and null elements are supported when configured. |
-| `UnorderedMapSlim<TKey, TValue>`                             | A lightweight hash map with minimal memory overhead. Keys must be non-null and no version check is performed. `GetValueRefOrAddDefault()` makes read-modify-write patterns cheap. |
-| `SlidingList<T>`                                             | A fixed-capacity ring buffer whose elements are addressed by a stable **position** instead of an index. Useful for sliding windows (e.g. send/receive buffers). |
-| `CircularQueue<T>`                                           | A thread-safe bounded circular queue (Vyukov-style MPMC). Faster than `ConcurrentQueue<T>` when a bounded capacity is acceptable. |
-| `TemporaryList<TObject>`                                     | A `ref struct` list that keeps up to four objects inline without a heap allocation. Handy for collecting objects during a `foreach` and modifying them afterwards. |
+### Lists, trees, and hash maps
 
-### Keyed lookup
+| Type | Use and behavior |
+| --- | --- |
+| `UnorderedList<T>` | Resizable array with indexed access and writable `AsSpan()`. Preserves insertion order; elements are not sorted. |
+| `UnorderedLinkedList<T>` | Doubly linked list with node navigation, insertion, removal, and reuse. |
+| `OrderedList<T>` | Sorted array with indexed access and binary-search bounds. Equal elements retain insertion order. |
+| `OrderedKeyValueList<TKey, TValue>` | Sorted key/value arrays with indexed key/value views. Allows duplicate keys; rejects null keys. |
+| `OrderedMap<TKey, TValue>` | Red-black tree with unique keys, node navigation, range endpoints, and node reuse. Supports null keys. |
+| `OrderedSet<T>` | Sorted unique elements, backed by `OrderedMap<T, byte>`. |
+| `OrderedMultiMap<TKey, TValue>` | Sorted tree with insertion-ordered duplicate groups and matching-node/value enumeration. Supports null keys. |
+| `OrderedMultiSet<T>` | Sorted elements with insertion-ordered duplicates, backed by `OrderedMultiMap<T, byte>`. |
+| `UnorderedMap<TKey, TValue>` | Hash map with node indexes, null keys, and optional duplicates. Enumeration order is unspecified. |
+| `UnorderedSet<T>` | Hash-based elements with null support and optional duplicates, backed by `UnorderedMap<T, byte>`. |
+| `UnorderedMapSlim<TKey, TValue>` | Compact hash map for non-null keys, with direct value-reference access and no enumeration version checks. |
 
-| Type                                                         | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `Int32Hashtable<TValue>`, `UInt32Hashtable<TValue>`<br />`Int64Hashtable<TValue>`, `UInt64Hashtable<TValue>`<br />`Utf8Hashtable<TValue>`, `Utf16Hashtable<TValue>` | Thread-safe hash tables. Writes are serialized with a lock while lookups are lock-free, so they are optimized for tables that are built infrequently and read frequently. |
-| `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>`      | Lightweight, **not** thread-safe hash maps keyed by a UTF-8 (`byte[]`) or UTF-16 (`string`) key. Both `ReadOnlySpan` and array/string overloads are provided, and the key is materialized only when an entry is actually inserted. |
+Ordered collections use a supplied comparer or `Comparer<T>.Default`. Tree collections also
+support reverse ordering. Hash collections use their supported equality comparer; equal keys
+must have equal hash codes. Keep keys' comparison and hash behavior unchanged while stored.
 
-### Pools and buffers
+For sorted arrays, lookup is O(log n), but insertion and removal may shift O(n) elements.
+Tree lookup, insertion, and removal are O(log n). Hash lookup is O(1) on average and O(n) in
+the worst case. Appending to `UnorderedList<T>` is amortized O(1); linked-list insertion and
+removal are O(1) when the node is already known. Full enumeration visits all live elements;
+array-backed hash maps may also scan vacant slots.
 
-| Type                                                         | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `ObjectPool<T>`                                              | A fast and thread-safe pool of objects (implemented with `CircularQueue<T>`). Objects implementing `IDisposable` are disposed when they cannot be pooled. |
-| `KeyedObjectCache<TKey, TObject>`                            | A thread-safe LRU-style cache of expensive objects (e.g. cryptographic transforms) retrieved by key. |
-| `BytePool`                                                   | A fast thread-safe pool of byte arrays. A rented array (`RentArray`) can be shared by reference counting and exposed as `RentMemory` / `RentReadOnlyMemory`. |
-| `SpanOwner<T>`                                               | A `ref struct` that folds the "stackalloc if small, `ArrayPool` if large, return at the end" pattern into a single `using` declaration. |
-| `SequenceBuilder<T>`                                         | Builds a `ReadOnlySequence<T>` from pooled array chunks.      |
-| `PooledStringBuilder`                                        | Builds a string using pooled character chunks, aiming for performance comparable to string interpolation. |
+### Duplicate keys and assignment
 
-### Helpers
+| Type | `Add` with an existing key | Indexer assignment |
+| --- | --- | --- |
+| `OrderedMap<TKey, TValue>` | Returns the existing node with `NewlyAdded == false`; keeps the value. | Replaces the value. |
+| `OrderedMultiMap<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
+| `OrderedKeyValueList<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
+| `UnorderedMap<TKey, TValue>` | Keeps the existing value unless `allowDuplicate: true`. | Updates one matching entry or adds a new entry. |
+| `UnorderedMapSlim<TKey, TValue>` and UTF unordered maps | Replaces the value. | Replaces the value. |
 
-| Type                                                         | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `XxHash3Slim`                                                | A slim, allocation-free XXH3 (64-bit) implementation, ported from `System.IO.Hashing`. |
-| `CollectionHelper`                                           | Capacity calculation helpers (power-of-two and prime sizing). |
-| `TagObject`                                                  | Cached objects for integer tags in the range 0-255, so a tag can be passed as an `object` without boxing. |
-| `Arc.BaseHelper`                                             | Span/string helpers: line splitting, separator scanning, decimal digit counting, SIMD byte sums, UTF-8 validation, resource loading. |
-| `Arc.Struct128`, `Arc.Struct256`                             | 128-bit and 256-bit value types for handling fixed-size binary data. |
-| `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>`       | Contracts for converting an object to and from a UTF-16 / UTF-8 representation without allocating. |
-| `Arc.VersionHelper`, `Arc.AppCloseHandler`                   | Assembly version information and an application close (process exit / console close) handler. |
+`OrderedSet<T>` ignores duplicates; `OrderedMultiSet<T>` retains them.
+`UnorderedMap<TKey, TValue>` and `UnorderedSet<T>` enable duplicates with
+`allowDuplicate: true`; null support does not require that option.
 
+`OrderedList<T>` rejects positional insertion and indexer assignment. Mutating it through
+an `UnorderedList<T>` reference or its writable span can break sorting. Do not retain
+list spans or map value references across mutations that can move or replace their storage.
 
+Node handles belong to their collection. Remove a node before reusing it, and do not use
+a removed node or hash-map node index as a live handle. Hash-map indexes may be recycled.
+
+### Windows, queues, and temporary storage
+
+| Type | Use and behavior |
+| --- | --- |
+| `SlidingList<T>` | Bounded, explicitly resizable ring buffer for non-null reference values. Uses stable positions instead of zero-based indexes. |
+| `CircularQueue<T>` | Thread-safe bounded FIFO queue for multiple producers and consumers. |
+| `TemporaryList<TObject>` | `ref struct` list with four inline elements; additional elements use a heap-allocated list. |
+
+`SlidingList<T>.Add` returns a position, or -1 when no slot is available. Positions wrap
+modulo 2³¹. Its `IList<T>` operations also use positions. Middle removals leave holes:
+`Consumed` includes those holes, while `ICollection<T>.Count` and enumeration count only
+live elements. `TrySlide()` advances past empty leading slots; `Resize()` changes capacity
+when the current window fits.
+
+`CircularQueue<T>` rounds capacity up to a power of two and clamps it between 2 and 2³⁰.
+`TryEnqueue` can fail when full; `TryDequeue` can fail when empty. Concurrent operations
+may retry or wait, and `Count` is an estimate during concurrent access.
+
+## Specialized keyed lookup
+
+| Type | Keys and concurrency |
+| --- | --- |
+| `Int32Hashtable<TValue>`, `UInt32Hashtable<TValue>` | Signed or unsigned 32-bit keys. Serialized writes and lock-free lookups. |
+| `Int64Hashtable<TValue>`, `UInt64Hashtable<TValue>` | Signed or unsigned 64-bit keys. Serialized writes and lock-free lookups. |
+| `Utf8Hashtable<TValue>`, `Utf16Hashtable<TValue>` | UTF-8 byte or UTF-16 character keys, with span-based lookup. Serialized writes and lock-free lookups. |
+| `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>` | UTF-keyed maps with span lookup, enumeration, and direct value-reference access. Require external synchronization for writes. |
+
+All these types update existing values with `Add`; `TryAdd` leaves existing values unchanged.
+The hashtables also provide `GetOrAdd`. Its factory runs under the write lock and must not
+reenter the same table.
+
+UTF keys are compared by ordinal content without validation, normalization, or case folding.
+Span-based insertion materializes a key only for a new entry. Array/string overloads retain
+the supplied key; **do not modify stored UTF-8 byte arrays**.
+
+```csharp
+using System;
+using Arc.Collections;
+
+var names = new Utf8UnorderedMap<int>();
+names.Add("alice"u8, 1);
+names.Add("alice"u8, 2); // Updates the existing entry.
+Console.WriteLine(names.TryGetValue("alice"u8, out var id) ? id : -1); // 2
+```
+
+## Pools and buffers
+
+| Type | Purpose and lifetime |
+| --- | --- |
+| `ObjectPool<T>` | Reuses objects from a caller-supplied factory. Rejected or still-pooled `IDisposable` objects are disposed. |
+| `KeyedObjectCache<TKey, TObject>` | Caches reusable objects by key. Retrieval removes the object and transfers ownership to the caller. |
+| `BytePool` | Pools byte arrays with reference-counted `RentArray`, `RentMemory`, and `RentReadOnlyMemory` handles. |
+| `SpanOwner<T>` | Uses a supplied scratch span when it fits, otherwise rents from `ArrayPool<T>.Shared`. Dispose to return a rented array. |
+| `SequenceBuilder<T>` | Builds a pooled `ReadOnlySequence<T>`. Finalization prevents further additions; the sequence is valid until builder disposal. |
+| `PooledStringBuilder` | Builds strings from pooled character chunks. `ToString()` creates an independent string; dispose to return pooled resources. |
+
+Return each rented object once. An `ObjectPool<T>` factory must be thread-safe and create
+distinct instances. Return outstanding objects before disposing the pool; `Rent` and
+`Return` throw after disposal.
+
+`KeyedObjectCache<TKey, TObject>` retains at most one object per key and evicts the oldest
+cached object when full. A failed `Cache` call leaves ownership with the caller.
+`CreateInterface` creates a lease that returns an object on disposal, or disposes it if
+caching fails. This readonly lease retains its fields after return: return or dispose it
+once, including across copies.
+
+### Byte ownership
+
+`BytePool.CreateFlat` gives every bucket the same retention limit; `CreateExponential`
+retains more arrays in smaller buckets. Array sizes and retention limits are rounded up
+to powers of two, with at least two retained slots per bucket. Requests outside configured
+buckets allocate unpooled arrays. Configure `SetPoolLimit` before sharing the pool.
+
+A rent starts with one owned reference. Copying a handle, slicing, or calling `AsMemory`,
+`AsReadOnly`, or `ReadOnly` does **not** add an owner. Use `IncrementAndShare` for another
+owner and return each owned reference once. After the final return, every old handle and
+view is invalid because the pooled owner and array may be reused. Arrays are not cleared.
+
+```csharp
+using Arc.Collections;
+
+using var rented = BytePool.Default.Rent(128);
+var view = rented.AsMemory(0, 128); // Shares rented's ownership.
+view.Span.Clear();
+using var shared = view.IncrementAndShare(); // Owns one additional reference.
+shared.Span[0] = 42;
+```
+
+`RentMemory.CreateFrom(byte[])` and its read-only counterpart track an unpooled array.
+Their `CreateFrom(ReadOnlyMemory<byte>)` overloads instead create an untracked view of
+array-backed memory, or return an empty view if the underlying array cannot be obtained.
+
+### Temporary buffers and builders
+
+Do not copy a `SpanOwner<T>`, `SequenceBuilder<T>`, or `PooledStringBuilder` while it owns
+pooled resources. Dispose the owner after use and do not retain pooled spans or sequences
+past disposal. `SpanOwner<T>` clears reference-containing arrays on return.
+
+```csharp
+using System;
+using Arc.Collections;
+
+int length = 300;
+using var owner = new SpanOwner<byte>(stackalloc byte[256], length);
+owner.Span.Clear();
+
+using var builder = new SequenceBuilder<int>();
+builder.AddRange(new[] { 1, 2, 3 });
+var sequence = builder.ToReadOnlySequence();
+Console.WriteLine(sequence.Length); // 3; consume before builder disposal.
+```
+
+`PooledStringBuilder` uses invariant formatting by default and LF for `AppendLine`.
+`Clear()` retains its current character buffer for reuse.
+
+## Helpers
+
+| Type or namespace | Purpose |
+| --- | --- |
+| `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing, ported from `System.IO.Hashing.XxHash3`. |
+| `CollectionHelper` | Power-of-two and prime capacity calculations. |
+| `TagObject` | Cached object instances for tags 0–255, avoiding boxing. |
+| `Arc.BaseHelper` | Span and text helpers, line/separator scanning, decimal digit counts, SIMD byte sums, and resource loading. `GetValidUtf8Length` estimates a trailing boundary; it does not validate UTF-8. |
+| `Arc.Struct128`, `Arc.Struct256` | Fixed-size binary values with overlapping numeric fields. Byte conversion uses native byte order; comparison uses signed 64-bit fields in field order. |
+| `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>` | Span-based UTF-16/UTF-8 parsing and formatting contracts. |
+| `Arc.IConversionOptions` | Typed options for parsing and formatting. |
+| `Arc.VersionHelper` | Version information for the entry assembly or a selected loaded assembly. `SetAssembly` matches an ordinal name substring. |
+| `Arc.AppCloseHandler` | Registers one handler, invoked at most once for process exit or a Windows console close event. |
+| `Arc.Collections.HotMethod` | `IHotMethod`, `IHotMethod<T>`, `IHotMethod2`, `IHotMethod2<TKey, TValue>`, `IHotMethodResolver`, and `HotMethodResolver` for specialized span bounds and tree searches. The built-in resolver supports selected types with default comparers. |
+
+Conversion interfaces require all members to be implemented. At least one of
+`GetStringLength()` and `MaxStringLength` must provide a nonnegative length; the other
+may return -1. Lengths and written counts use UTF-16 characters or UTF-8 bytes respectively.
+Formatting options may require additional destination space.
+
+## Thread safety
+
+Unless documented otherwise, collections require external synchronization whenever a writer
+is present. Multiple readers are supported only while the instance is unchanged.
+
+- `CircularQueue<T>` supports concurrent producers and consumers.
+- `ObjectPool<T>.Rent` and `Return` are thread-safe; disposal must not overlap either operation.
+- `BytePool` rental, return, and reference counting are thread-safe; `SetPoolLimit` is not.
+  Reference counting does not synchronize reads and writes to the rented bytes.
+- `KeyedObjectCache<TKey, TObject>` synchronizes cache operations; retrieved objects remain
+  the caller's responsibility.
+- `*Hashtable<TValue>` types serialize writes and provide lock-free lookups.
+
+`UnorderedMapSlim<TKey, TValue>` and UTF unordered maps do not check enumeration versions.
+Do not mutate them during enumeration. Struct enumerators avoid boxing when iterated directly;
+enumeration through an interface may allocate.
+
+## Build and test
+
+From the repository root with the .NET 10 SDK installed:
+
+```sh
+dotnet restore Arc.Collections.slnx
+dotnet build Arc.Collections.slnx -c Release --no-restore
+dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-restore
+```
+
+The test command uses the repository's Microsoft.Testing.Platform configuration.
+`Benchmark` contains BenchmarkDotNet workloads; run a selected group with:
+
+```sh
+dotnet run --project Benchmark/Benchmark.csproj -c Release -- --filter "*OrderedPublicTest*"
+```
 
 ## Performance
 
-`OrderedSet<T>` uses the same tree structure (Red-Black Tree) as `SortedSet<T>`. The difference is that
-`OrderedSet<T>` has a link to a parent node and is overall faster than `SortedSet<T>`.
+Choose using the operations and data sizes your application needs, then benchmark that workload.
+Node reuse can avoid node allocation, and spans or direct value references can avoid repeated
+lookup or enumeration overhead.
 
-The numbers below were measured with BenchmarkDotNet against `System.Collections.Generic.SortedSet<T>`.
-Run the `Benchmark` project to reproduce them on your machine.
+The following retained BenchmarkDotNet results compare `OrderedSet<T>` with
+`System.Collections.Generic.SortedSet<T>`. They are historical measurements; their runtime
+and hardware context is not recorded here, so they do not establish current performance.
+Run the benchmarks above to measure your environment.
 
 | Method                      | Length    |                Mean |            Error |           StdDev |              Median |       Gen 0 |    Allocated |
 | --------------------------- | --------- | ------------------: | ---------------: | ---------------: | ------------------: | ----------: | -----------: |
@@ -119,52 +280,3 @@ Run the `Benchmark` project to reproduce them on your machine.
 | AddRemoveReplace_OrderedSet | 100       |            11.76 ns |         0.211 ns |         0.289 ns |            11.54 ns |           - |            - |
 | Enumerate_SortedSet         | 100       |         1,664.30 ns |        17.294 ns |        25.349 ns |         1,682.97 ns |      0.0401 |        168 B |
 | Enumerate_OrderedSet        | 100       |         1,218.03 ns |         4.344 ns |         6.230 ns |         1,219.51 ns |      0.0114 |         48 B |
-
-
-
-## Choosing a collection
-
-The features of the various collections. Please use them well.
-
-| Name                          | Structure   | Access   | Add      | Remove   | Search   | Sort       | Enum.    |
-| ----------------------------- | ----------- | -------- | -------- | -------- | -------- | ---------- | -------- |
-| `UnorderedList<T>`            | Array       | Index    | O(1)     | O(n)     | O(n)     | O(n log n) | O(1)     |
-| `UnorderedLinkedList<T>`      | Linked list | Node     | O(1)     | O(1)     | O(n)     | -          | O(1)     |
-| `OrderedList<T>`              | Array       | Index    | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
-| `OrderedKeyValueList<K, V>`   | Array       | Index    | O(n)     | O(n)     | O(log n) | Sorted     | O(1)     |
-| `OrderedMap<K, V>`            | RB Tree     | Node     | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| `OrderedSet<T>`               | RB Tree     | Node     | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| `OrderedMultiMap<K, V>`       | RB Tree     | Node     | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| `OrderedMultiSet<T>`          | RB Tree     | Node     | O(log n) | O(log n) | O(log n) | Sorted     | O(log n) |
-| `UnorderedMap<K, V>`          | Hash table  | Node     | O(1)     | O(1)     | O(1)     | No         | O(1)     |
-| `UnorderedSet<T>`             | Hash table  | Node     | O(1)     | O(1)     | O(1)     | No         | O(1)     |
-| `UnorderedMapSlim<K, V>`      | Hash table  | Index    | O(1)     | O(1)     | O(1)     | No         | O(1)     |
-| `SlidingList<T>`              | Ring buffer | Position | O(1)     | O(1)     | O(n)     | No         | O(1)     |
-| `CircularQueue<T>`            | Ring buffer | FIFO     | O(1)     | O(1)     | -        | No         | -        |
-
-- Ordered collections require `IComparable<T>` or `IComparer<T>`.
-- Unordered collections (e.g. `UnorderedMap<TKey, TValue>`) are based on hash tables, which require
-  `IEquatable<T>`/`GetHashCode()` or `IEqualityComparer<T>`.
-- `Multi` collections allow duplicate keys. `UnorderedMap<TKey, TValue>` and `UnorderedSet<T>` also
-  accept duplicate keys when constructed with `allowDuplicate: true`.
-- `OrderedMap` uses a Red-Black tree and is faster than `OrderedKeyValueList<TKey, TValue>` in most
-  situations. For this reason, I recommend using `OrderedMap<TKey, TValue>` over
-  `OrderedKeyValueList<TKey, TValue>` unless index access is absolutely necessary.
-- `Add` on `UnorderedList<T>` is O(1) amortized; a single call may resize the internal array.
-
-
-
-## Notes on thread safety
-
-Unless stated otherwise, the collections are **not** thread-safe: multiple readers are fine only while
-the instance is not being modified, and any writer requires external mutual exclusion.
-
-The exceptions are:
-
-- `CircularQueue<T>`, `ObjectPool<T>`, `BytePool` and `KeyedObjectCache<TKey, TObject>`, which are
-  thread-safe for their documented operations (`ObjectPool<T>.Dispose` must not run concurrently with
-  `Rent`/`Return`).
-- The `*Hashtable<TValue>` types, whose writes are serialized internally and whose lookups are lock-free.
-
-`UnorderedMapSlim<TKey, TValue>`, `Utf8UnorderedMap<TValue>` and `Utf16UnorderedMap<TValue>` perform no
-version check at all, so modifying them while enumerating is undefined behavior rather than an exception.

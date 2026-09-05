@@ -15,11 +15,13 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a thread-safe collection of UTF-16 key/value pairs.<br/>
-/// Writes are serialized, while lookups are lock-free.<br/>
-/// Optimized for collections that are built infrequently and read frequently.
+/// Provides a thread-safe hash table with ordinal UTF-16 keys and span-based lookup.
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
+/// <remarks>
+/// Writes are serialized and lookups are lock-free. Keys are compared without text validation or normalization.
+/// Adding an existing key replaces its value.
+/// </remarks>
 public class Utf16Hashtable<TValue>
 {
     private const int MaximumCapacity = 1 << 30;

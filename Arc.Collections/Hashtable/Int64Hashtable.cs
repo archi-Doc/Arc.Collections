@@ -14,11 +14,12 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a thread-safe collection of long/value pairs.<br/>
-/// Writes are serialized, while lookups are lock-free.<br/>
-/// Optimized for collections that are built infrequently and read frequently.
+/// Provides a thread-safe hash table with <see langword="long" /> keys.
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
+/// <remarks>
+/// Writes are serialized and lookups are lock-free. Adding an existing key replaces its value.
+/// </remarks>
 public class Int64Hashtable<TValue>
 {
     private const int MaximumCapacity = 1 << 30;

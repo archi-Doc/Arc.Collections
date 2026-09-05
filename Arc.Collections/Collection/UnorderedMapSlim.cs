@@ -16,15 +16,14 @@ namespace Arc.Collections;
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a lightweight high-performance hash map.<br/>
-/// Keys must be non-null.<br/>
-/// <br/>NOT thread-safe:<br/>
-/// Multiple readers are allowed only while the map is immutable.<br/>
-/// If any writer exists, all access must be protected by mutual exclusion.<br/>
-/// Modifying the map while enumerating it is undefined behavior (no version check is performed).
+/// Provides a compact hash map for non-null keys.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
+/// <remarks>
+/// Adding an existing key replaces its value. All access requires external synchronization
+/// when a writer is present. Enumeration does not detect modifications.
+/// </remarks>
 public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
 {
@@ -221,9 +220,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.<br/>
-    /// This performs the hash computation and chain walk only once, which makes
-    /// read-modify-write patterns (counters, accumulators) roughly twice as fast as
-    /// a TryGetValue/Add pair.
+    /// Computes the hash and traverses the bucket once, avoiding the repeated lookup
+    /// of a TryGetValue/Add pair.
     /// </summary>
     /// <param name="key">The key to look up or add.</param>
     /// <param name="exists"><see langword="true"/> if the key already existed.</param>

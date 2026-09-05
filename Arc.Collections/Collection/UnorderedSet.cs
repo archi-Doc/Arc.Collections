@@ -13,10 +13,12 @@ namespace Arc.Collections;
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a high-performance unordered set.<br/>
-/// Supports duplicate and null elements when configured to do so.
+/// Stores elements in a hash table with optional duplicates.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
+/// <remarks>
+/// Null elements are supported. Duplicate elements are allowed only when enabled at construction.
+/// </remarks>
 public sealed class UnorderedSet<T> : IEnumerable<T>
 {
     private readonly UnorderedMap<T, byte> map;

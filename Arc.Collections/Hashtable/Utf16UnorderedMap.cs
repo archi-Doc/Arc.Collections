@@ -16,14 +16,14 @@ namespace Arc.Collections;
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a collection of UTF-16 key/value pairs organized by the hash code of the key.<br/>
-/// This is a lightweight implementation optimized for performance with minimal memory overhead.<br/>
-/// <br/>NOT thread-safe:<br/>
-/// It can be accessed from multiple reader threads if used as immutable.<br/>
-/// If there is any writer thread, all access must be protected by mutual exclusion.<br/>
-/// Modifying the map while enumerating it is undefined behavior (no version check is performed).
+/// Stores values by ordinal UTF-16 key content with span-based lookup.
 /// </summary>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
+/// <remarks>
+/// Adding an existing key replaces its value. Keys are compared without text validation or normalization.
+/// All access requires external synchronization when a writer is present.
+/// Enumeration does not detect modifications.
+/// </remarks>
 public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue>>
 {
     private const int StartOfFreeList = -3;
@@ -352,9 +352,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.<br/>
-    /// This performs the hash computation and chain walk only once, which makes
-    /// read-modify-write patterns (counters, accumulators) roughly twice as fast as
-    /// a TryGetValue/Add pair.
+    /// Computes the hash and traverses the bucket once, avoiding the repeated lookup
+    /// of a TryGetValue/Add pair.
     /// </summary>
     /// <param name="key">The key to look up or add.</param>
     /// <param name="exists"><see langword="true"/> if the key already existed.</param>

@@ -328,7 +328,13 @@ public class OrderedMultiSet<T> : IEnumerable<T>
         }
 
         object? IEnumerator.Current
-            => this.Current;
+        {
+            get
+            {
+                this.enumerator.ValidateCurrent();
+                return this.Current;
+            }
+        }
 
         /// <summary>
         /// Advances the enumerator to the next element.

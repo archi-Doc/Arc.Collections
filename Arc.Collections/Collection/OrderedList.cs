@@ -25,7 +25,7 @@ namespace Arc.Collections;
 /// <see cref="this[int]"/> setter) throw <see cref="InvalidOperationException"/>.<br/>
 /// <see cref="IList{T}"/> is re-implemented so that interface calls also honor the sort order.
 /// Mutating an instance through an <see cref="UnorderedList{T}"/>-typed reference bypasses that
-/// and corrupts the order; do not do it.
+/// and can corrupt the order. Writes through <see cref="UnorderedList{T}.AsSpan"/> also bypass ordering.
 /// </remarks>
 public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 {
@@ -93,11 +93,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         this.comparerIsDefault = ReferenceEquals(this.Comparer, Comparer<T>.Default);
         this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
 
-        var array = collection.ToArray();
-        if (array.Length > 1)
-        {
-            Array.Sort(array, this.Comparer);
-        }
+        var array = collection.OrderBy(static x => x, this.Comparer).ToArray();
 
         this.items = array;
         this.size = array.Length;
@@ -131,6 +127,12 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     public new void AddRange(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
+        if (ReferenceEquals(collection, this))
+        {
+            this.AddRange(this.AsReadOnlySpan());
+            return;
+        }
+
         foreach (var x in collection)
         {
             this.Add(x);
@@ -153,6 +155,11 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <param name="source">The span whose elements are added.</param>
     public new void AddRange(ReadOnlySpan<T> source)
     {
+        if (source.Overlaps(this.items.AsSpan()))
+        {
+            source = source.ToArray();
+        }
+
         foreach (var x in source)
         {
             this.Add(x);

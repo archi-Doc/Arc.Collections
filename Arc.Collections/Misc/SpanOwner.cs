@@ -39,15 +39,13 @@ namespace Arc.Collections;
 #pragma warning disable SA1629 // Documentation text should end with a period
 
 /// <summary>
-/// Provides a temporary buffer as a <see cref="Span{T}"/>: a caller-supplied
-/// (typically stackalloc'd) scratch buffer when the requested length fits,<br/>
-/// otherwise an array rented from <see cref="ArrayPool{T}.Shared"/> which is
-/// returned on <see cref="Dispose"/>.
+/// Provides a temporary span using caller-supplied storage or a rented array.
 /// </summary>
 /// <typeparam name="T">The element type.</typeparam>
 /// <remarks>
-/// using var owner = new SpanOwner&lt;byte&gt;(stackalloc byte[BaseHelper.StackallocThreshold], length);<br/>
-/// Span&lt;byte&gt; buffer = owner.Span;
+/// Uses the supplied span when the requested length fits; otherwise rents from
+/// <see cref="ArrayPool{T}.Shared" />. Dispose once and do not copy an owner of a rented array.
+/// Rented arrays containing references are cleared on return. Do not use the span after disposal.
 /// </remarks>
 public ref struct SpanOwner<T>
 {
@@ -107,7 +105,7 @@ public ref struct SpanOwner<T>
         if (array is not null)
         {
             this.arrayToReturn = null;
-            ArrayPool<T>.Shared.Return(array);
+            ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
         }
     }
 }

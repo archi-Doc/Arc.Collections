@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections.HotMethod;
 
 /// <summary>
-/// Allows querying for a formatter for serializing or deserializing a particular <see cref="Type" />.
+/// Resolves specialized span comparisons and ordered-tree searches.
 /// </summary>
 public interface IHotMethodResolver
 {
@@ -23,12 +23,12 @@ public interface IHotMethodResolver
     /// </summary>
     /// <typeparam name="TKey">The key to be processed.</typeparam>
     /// <typeparam name="TValue">The value to be processed.</typeparam>
-    /// <returns><see cref="IHotMethod2{TKey, TValue}"/>.</returns>
+    /// <returns>The specialized tree search, or <see langword="null"/> if this resolver has none.</returns>
     IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
 }
 
 /// <summary>
-/// Resolves the specialized comparison implementation for a type, if one exists.
+/// Selects specialized comparison implementations for supported types and default comparers.
 /// </summary>
 public static class HotMethodResolver
 {

@@ -10,15 +10,12 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
-/// Builds a <see cref="ReadOnlySequence{T}"/> backed by pooled arrays.
+/// Builds a <see cref="ReadOnlySequence{T}" /> backed by pooled arrays.
 /// </summary>
 /// <remarks>
-/// This type owns pooled resources and must not be copied.<br/>
-/// Always pass instances by <see langword="ref"/>.<br/>
-/// Copying an instance may cause pooled resources to be returned multiple times.<br/>
-/// The returned sequence directly references pooled arrays owned by this builder.<br/>
-/// It is valid only until <see cref="Dispose"/> is called.<br/>
-/// Do not store or use the returned sequence after this builder has been disposed.
+/// Do not copy an instance that owns pooled resources; pass it by reference when needed.
+/// <see cref="ToReadOnlySequence" /> finalizes the builder and prevents further additions.
+/// The returned sequence is valid only until <see cref="Dispose" /> returns the pooled resources.
 /// </remarks>
 /// <typeparam name="T">The element type stored in the sequence.</typeparam>
 public ref struct SequenceBuilder<T>

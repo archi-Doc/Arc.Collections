@@ -18,11 +18,14 @@ using Arc.Collections.HotMethod;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a sorted multi-map backed by a Red-Black Tree and circular linked lists.<br/>
-/// Duplicate keys are stored in insertion order.
+/// Stores sorted key/value pairs with duplicate keys in insertion order.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
+/// <remarks>
+/// Null keys are supported. The indexer getter returns the first matching value;
+/// the setter adds another entry. Duplicate groups use circular linked lists.
+/// </remarks>
 public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
     #region Node
@@ -1188,7 +1191,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map, this.key);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// Enumerates the nodes of a duplicate-key group in insertion order.
         /// </summary>
         public struct Enumerator : IEnumerator<Node>
         {
@@ -1315,7 +1318,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map, this.key);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// Enumerates the values of a duplicate-key group in insertion order.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
@@ -1476,8 +1479,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Provides an allocation-free enumerable over the keys of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// Provides a struct enumerable over the keys in sort order.
     /// </summary>
+    /// <remarks>
+    /// Direct iteration avoids boxing; enumeration through an interface may allocate.
+    /// </remarks>
     public readonly struct KeyEnumerable : IEnumerable<TKey>
     {
         private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1502,7 +1508,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// Enumerates keys in sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
@@ -1579,7 +1585,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 this.next = GetFirst(this.map.root);
             }
 
-            private readonly void ValidateCurrent()
+            internal readonly void ValidateCurrent()
             {
                 if (this.version != this.map.version)
                 {
@@ -1595,8 +1601,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Provides an allocation-free enumerable over the values of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// Provides a struct enumerable over the values in sort order.
     /// </summary>
+    /// <remarks>
+    /// Direct iteration avoids boxing; enumeration through an interface may allocate.
+    /// </remarks>
     public readonly struct ValueEnumerable : IEnumerable<TValue>
     {
         private readonly OrderedMultiMap<TKey, TValue> map;
@@ -1621,7 +1630,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+        /// Enumerates values in sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
