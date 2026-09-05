@@ -118,7 +118,7 @@ public static class CollectionHelper
     public static int ExpandPrime(int oldSize)
     {
         int newSize = 2 * oldSize;
-        if ((uint)newSize > MaxPrimeArrayLength && oldSize < MaxPrimeArrayLength)
+        if (oldSize >= MaxPrimeArrayLength || (uint)newSize > MaxPrimeArrayLength)
         {
             return MaxPrimeArrayLength;
         }

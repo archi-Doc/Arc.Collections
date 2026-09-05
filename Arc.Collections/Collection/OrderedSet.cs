@@ -285,7 +285,14 @@ public class OrderedSet<T> : IEnumerable<T>
             get => this.enumerator.Current;
         }
 
-        object? IEnumerator.Current => this.Current;
+        object? IEnumerator.Current
+        {
+            get
+            {
+                this.enumerator.ValidateCurrent();
+                return this.Current;
+            }
+        }
 
         /// <summary>
         /// Advances the enumerator to the next element.

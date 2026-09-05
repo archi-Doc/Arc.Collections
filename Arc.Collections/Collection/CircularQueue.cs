@@ -29,12 +29,13 @@ public sealed class CircularQueue<T>
     private PaddedHeadAndTail headAndTail;
 
     /// <summary>Initializes a new instance of the <see cref="CircularQueue{T}"/> class.</summary>
-    /// <param name="capacity">The maximum number of elements the queue can contain (rounded up to the power of 2).</param>
+    /// <param name="capacity">The maximum number of elements the queue can contain (rounded up to a power of 2, with a minimum of 2).</param>
     public CircularQueue(int capacity)
     {
-        if (capacity < 1)
+        if (capacity < 2)
         {
-            capacity = 1;
+            // A single slot cannot distinguish a published item from the next enqueue lap.
+            capacity = 2;
         }
         else if (capacity >= MaximumCapacity)
         {

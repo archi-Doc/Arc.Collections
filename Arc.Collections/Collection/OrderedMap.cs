@@ -1279,7 +1279,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
                 this.next = GetFirst(this.map.root);
             }
 
-            private readonly void ValidateCurrent()
+            internal readonly void ValidateCurrent()
             {
                 if (this.version != this.map.version)
                 {

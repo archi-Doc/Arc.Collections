@@ -15,7 +15,7 @@ public sealed class CircularQueueTest2
     {
         var queue = new CircularQueue<int>(-1);
 
-        Assert.Equal(1, queue.Capacity);
+        Assert.Equal(2, queue.Capacity);
         Assert.Equal(0, queue.Count);
     }
 
@@ -24,12 +24,12 @@ public sealed class CircularQueueTest2
     {
         var queue = new CircularQueue<int>(0);
 
-        Assert.Equal(1, queue.Capacity);
+        Assert.Equal(2, queue.Capacity);
         Assert.Equal(0, queue.Count);
     }
 
     [Theory]
-    [InlineData(1, 1)]
+    [InlineData(1, 2)]
     [InlineData(2, 2)]
     [InlineData(3, 4)]
     [InlineData(4, 4)]

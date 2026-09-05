@@ -136,11 +136,17 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <param name="key">The key of the object to cache.</param>
     /// <param name="obj">The object to cache.</param>
     /// <returns><see langword="true"/>; The object is successfully cached.<br/>
-    /// <see langword="false"/>; An object with the same key already exists.</returns>
+    /// <see langword="false"/>; An object with the same key already exists, or the cache has been disposed.
+    /// The caller retains ownership when this method returns <see langword="false"/>.</returns>
     public bool Cache(TKey key, TObject obj)
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.disposed || this.map.ContainsKey(key))
+            {
+                return false;
+            }
+
             while (this.linkedList.Count >= this.CacheSize)
             {
                 if (this.linkedList.First is not { } first)
@@ -151,16 +157,11 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
                 this.DisposeItem(first.Value);
             }
 
-            if (!this.map.ContainsKey(key))
-            {
-                var item = new Item(obj);
-                (item.MapIndex, _) = this.map.Add(key, item);
-                item.LinkedListNode = this.linkedList.AddLast(item);
-                return true;
-            }
+            var item = new Item(obj);
+            (item.MapIndex, _) = this.map.Add(key, item);
+            item.LinkedListNode = this.linkedList.AddLast(item);
+            return true;
         }
-
-        return false;
     }
 
     /// <summary>
@@ -214,15 +215,15 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <remarks>The cache holds no unmanaged resources, so calling this is optional.</remarks>
     public void Dispose()
     {
-        if (this.disposed)
-        {
-            return;
-        }
-
-        this.disposed = true;
-
         using (this.lockObject.EnterScope())
         {
+            if (this.disposed)
+            {
+                return;
+            }
+
+            this.disposed = true;
+
             while (this.linkedList.First is { } first)
             {
                 this.DisposeItem(first.Value);

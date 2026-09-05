@@ -126,17 +126,11 @@ public class BytePool
         /// <returns>The current <see cref="RentArray"/> instance.</returns>
         public RentArray IncrementAndShare()
         {
-            if (this.count == SingleCount)
-            {
-                this.count = 2;
-                return this;
-            }
-            else if (this.count <= 0)
+            if (!this.TryIncrement())
             {
                 throw new InvalidOperationException("The reference counter cannot be less than or equal to 0.");
             }
 
-            Interlocked.Increment(ref this.count);
             return this;
         }
 
@@ -150,18 +144,23 @@ public class BytePool
             int newCount;
             do
             {
-                currentCount = this.count;
-                if (this.count <= 0)
+                currentCount = Volatile.Read(ref this.count);
+                if (currentCount <= 0)
                 {
                     return false;
                 }
 
-                if (this.count == SingleCount)
+                if (currentCount == SingleCount)
                 {
                     newCount = 2;
                 }
                 else
                 {
+                    if (currentCount == SingleCount - 1)
+                    {
+                        throw new InvalidOperationException("The reference counter has reached its maximum value.");
+                    }
+
                     newCount = currentCount + 1;
                 }
             }
@@ -177,18 +176,21 @@ public class BytePool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RentArray? Return()
         {
-            if (this.count == SingleCount)
+            int currentCount;
+            int newCount;
+            do
             {
-                this.count = 0;
-                this.bucket?.Queue.TryEnqueue(this);
-                return null;
-            }
-            else if (this.count <= 0)
-            {
-                throw new InvalidOperationException("The reference counter cannot be less than or equal to 0.");
-            }
+                currentCount = Volatile.Read(ref this.count);
+                if (currentCount <= 0)
+                {
+                    throw new InvalidOperationException("The reference counter cannot be less than or equal to 0.");
+                }
 
-            if (Interlocked.Decrement(ref this.count) <= 0 && this.bucket != null)
+                newCount = currentCount == SingleCount ? 0 : currentCount - 1;
+            }
+            while (Interlocked.CompareExchange(ref this.count, newCount, currentCount) != currentCount);
+
+            if (newCount == 0 && this.bucket != null)
             {
                 this.bucket.Queue.TryEnqueue(this);
             }
@@ -484,7 +486,10 @@ public class BytePool
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
         public RentMemory Slice(int start)
-            => new(this.array, this.byteArray, this.start + start, this.length - start);
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
+            return new(this.array, this.byteArray, this.start + start, this.length - start);
+        }
 
         /// <summary>
         /// Forms a slice out of the current memory starting at a specified index for a specified length.
@@ -493,7 +498,11 @@ public class BytePool
         /// <param name="length">The number of elements to include in the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
         public RentMemory Slice(int start, int length)
-            => new(this.array, this.byteArray, this.start + start, length);
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)length, (uint)(this.length - start), nameof(length));
+            return new(this.array, this.byteArray, this.start + start, length);
+        }
 
         /// <summary>
         /// Decrement the reference count.<br/>
@@ -700,6 +709,7 @@ public class BytePool
         /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
         public RentReadOnlyMemory Slice(int start)
         {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
             return new(this.array, this.byteArray, this.start + start, this.length - start);
         }
 
@@ -711,6 +721,8 @@ public class BytePool
         /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
         public RentReadOnlyMemory Slice(int start, int length)
         {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)length, (uint)(this.length - start), nameof(length));
             return new(this.array, this.byteArray, this.start + start, length);
         }
 

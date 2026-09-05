@@ -107,7 +107,7 @@ public ref struct SpanOwner<T>
         if (array is not null)
         {
             this.arrayToReturn = null;
-            ArrayPool<T>.Shared.Return(array);
+            ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
         }
     }
 }
