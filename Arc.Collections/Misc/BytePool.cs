@@ -12,14 +12,13 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// A fast thread-safe pool of byte arrays (uses <see cref="CircularQueue{T}"/>).<br/>
-/// <see cref="BytePool"/> is faster than <see cref="System.Buffers.ArrayPool{T}"/> and only slightly slower than creating a new byte array (particularly for arrays of 256 bytes or less).<br/>
-/// However, it offers several advantages.<br/>
-/// 1. <see cref="BytePool"/> can handle a rent byte array and a created ('new byte[]') byte array in the same way.<br/>
-/// 2. <see cref="BytePool"/> can handle a rent byte array in the same way as <see cref="Memory{T}"/> by using <see cref="BytePool.RentMemory"/>.<br/>
-/// 3. <see cref="BytePool"/> can be used by multiple users by incrementing the reference count.<br/>
-/// ! It is recommended to use <see cref="BytePool"/> within a class, and not between classes, as the responsibility for returning the byte array becomes unclear.
+/// Pools byte arrays in power-of-two buckets with reference-counted ownership.
 /// </summary>
+/// <remarks>
+/// Renting and returning arrays are thread-safe; configure bucket limits before sharing the pool.
+/// Arrays are not cleared. Each owned reference must be returned once, and all views become
+/// invalid after the final return. Reference counting does not synchronize access to the bytes.
+/// </remarks>
 public class BytePool
 {
     /// <summary>
@@ -43,13 +42,18 @@ public class BytePool
     }
 
     /// <summary>
-    /// Represents a rented byte array.
+    /// Tracks ownership of a pooled or externally supplied byte array.
     /// </summary>
+    /// <remarks>
+    /// Views and reference copies do not acquire ownership. Use <see cref="IncrementAndShare" />
+    /// for each additional owner, and return each owned reference once.
+    /// Do not access this object or its views after the final return; pooled instances may be reused.
+    /// </remarks>
     public class RentArray : IDisposable
     {
         /// <summary>
         /// Creates a new <see cref="RentArray"/> instance with the specified byte array.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="array">The byte array.</param>
         /// <returns>A new <see cref="RentArray"/> instance.</returns>
@@ -61,7 +65,7 @@ public class BytePool
         /// <summary>
         /// Initializes a new instance of the <see cref="RentArray"/> class from a byte array.<br/>
         /// This is a feature for compatibility with conventional memory management (e.g new byte[]), <br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="array">A byte array (allocated with 'new').</param>
         internal RentArray(byte[] array)
@@ -90,7 +94,7 @@ public class BytePool
         public byte[] Array => this.byteArray;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is currently rented.
+        /// Gets a value indicating whether the reference count is positive, including for an unpooled array.
         /// </summary>
         public bool IsRent => Volatile.Read(ref this.count) > 0;
 
@@ -170,7 +174,7 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrements the reference count. When the count reaches zero, the byte array is returned to the pool.
+        /// Releases one owned reference. On the final release, a pooled array is offered back to its bucket.
         /// </summary>
         /// <returns><see langword="null"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -201,7 +205,7 @@ public class BytePool
         /// <summary>
         /// Creates a <see cref="RentMemory"/> object from the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns>A <see cref="RentMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentMemory AsMemory()
             => new(this);
 
@@ -209,7 +213,7 @@ public class BytePool
         /// Creates a <see cref="RentMemory"/> object by specifying the start index.
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
-        /// <returns>A <see cref="RentMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentMemory AsMemory(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
@@ -218,14 +222,14 @@ public class BytePool
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
         /// <param name="length">The length of the slice.</param>
-        /// <returns>A <see cref="RentMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentMemory AsMemory(int start, int length)
             => new(this, this.byteArray, start, length);
 
         /// <summary>
         /// Creates a <see cref="RentReadOnlyMemory"/> object from the current <see cref="RentArray"/> instance.
         /// </summary>
-        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentReadOnlyMemory AsReadOnly()
             => new(this);
 
@@ -233,7 +237,7 @@ public class BytePool
         /// Creates a <see cref="RentReadOnlyMemory"/> object by specifying the start index.
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
-        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentReadOnlyMemory AsReadOnly(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
@@ -242,7 +246,7 @@ public class BytePool
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
         /// <param name="length">The length of the slice.</param>
-        /// <returns>A <see cref="RentReadOnlyMemory"/> object.</returns>
+        /// <returns>A view of the same bytes, without an additional owned reference.</returns>
         public RentReadOnlyMemory AsReadOnly(int start, int length)
             => new(this, this.byteArray, start, length);
 
@@ -275,15 +279,20 @@ public class BytePool
             => this.count = SingleCount;
 
         /// <summary>
-        /// Disposes the current <see cref="RentArray"/> instance and returns the byte array to the pool.
+        /// Releases one owned reference, as <see cref="Return"/> does.
         /// </summary>
         public void Dispose()
             => this.Return();
     }
 
     /// <summary>
-    /// Represents an owner of a byte array and a <see cref="Memory{T}"/> object.
+    /// Provides a writable byte-memory view with optional reference-counted ownership.
     /// </summary>
+    /// <remarks>
+    /// Copying, slicing, or converting a view does not increment the reference count.
+    /// Use <see cref="IncrementAndShare" /> for an additional owner. Return or dispose each owned
+    /// reference once; doing so does not clear this struct or its copies.
+    /// </remarks>
     public readonly struct RentMemory : IDisposable
     {
         /// <summary>
@@ -293,7 +302,7 @@ public class BytePool
 
         /// <summary>
         /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="source">The source byte array.</param>
         /// <returns>A new <see cref="RentMemory"/> instance.</returns>
@@ -304,7 +313,7 @@ public class BytePool
 
         /// <summary>
         /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="source">The source byte array.</param>
         /// <param name="start">The index at which to begin the memory.</param>
@@ -316,11 +325,10 @@ public class BytePool
         }
 
         /// <summary>
-        /// Creates a new <see cref="RentMemory"/> instance from the specified <see cref="ReadOnlyMemory{T}"/>.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// Wraps array-backed memory without copying or tracking ownership.
         /// </summary>
-        /// <param name="source">The source <see cref="ReadOnlyMemory{T}"/>.</param>
-        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        /// <param name="source">The memory to wrap.</param>
+        /// <returns>A view over the underlying array, or an empty view if the array cannot be obtained.</returns>
         public static RentMemory CreateFrom(ReadOnlyMemory<byte> source)
         {
             if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
@@ -334,7 +342,7 @@ public class BytePool
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RentMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
+        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
         /// <param name="start">The index at which to begin the memory.</param>
@@ -383,12 +391,12 @@ public class BytePool
         private readonly int length;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is rent or not.
+        /// Gets a value indicating whether a tracked owner has outstanding references, including for an unpooled array.
         /// </summary>
         public bool IsRent => this.array != null && this.array.IsRent;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is returned or not.
+        /// Gets a value indicating whether there is no tracked owner or its reference count has reached zero.
         /// </summary>
         public bool IsReturned => this.array == null || this.array.IsReturned;
 
@@ -403,7 +411,7 @@ public class BytePool
         public int Length => this.length;
 
         /// <summary>
-        /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
+        /// Gets the tracked array owner, or <see langword="null"/> for an untracked view.
         /// </summary>
         public RentArray? RentArray => this.array;
 
@@ -418,16 +426,16 @@ public class BytePool
         public Memory<byte> Memory => new(this.byteArray, this.start, this.length);
 
         /// <summary>
-        /// Gets a <see cref="RentReadOnlyMemory"/> from <see cref="RentMemory"/>.
+        /// Gets a read-only view without acquiring another owned reference.
         /// </summary>
         public RentReadOnlyMemory ReadOnly => new(this.array, this.byteArray, this.start, this.length);
 
         #endregion
 
         /// <summary>
-        ///  Increment the reference count.
+        /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
-        /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
+        /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
         public RentMemory IncrementAndShare()
         {
             if (this.array == null)
@@ -446,9 +454,9 @@ public class BytePool
         }
 
         /// <summary>
-        ///  Increment the reference count.
+        /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
-        /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
+        /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
         public RentReadOnlyMemory IncrementAndShareReadOnly()
         {
             if (this.array == null)
@@ -467,9 +475,10 @@ public class BytePool
         }
 
         /// <summary>
-        ///  Increment the counter and attempt to share the <see cref="RentArray"/>.
+        /// Attempts to acquire another owned reference.
         /// </summary>
-        /// <returns><see langword="true"/>; Success.</returns>
+        /// <returns><see langword="true"/> if acquired or no owner is tracked;
+        /// <see langword="false"/> if the tracked owner has been returned.</returns>
         public bool TryIncrement()
         {
             if (this.array == null)
@@ -481,7 +490,7 @@ public class BytePool
         }
 
         /// <summary>
-        /// Forms a slice out of the current memory that begins at a specified index.
+        /// Creates a slice from the specified offset without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="RentMemory"/>.</returns>
@@ -492,7 +501,7 @@ public class BytePool
         }
 
         /// <summary>
-        /// Forms a slice out of the current memory starting at a specified index for a specified length.
+        /// Creates a slice of the specified range without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <param name="length">The number of elements to include in the slice.</param>
@@ -505,11 +514,10 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrement the reference count.<br/>
-        /// When it reaches zero, it returns the <see cref="RentArray"/> to the pool.<br/>
-        /// Failure to return a rented array is not a fatal error (eventually be garbage-collected).
+        /// Releases one owned reference; untracked views require no action.
+        /// A pooled array is offered back to its bucket on the final release.
         /// </summary>
-        /// <returns><see langword="default"></see>.</returns>
+        /// <returns>An empty view. The current struct and its copies are unchanged.</returns>
         public RentMemory Return()
         {
             this.array?.Return();
@@ -524,8 +532,13 @@ public class BytePool
     }
 
     /// <summary>
-    /// Represents an owner of a byte array and a <see cref="Memory{T}"/> object.
+    /// Provides a read-only byte-memory view with optional reference-counted ownership.
     /// </summary>
+    /// <remarks>
+    /// Copying, slicing, or converting a view does not increment the reference count.
+    /// Use <see cref="IncrementAndShare" /> for an additional owner. Return or dispose each owned
+    /// reference once; doing so does not clear this struct or its copies.
+    /// </remarks>
     public readonly struct RentReadOnlyMemory : IDisposable
     {
         /// <summary>
@@ -534,35 +547,34 @@ public class BytePool
         public static readonly RentReadOnlyMemory Empty = default;
 
         /// <summary>
-        /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// Creates a new <see cref="RentReadOnlyMemory"/> instance from the specified byte array.<br/>
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="source">The source byte array.</param>
-        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentReadOnlyMemory"/> instance.</returns>
         public static RentReadOnlyMemory CreateFrom(byte[] source)
         {
             return new RentArray(source).AsReadOnly();
         }
 
         /// <summary>
-        /// Creates a new <see cref="RentMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// Creates a new <see cref="RentReadOnlyMemory"/> instance from the specified byte array.<br/>
+        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="source">The source byte array.</param>
         /// <param name="start">The index at which to begin the memory.</param>
         /// <param name="length">The number of items in the memory.</param>
-        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentReadOnlyMemory"/> instance.</returns>
         public static RentReadOnlyMemory CreateFrom(byte[] source, int start, int length)
         {
             return new RentArray(source).AsReadOnly(start, length);
         }
 
         /// <summary>
-        /// Creates a new <see cref="RentMemory"/> instance from the specified <see cref="ReadOnlyMemory{T}"/>.<br/>
-        /// The byte array will not be returned when <see cref="Return"/> is called.
+        /// Wraps array-backed memory without copying or tracking ownership.
         /// </summary>
-        /// <param name="source">The source <see cref="ReadOnlyMemory{T}"/>.</param>
-        /// <returns>A new <see cref="RentMemory"/> instance.</returns>
+        /// <param name="source">The memory to wrap.</param>
+        /// <returns>A view over the underlying array, or an empty view if the array cannot be obtained.</returns>
         public static RentReadOnlyMemory CreateFrom(ReadOnlyMemory<byte> source)
         {
             if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
@@ -576,7 +588,7 @@ public class BytePool
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RentReadOnlyMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be returned when <see cref="Return"/> is called.
+        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be added to a pool when <see cref="Return"/> is called.
         /// </summary>
         /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
         /// <param name="start">The index at which to begin the memory.</param>
@@ -625,12 +637,12 @@ public class BytePool
         private readonly int length;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is rent or not.
+        /// Gets a value indicating whether a tracked owner has outstanding references, including for an unpooled array.
         /// </summary>
         public bool IsRent => this.array != null && this.array.IsRent;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) is returned or not.
+        /// Gets a value indicating whether there is no tracked owner or its reference count has reached zero.
         /// </summary>
         public bool IsReturned => this.array == null || this.array.IsReturned;
 
@@ -645,7 +657,7 @@ public class BytePool
         public int Length => this.length;
 
         /// <summary>
-        /// Gets a <see cref="RentArray"/> from <see cref="RentMemory"/>.
+        /// Gets the tracked array owner, or <see langword="null"/> for an untracked view.
         /// </summary>
         public RentArray? RentArray => this.array;
 
@@ -661,16 +673,16 @@ public class BytePool
         public ReadOnlyMemory<byte> Memory => new(this.byteArray, this.start, this.length);
 
         /// <summary>
-        /// Gets a <see cref="RentMemory"/> from <see cref="RentReadOnlyMemory"/>.
+        /// Gets a writable view without acquiring another owned reference.
         /// </summary>
         public RentMemory UnsafeMemory => new(this.array, this.byteArray, this.start, this.length);
 
         #endregion
 
         /// <summary>
-        ///  Increment the reference count.
+        /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
-        /// <returns><see cref="RentArray"/> instance (<see langword="this"/>).</returns>
+        /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
         public RentReadOnlyMemory IncrementAndShare()
         {
             if (this.array == null)
@@ -689,9 +701,10 @@ public class BytePool
         }
 
         /// <summary>
-        ///  Increment the counter and attempt to share the <see cref="RentArray"/>.
+        /// Attempts to acquire another owned reference.
         /// </summary>
-        /// <returns><see langword="true"/>; Success.</returns>
+        /// <returns><see langword="true"/> if acquired or no owner is tracked;
+        /// <see langword="false"/> if the tracked owner has been returned.</returns>
         public bool TryIncrement()
         {
             if (this.array == null)
@@ -703,7 +716,7 @@ public class BytePool
         }
 
         /// <summary>
-        /// Forms a slice out of the current memory that begins at a specified index.
+        /// Creates a slice from the specified offset without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <returns><see cref="RentReadOnlyMemory"/>.</returns>
@@ -714,7 +727,7 @@ public class BytePool
         }
 
         /// <summary>
-        /// Forms a slice out of the current memory starting at a specified index for a specified length.
+        /// Creates a slice of the specified range without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <param name="length">The number of elements to include in the slice.</param>
@@ -727,11 +740,10 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrement the reference count.<br/>
-        /// When it reaches zero, it returns the <see cref="RentArray"/> to the pool.<br/>
-        /// Failure to return a rented array is not a fatal error (eventually be garbage-collected).
+        /// Releases one owned reference; untracked views require no action.
+        /// A pooled array is offered back to its bucket on the final release.
         /// </summary>
-        /// <returns><see langword="default"></see>.</returns>
+        /// <returns>An empty view. The current struct and its copies are unchanged.</returns>
         public RentReadOnlyMemory Return()
         {
             this.array?.Return();
@@ -772,10 +784,12 @@ public class BytePool
 
     /// <summary>
     /// Creates a new instance of the <see cref="BytePool"/> class.<br/>
-    /// The pool limit starts with one array of <paramref name="maxArrayLength"/> and doubles each time it halves until it reaches <paramref name="poolLimit"/>.
+    /// Smaller array buckets retain more arrays, up to the requested limit.
+    /// Bucket limits are rounded up to powers of two, with a minimum of two arrays.
     /// </summary>
-    /// <param name="maxArrayLength">The maximum length of a byte array instance that may be stored in the pool.</param>
-    /// <param name="poolLimit">The maximum number of array instances that may be stored in each bucket in the pool.</param>
+    /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
+    /// Nonpositive values use the default maximum.</param>
+    /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateExponential(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
     {
@@ -806,10 +820,11 @@ public class BytePool
 
     /// <summary>
     /// Creates a new instance of the <see cref="BytePool"/> class.<br/>
-    /// The pool limit is set to the specified number of byte arrays, each with a length of <paramref name="maxArrayLength"/> or less.
+    /// Each bucket uses the requested array count, rounded up to a power of two with a minimum of two.
     /// </summary>
-    /// <param name="maxArrayLength">The maximum length of a byte array instance that may be stored in the pool.</param>
-    /// <param name="poolLimit">The maximum number of array instances that may be stored in each bucket in the pool.</param>
+    /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
+    /// Nonpositive values use the default maximum.</param>
+    /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateFlat(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
     {
@@ -846,7 +861,7 @@ public class BytePool
     /// creating the bucket if it does not exist yet.
     /// </summary>
     /// <param name="arrayLength">The array length identifying the bucket. Values below 1 are ignored.</param>
-    /// <param name="poolLimit">The maximum number of arrays kept in that bucket.</param>
+    /// <param name="poolLimit">The requested retained array count, rounded up to a power of two with a minimum of two.</param>
     /// <remarks>Any arrays already pooled in the bucket are discarded. This is not thread-safe;
     /// call it during setup, before the pool is shared.</remarks>
     public void SetPoolLimit(int arrayLength, int poolLimit)
@@ -868,7 +883,7 @@ public class BytePool
     }
 
     /// <summary>
-    /// Gets a <see cref="RentArray"/> from the pool or allocate a new byte array if not available.<br/>
+    /// Rents an array of at least the requested length, allocating one if necessary.
     /// </summary>
     /// <param name="minimumLength">The minimum length of the byte array.</param>
     /// <returns>A rented <see cref="RentArray"/>. When no bucket serves the requested length,

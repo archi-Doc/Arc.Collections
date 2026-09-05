@@ -7,10 +7,12 @@ using System.Threading;
 namespace Arc;
 
 /// <summary>
-/// Provides functionality to handle application close events.<br/>
-/// The handler is invoked when the console window is closed, or when the process terminates (such as when exiting the Main function or receiving SIGINT).<br/>
-/// Use this as an alternative to AppDomain.CurrentDomain.ProcessExit.
+/// Invokes a handler once on process exit or a Windows console close event.
 /// </summary>
+/// <remarks>
+/// Uses <see cref="AppDomain.ProcessExit" /> and, on Windows, CTRL_CLOSE_EVENT.
+/// Only the first registered handler is used.
+/// </remarks>
 public static partial class AppCloseHandler
 {
     private const int CtrlCloseEvent = 2; // CTRL_CLOSE_EVENT
@@ -22,8 +24,7 @@ public static partial class AppCloseHandler
     private static int handlerInvoked;
 
     /// <summary>
-    /// Registers a handler to be called when the application is closing.<br/>
-    /// The handler is invoked when the console window is closed, or when the process terminates (such as when exiting the Main function or receiving SIGINT).
+    /// Registers a handler for process exit and, on Windows, console close events.
     /// </summary>
     /// <param name="closeEventHandler">The action to execute when a close event occurs.</param>
     /// <remarks>Only the first handler is registered; subsequent calls are ignored.

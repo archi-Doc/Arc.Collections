@@ -29,11 +29,14 @@ internal enum NodeColor : byte
 }
 
 /// <summary>
-/// Represents a key/value collection maintained in sorted order.<br/>
-/// Uses a Red-Black Tree to provide O(log n) lookup, insertion, and removal.
+/// Stores unique keys and their values in a red-black tree ordered by a comparer.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
+/// <remarks>
+/// Lookup, insertion, and removal take O(log n) time. Null keys are supported.
+/// Adding an existing key preserves its value; the indexer setter replaces it.
+/// </remarks>
 public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
     #region Node
@@ -1174,8 +1177,11 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     }
 
     /// <summary>
-    /// Provides an allocation-free enumerable over the keys of a <see cref="OrderedMap{TKey, TValue}"/>.
+    /// Provides a struct enumerable over the keys in sort order.
     /// </summary>
+    /// <remarks>
+    /// Direct iteration avoids boxing; enumeration through an interface may allocate.
+    /// </remarks>
     public readonly struct KeyEnumerable : IEnumerable<TKey>
     {
         private readonly OrderedMap<TKey, TValue> map;
@@ -1200,7 +1206,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Enumerates keys in sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
@@ -1295,8 +1301,11 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     }
 
     /// <summary>
-    /// Provides an allocation-free enumerable over the values of a <see cref="OrderedMap{TKey, TValue}"/>.
+    /// Provides a struct enumerable over the values in sort order.
     /// </summary>
+    /// <remarks>
+    /// Direct iteration avoids boxing; enumeration through an interface may allocate.
+    /// </remarks>
     public readonly struct ValueEnumerable : IEnumerable<TValue>
     {
         private readonly OrderedMap<TKey, TValue> map;
@@ -1321,7 +1330,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="OrderedMap{TKey, TValue}"/>.
+        /// Enumerates values in sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {

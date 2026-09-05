@@ -10,13 +10,14 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-///  A thread-safe bounded circular queue (Vyukov-style bounded MPMC queue).<br/>
-///  While it can only perform simple <see cref="TryEnqueue(T)"/> and <see cref="TryDequeue(out T)"/> operations <br/>
-///  and has restrictions such as the queue capacity being a power of 2, <br/>
-///  it processes faster than <see cref="System.Collections.Concurrent.ConcurrentQueue{T}"/> with a bounded limit.<br/>
-///  Use it for caching and similar purposes.
+/// Provides a thread-safe, bounded queue for multiple producers and consumers.
 /// </summary>
 /// <typeparam name="T">The type of elements in the queue.</typeparam>
+/// <remarks>
+/// Capacity is rounded up to a power of two, between two and <see cref="MaximumCapacity"/>.
+/// Enqueue attempts can fail when the queue is full; concurrent operations may retry or wait.
+/// <see cref="Count" /> is an estimate during concurrent access.
+/// </remarks>
 public sealed class CircularQueue<T>
 {
     /// <summary>
@@ -29,7 +30,8 @@ public sealed class CircularQueue<T>
     private PaddedHeadAndTail headAndTail;
 
     /// <summary>Initializes a new instance of the <see cref="CircularQueue{T}"/> class.</summary>
-    /// <param name="capacity">The maximum number of elements the queue can contain (rounded up to a power of 2, with a minimum of 2).</param>
+    /// <param name="capacity">The requested capacity, rounded up to a power of two
+    /// and clamped between 2 and <see cref="MaximumCapacity"/>.</param>
     public CircularQueue(int capacity)
     {
         if (capacity < 2)

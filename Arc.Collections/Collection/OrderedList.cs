@@ -25,7 +25,7 @@ namespace Arc.Collections;
 /// <see cref="this[int]"/> setter) throw <see cref="InvalidOperationException"/>.<br/>
 /// <see cref="IList{T}"/> is re-implemented so that interface calls also honor the sort order.
 /// Mutating an instance through an <see cref="UnorderedList{T}"/>-typed reference bypasses that
-/// and corrupts the order; do not do it.
+/// and can corrupt the order. Writes through <see cref="UnorderedList{T}.AsSpan"/> also bypass ordering.
 /// </remarks>
 public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 {

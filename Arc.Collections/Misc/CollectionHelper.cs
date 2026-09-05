@@ -24,7 +24,7 @@ public static class CollectionHelper
         => conversionOptions.GetOption(typeof(T)) as T;*/
 
     /// <summary>
-    /// Calculates the next power-of-two capacity that is greater than or equal to the specified minimum size.
+    /// Rounds a requested capacity up to a power of two, subject to the supported limits.
     /// </summary>
     /// <param name="minimumSize">The minimum required capacity.</param>
     /// <returns>
@@ -32,8 +32,7 @@ public static class CollectionHelper
     /// clamped between <see cref="MinimumCapacity"/> and <see cref="MaximumCapacity"/>.
     /// </returns>
     /// <remarks>
-    /// This method ensures the returned capacity is always a power of two, which is optimal
-    /// for hash-based collections and memory allocation patterns.
+    /// Requests above <see cref="MaximumCapacity"/> return that maximum.
     /// </remarks>
     public static uint CalculatePowerOfTwoCapacity(uint minimumSize)
     {
@@ -50,16 +49,15 @@ public static class CollectionHelper
     }
 
     /// <summary>
-    /// Calculates the next power-of-two capacity that is greater than or equal to the specified minimum size.
+    /// Rounds a requested capacity up to a power of two, subject to the supported limits.
     /// </summary>
     /// <param name="minimumSize">The minimum required capacity.</param>
     /// <returns>
     /// A power-of-two value that is greater than or equal to <paramref name="minimumSize"/>,
-    /// with a minimum value of <see cref="MinimumCapacity"/>.
+    /// clamped between <see cref="MinimumCapacity"/> and <see cref="MaximumCapacity"/>.
     /// </returns>
     /// <remarks>
-    /// This method ensures the returned capacity is always a power of two, which is optimal
-    /// for hash-based collections and memory allocation patterns.
+    /// Requests above <see cref="MaximumCapacity"/> return that maximum.
     /// </remarks>
     public static int CalculatePowerOfTwoCapacity(int minimumSize)
     {

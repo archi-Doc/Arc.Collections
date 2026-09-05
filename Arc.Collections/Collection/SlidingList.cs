@@ -9,7 +9,7 @@ namespace Arc.Collections;
 #pragma warning disable SA1204 // Static elements should appear before instance elements
 
 /// <summary>
-/// Represents a fixed-capacity ring buffer whose elements are identified by a <b>position</b>
+/// Represents an explicitly resizable ring buffer whose elements are identified by a <b>position</b>
 /// instead of a physical index.
 /// </summary>
 /// <typeparam name="T">The type of the elements. Must be a reference type, because <see langword="null"/> is used internally to mark an empty slot.</typeparam>
@@ -636,10 +636,11 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
     /// <summary>
-    /// Enumerates the live elements of a <see cref="SlidingList{T}"/>, skipping holes.
+    /// Enumerates live elements in window order, skipping holes.
     /// </summary>
-    /// <remarks>This is a mutable struct, so it must not be copied. Any modification of the list during
-    /// enumeration, <see cref="TrySlide"/> included, causes the next <see cref="MoveNext"/> to throw.</remarks>
+    /// <remarks>
+    /// Changes to the contents or window invalidate the enumerator.
+    /// </remarks>
     public struct Enumerator : IEnumerator<T>, IEnumerator
     {
         private readonly SlidingList<T> list;

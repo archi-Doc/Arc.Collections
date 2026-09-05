@@ -5,11 +5,10 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a cached object associated with an integer tag.
+/// Provides cached object instances for integer tags from 0 through 255.
 /// </summary>
 /// <remarks>
-/// One instance is created for each valid tag and reused by
-/// <see cref="FromTag(int)"/>.
+/// <see cref="FromTag(int)" /> reuses one instance per tag, avoiding boxing.
 /// </remarks>
 public sealed class TagObject
 {

@@ -16,15 +16,14 @@ namespace Arc.Collections;
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a collection of UTF-8 key/value pairs organized by the hash code of the key.<br/>
-/// This is a lightweight implementation optimized for performance with minimal memory overhead.<br/>
-/// Stored key arrays must not be modified after insertion.<br/>
-/// <br/>NOT thread-safe:<br/>
-/// It can be accessed from multiple reader threads if used as immutable.<br/>
-/// If there is any writer thread, all access must be protected by mutual exclusion.<br/>
-/// Modifying the map while enumerating it is undefined behavior (no version check is performed).
+/// Stores values by ordinal UTF-8 key content with span-based lookup.
 /// </summary>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
+/// <remarks>
+/// Adding an existing key replaces its value. Keys are compared without text validation or normalization.
+/// Stored byte arrays must not be modified. All access requires external synchronization when a writer is present.
+/// Enumeration does not detect modifications.
+/// </remarks>
 public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>>
 {
     private const int StartOfFreeList = -3;

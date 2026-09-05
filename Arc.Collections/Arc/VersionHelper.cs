@@ -6,7 +6,7 @@ using System.Reflection;
 namespace Arc;
 
 /// <summary>
-/// Provides helper methods and properties for retrieving and managing assembly version information.
+/// Exposes version information for the entry assembly or a selected loaded assembly.
 /// </summary>
 public static class VersionHelper
 {
@@ -20,9 +20,10 @@ public static class VersionHelper
     }
 
     /// <summary>
-    /// Sets the assembly to retrieve version information from, based on the specified assembly name.
+    /// Updates version information from the first loaded assembly whose name contains the specified text.
     /// </summary>
-    /// <param name="assemblyName">The name of the assembly to search for.</param>
+    /// <param name="assemblyName">A case-sensitive, ordinal substring of the assembly's simple name.</param>
+    /// <remarks>Leaves the current information unchanged if no matching assembly is loaded.</remarks>
     public static void SetAssembly(string assemblyName)
     {
         ArgumentNullException.ThrowIfNull(assemblyName);

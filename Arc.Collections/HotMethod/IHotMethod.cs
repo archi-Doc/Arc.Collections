@@ -5,15 +5,14 @@ using System;
 namespace Arc.Collections.HotMethod;
 
 /// <summary>
-/// A base interface for <see cref="IHotMethod{T}"/> so that all generic implementations
-/// can be detected by a common base type.
+/// Marks specialized span comparison implementations.
 /// </summary>
 public interface IHotMethod
 {
 }
 
 /// <summary>
-/// The contract for processing methods of some specific type.
+/// Defines specialized comparisons and bound searches over sorted spans.
 /// </summary>
 /// <typeparam name="T">The type to be processed.</typeparam>
 public interface IHotMethod<T> : IHotMethod

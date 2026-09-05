@@ -15,11 +15,12 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// Represents a thread-safe collection of int/value pairs.<br/>
-/// Writes are serialized, while lookups are lock-free.<br/>
-/// Optimized for collections that are built infrequently and read frequently.
+/// Provides a thread-safe hash table with <see langword="int" /> keys.
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
+/// <remarks>
+/// Writes are serialized and lookups are lock-free. Adding an existing key replaces its value.
+/// </remarks>
 public class Int32Hashtable<TValue>
 {
     private const int MaximumCapacity = 1 << 30;
@@ -105,6 +106,9 @@ public class Int32Hashtable<TValue>
     public void Add(int key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
+    /// <summary>
+    /// Gets the existing value, or creates and stores a value when the key is absent.
+    /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
     /// <returns>The existing value, or the newly created value.</returns>

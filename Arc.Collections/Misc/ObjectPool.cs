@@ -7,15 +7,13 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
-/// A fast and thread-safe pool of objects (uses <see cref="CircularQueue{T}"/>).<br/>
-/// Target: Classes that will be used/reused frequently but are not large enough to use <see cref="ArrayPool{T}"/>.<br/>
-/// <br/>
-/// If an object implements <see cref="IDisposable"/>, it is disposed when it cannot be stored
-/// because the pool is full, or when the pool itself is disposed.
+/// Provides a thread-safe pool of reusable objects.
 /// </summary>
 /// <typeparam name="T">The type of the objects contained in the pool.</typeparam>
 /// <remarks>
-/// Rent and Return are thread-safe. Dispose must not be called concurrently with Rent or Return.
+/// Rent and Return are thread-safe; Dispose must not run concurrently with them.
+/// Returned objects implementing <see cref="IDisposable" /> are disposed when no slot is available.
+/// Disposing the pool disposes its cached objects. Return each rented object once.
 /// </remarks>
 public sealed class ObjectPool<T> : IDisposable
     where T : class
@@ -28,9 +26,9 @@ public sealed class ObjectPool<T> : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.<br/>
     /// </summary>
-    /// <param name="createFunc">Delegate to create a new instance.</param>
+    /// <param name="createFunc">A thread-safe factory that creates a distinct instance on each call.</param>
     /// <param name="poolSize">The requested maximum number of objects in the pool.<br/>
-    /// The actual capacity may be rounded up.</param>
+    /// Rounded up to a power of two and clamped between 2 and <see cref="CircularQueue{T}.MaximumCapacity"/>.</param>
     public ObjectPool(Func<T> createFunc, int poolSize = DefaultPoolSize)
     {
         this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
@@ -50,8 +48,7 @@ public sealed class ObjectPool<T> : IDisposable
     #endregion
 
     /// <summary>
-    /// Gets an instance from the pool or create a new instance if not available.<br/>
-    /// The instance is guaranteed to be unique even if multiple threads called this method simultaneously.<br/>
+    /// Rents an available instance, or calls the factory when the pool is empty.
     /// </summary>
     /// <returns>An instance of type <typeparamref name="T"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,9 +15,12 @@ namespace Arc.Collections;
 #pragma warning disable SA1615 // Element return value should be documented
 
 /// <summary>
-/// Represents a list of objects that can be accessed by index.
+/// Provides an insertion-ordered, resizable array with indexed and span access.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
+/// <remarks>
+/// Elements are not sorted. Insertion and removal shift subsequent elements.
+/// </remarks>
 public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 {
     private const int DefaultCapacity = 4;
@@ -440,7 +443,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Gets a span over the elements currently in the list.
-    /// This is the fastest way to enumerate the list (no per-element version checks).
+    /// The span accesses the backing array directly, without per-element version checks.
     /// <br/>The span is invalidated by any operation that adds, inserts, removes, or changes capacity;
     /// do not use it after such an operation, and do not add or remove elements while holding it.
     /// </summary>

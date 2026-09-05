@@ -6,11 +6,12 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// A temporary list implemented as a ref struct.<br/>
-/// Up to four objects are stored inline without an additional heap allocation.<br/>
-/// Use this mainly when you want to modify objects after iterating a collection in a 'for' or 'foreach' loop.
+/// Provides a temporary list with up to four elements stored inline.
 /// </summary>
 /// <typeparam name="TObject">The type of the objects.</typeparam>
+/// <remarks>
+/// Additional elements use a heap-allocated list.
+/// </remarks>
 public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
 {
     private const int StackObjectCount = 4;

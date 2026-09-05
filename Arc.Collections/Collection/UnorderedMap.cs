@@ -16,7 +16,7 @@ namespace Arc.Collections;
 #pragma warning disable SA1642 // Constructor summary documentation should begin with standard text
 
 /// <summary>
-/// Represents a high-performance hash map with optional duplicate and null keys.<br/>
+/// Represents a hash map that supports null keys and optional duplicate keys.<br/>
 /// Node indexes remain stable while nodes are active, including across resizing.<br/>
 /// Removed node indexes may be reused.
 /// </summary>
@@ -930,7 +930,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// Enumerates the keys in the map without a defined sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
@@ -1052,7 +1052,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// Enumerates the values in the map without a defined sort order.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
@@ -1176,7 +1176,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             => new Enumerator(this.map, this.key);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// Enumerates node indexes whose keys match the requested key.
         /// </summary>
         public struct Enumerator : IEnumerator<int>
         {
@@ -1390,7 +1390,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             => new Enumerator(this.map, this.key);
 
         /// <summary>
-        /// Enumerates the elements of a <see cref="UnorderedMap{TKey, TValue}"/>.
+        /// Enumerates values whose keys match the requested key.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {

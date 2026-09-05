@@ -13,13 +13,11 @@ using System.Runtime.CompilerServices;
 namespace Arc.Collections;
 
 /// <summary>
-/// Builds a string using pooled character arrays.<br/>
-/// Although it has the constraints of being a ref struct and requiring Dispose() to be called to return the rented arrays,<br/>
-/// it aims to achieve performance comparable to string interpolation.
+/// Builds strings using pooled character arrays.
 /// </summary>
 /// <remarks>
-/// Character arrays and segment objects are returned to their pools when
-/// <see cref="Dispose"/> is called.
+/// Dispose the builder to return its resources, and do not copy it while it owns resources.
+/// <see cref="ToString" /> returns an independent string that remains valid after disposal.
 /// </remarks>
 public ref struct PooledStringBuilder
 {

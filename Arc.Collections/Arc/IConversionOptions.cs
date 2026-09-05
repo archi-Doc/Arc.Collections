@@ -3,7 +3,7 @@
 namespace Arc;
 
 /// <summary>
-/// Defines a contract for retrieving conversion options.
+/// Provides typed options for parsing and formatting.
 /// </summary>
 public interface IConversionOptions
 {
