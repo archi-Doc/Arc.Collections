@@ -73,12 +73,12 @@ array-backed hash maps may also scan vacant slots.
 | `OrderedMap<TKey, TValue>` | Returns the existing node with `NewlyAdded == false`; keeps the value. | Replaces the value. |
 | `OrderedMultiMap<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
 | `OrderedKeyValueList<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
-| `UnorderedMap<TKey, TValue>` | Keeps the existing value unless `allowDuplicate: true`. | Updates one matching entry or adds a new entry. |
-| `UnorderedMapSlim<TKey, TValue>` and UTF unordered maps | Replaces the value. | Replaces the value. |
+| `UnorderedMap<TKey, TValue>` | Keeps the existing value unless `allowDuplicates: true`. | Updates one matching entry or adds a new entry. |
+| `UnorderedMapSlim<TKey, TValue>` and UTF unordered maps (`AddOrUpdate`) | Replaces the value. | Replaces the value. |
 
 `OrderedSet<T>` ignores duplicates; `OrderedMultiSet<T>` retains them.
 `UnorderedMap<TKey, TValue>` and `UnorderedSet<T>` enable duplicates with
-`allowDuplicate: true`; null support does not require that option.
+`allowDuplicates: true`; null support does not require that option.
 
 `OrderedList<T>` rejects positional insertion and indexer assignment. Mutating it through
 an `UnorderedList<T>` reference or its writable span can break sorting. Do not retain
@@ -93,12 +93,12 @@ a removed node or hash-map node index as a live handle. Hash-map indexes may be 
 | --- | --- |
 | `SlidingList<T>` | Bounded, explicitly resizable ring buffer for non-null reference values. Uses stable positions instead of zero-based indexes. |
 | `CircularQueue<T>` | Thread-safe bounded FIFO queue for multiple producers and consumers. |
-| `TemporaryList<TObject>` | `ref struct` list with four inline elements; additional elements use a heap-allocated list. |
+| `TemporaryList<T>` | `ref struct` list with four inline elements; additional elements use a heap-allocated list. |
 
 `SlidingList<T>.Add` returns a position, or -1 when no slot is available. Positions wrap
 modulo 2³¹. Its `IList<T>` operations also use positions. Middle removals leave holes:
-`Consumed` includes those holes, while `ICollection<T>.Count` and enumeration count only
-live elements. `TrySlide()` advances past empty leading slots; `Resize()` changes capacity
+`UsedSlotCount` includes those holes, while `ICollection<T>.Count` and enumeration count only
+live elements. `Slide()` advances past empty leading slots; `Resize()` changes capacity
 when the current window fits.
 
 `CircularQueue<T>` rounds capacity up to a power of two and clamps it between 2 and 2³⁰.
@@ -114,7 +114,7 @@ may retry or wait, and `Count` is an estimate during concurrent access.
 | `Utf8Hashtable<TValue>`, `Utf16Hashtable<TValue>` | UTF-8 byte or UTF-16 character keys, with span-based lookup. Serialized writes and lock-free lookups. |
 | `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>` | UTF-keyed maps with span lookup, enumeration, and direct value-reference access. Require external synchronization for writes. |
 
-All these types update existing values with `Add`; `TryAdd` leaves existing values unchanged.
+All these types update existing values with `AddOrUpdate`; `TryAdd` leaves existing values unchanged.
 The hashtables also provide `GetOrAdd`. Its factory runs under the write lock and must not
 reenter the same table.
 
@@ -127,8 +127,8 @@ using System;
 using Arc.Collections;
 
 var names = new Utf8UnorderedMap<int>();
-names.Add("alice"u8, 1);
-names.Add("alice"u8, 2); // Updates the existing entry.
+names.AddOrUpdate("alice"u8, 1);
+names.AddOrUpdate("alice"u8, 2); // Updates the existing entry.
 Console.WriteLine(names.TryGetValue("alice"u8, out var id) ? id : -1); // 2
 ```
 
@@ -137,8 +137,8 @@ Console.WriteLine(names.TryGetValue("alice"u8, out var id) ? id : -1); // 2
 | Type | Purpose and lifetime |
 | --- | --- |
 | `ObjectPool<T>` | Reuses objects from a caller-supplied factory. Rejected or still-pooled `IDisposable` objects are disposed. |
-| `KeyedObjectCache<TKey, TObject>` | Caches reusable objects by key. Retrieval removes the object and transfers ownership to the caller. |
-| `BytePool` | Pools byte arrays with reference-counted `RentArray`, `RentMemory`, and `RentReadOnlyMemory` handles. |
+| `KeyedObjectCache<TKey, TObject>` | Caches reusable objects by key. Retrieval (`TakeOrDefault`) removes the object and transfers ownership to the caller. |
+| `BytePool` | Pools byte arrays with reference-counted `RentedArray`, `RentedMemory`, and `RentedReadOnlyMemory` handles. |
 | `SpanOwner<T>` | Uses a supplied scratch span when it fits, otherwise rents from `ArrayPool<T>.Shared`. Dispose to return a rented array. |
 | `SequenceBuilder<T>` | Builds a pooled `ReadOnlySequence<T>`. Finalization prevents further additions; the sequence is valid until builder disposal. |
 | `PooledStringBuilder` | Builds strings from pooled character chunks. `ToString()` creates an independent string; dispose to return pooled resources. |
@@ -148,8 +148,8 @@ distinct instances. Return outstanding objects before disposing the pool; `Rent`
 `Return` throw after disposal.
 
 `KeyedObjectCache<TKey, TObject>` retains at most one object per key and evicts the oldest
-cached object when full. A failed `Cache` call leaves ownership with the caller.
-`CreateInterface` creates a lease that returns an object on disposal, or disposes it if
+cached object when full. A failed `TryAdd` call leaves ownership with the caller.
+`CreateLease` creates a `Lease` that returns an object on disposal, or disposes it if
 caching fails. This readonly lease retains its fields after return: return or dispose it
 once, including across copies.
 
@@ -161,7 +161,7 @@ to powers of two, with at least two retained slots per bucket. Requests outside 
 buckets allocate unpooled arrays. Configure `SetPoolLimit` before sharing the pool.
 
 A rent starts with one owned reference. Copying a handle, slicing, or calling `AsMemory`,
-`AsReadOnly`, or `ReadOnly` does **not** add an owner. Use `IncrementAndShare` for another
+`AsReadOnlyMemory`, or `ReadOnly` does **not** add an owner. Use `IncrementAndShare` for another
 owner and return each owned reference once. After the final return, every old handle and
 view is invalid because the pooled owner and array may be reused. Arrays are not cleared.
 
@@ -175,7 +175,7 @@ using var shared = view.IncrementAndShare(); // Owns one additional reference.
 shared.Span[0] = 42;
 ```
 
-`RentMemory.CreateFrom(byte[])` and its read-only counterpart track an unpooled array.
+`RentedMemory.CreateFrom(byte[])` and its read-only counterpart track an unpooled array.
 Their `CreateFrom(ReadOnlyMemory<byte>)` overloads instead create an untracked view of
 array-backed memory, or return an empty view if the underlying array cannot be obtained.
 
@@ -209,17 +209,17 @@ Console.WriteLine(sequence.Length); // 3; consume before builder disposal.
 | `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing, ported from `System.IO.Hashing.XxHash3`. |
 | `CollectionHelper` | Power-of-two and prime capacity calculations. |
 | `TagObject` | Cached object instances for tags 0–255, avoiding boxing. |
-| `Arc.BaseHelper` | Span and text helpers, line/separator scanning, decimal digit counts, SIMD byte sums, and resource loading. `GetValidUtf8Length` estimates a trailing boundary; it does not validate UTF-8. |
+| `Arc.BaseHelper` | Span and text helpers, line/separator scanning, decimal digit counts, SIMD byte sums, and resource loading. `GetCompleteUtf8Length` excludes an incomplete trailing sequence; it does not validate UTF-8. |
 | `Arc.Struct128`, `Arc.Struct256` | Fixed-size binary values with overlapping numeric fields. Byte conversion uses native byte order; comparison uses signed 64-bit fields in field order. |
 | `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>` | Span-based UTF-16/UTF-8 parsing and formatting contracts. |
 | `Arc.IConversionOptions` | Typed options for parsing and formatting. |
 | `Arc.VersionHelper` | Version information for the entry assembly or a selected loaded assembly. `SetAssembly` matches an ordinal name substring. |
-| `Arc.AppCloseHandler` | Registers one handler, invoked at most once for process exit or a Windows console close event. |
-| `Arc.Collections.HotMethod` | `IHotMethod`, `IHotMethod<T>`, `IHotMethod2`, `IHotMethod2<TKey, TValue>`, `IHotMethodResolver`, and `HotMethodResolver` for specialized span bounds and tree searches. The built-in resolver supports selected types with default comparers. |
+| `Arc.AppCloseHandler` | `Register` accepts one handler, invoked at most once for process exit or a Windows console close event. |
+| `Arc.Collections.HotMethod` | `IHotMethod`, `IHotMethod<T>`, `IHotTreeMethod`, `IHotTreeMethod<TKey, TValue>`, `IHotMethodResolver`, and `HotMethodResolver` for specialized span bounds and tree searches. The built-in resolver supports selected types with default comparers. |
 
-Conversion interfaces require all members to be implemented. At least one of
-`GetStringLength()` and `MaxStringLength` must provide a nonnegative length; the other
-may return -1. Lengths and written counts use UTF-16 characters or UTF-8 bytes respectively.
+Conversion interfaces require all members to be implemented. At least one of the two length
+members (`GetStringLength()`/`MaxStringLength` for UTF-16, `GetUtf8Length()`/`MaxUtf8Length` for UTF-8)
+must provide a nonnegative length; the other may return -1. Lengths and written counts use UTF-16 characters or UTF-8 bytes respectively.
 Formatting options may require additional destination space.
 
 ## Thread safety

@@ -93,9 +93,9 @@ namespace Arc.Collections.HotMethod
         }
     }
 
-    internal sealed class <#= t.Name #>Method2<TValue> : IHotMethod2<<#= t.Simple #>, TValue>
+    internal sealed class <#= t.Name #>Method2<TValue> : IHotTreeMethod<<#= t.Simple #>, TValue>
     {
-        public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Comparison, OrderedMap<<#= t.Simple #>, TValue>.Node? Node) SearchNode(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -123,7 +123,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int Cmp, OrderedMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Comparison, OrderedMap<<#= t.Simple #>, TValue>.Node? Node) SearchNodeReverse(OrderedMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -151,7 +151,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Comparison, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Node) SearchNode(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;
@@ -179,7 +179,7 @@ namespace Arc.Collections.HotMethod
             return (cmp, p);
         }
 
-        public (int Cmp, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Leaf) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
+        public (int Comparison, OrderedMultiMap<<#= t.Simple #>, TValue>.Node? Node) SearchNodeReverse(OrderedMultiMap<<#= t.Simple #>, TValue>.Node? target, <#= t.Simple #> key)
         {
             var x = target;
             var p = target;

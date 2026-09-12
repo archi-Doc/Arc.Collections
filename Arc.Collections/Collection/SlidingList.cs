@@ -18,9 +18,9 @@ namespace Arc.Collections;
 /// added and wraps around to <c>0</c> after <see cref="int.MaxValue"/>. Positions returned by <see cref="Add(T)"/>
 /// remain valid until the element leaves the window, so they can be stored and used later as stable handles.<br/>
 /// The window of valid positions is <c>[<see cref="StartPosition"/>, StartPosition + <see cref="Capacity"/>)</c>.
-/// It advances when the elements at the head are removed (see <see cref="TrySlide"/>), which discards the
+/// It advances when the elements at the head are removed (see <see cref="Slide"/>), which discards the
 /// positions that fall behind it.<br/>
-/// Removing an element from the middle leaves a hole. <see cref="Consumed"/> counts the slots in use including
+/// Removing an element from the middle leaves a hole. <see cref="UsedSlotCount"/> counts the slots in use including
 /// holes, whereas <see cref="ICollection{T}.Count"/> counts only the live elements; enumeration,
 /// <see cref="ToArray"/> and <see cref="CopyTo(T[], int)"/> skip holes.<br/>
 /// <b>Note:</b> because this class addresses elements by position, the whole <see cref="IList{T}"/> surface
@@ -64,7 +64,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     public int StartPosition => this.startPosition;
 
     /// <summary>
-    /// Gets the position one past the last slot in use, that is, the exclusive end of <see cref="Consumed"/>.
+    /// Gets the position one past the last slot in use, that is, the exclusive end of <see cref="UsedSlotCount"/>.
     /// </summary>
     /// <remarks>This is the position that <see cref="Add(T)"/> will return next, provided <see cref="CanAdd"/> is <see langword="true"/>.</remarks>
     public int EndPosition => PositionMask & (this.startPosition + this.consumed);
@@ -78,44 +78,42 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// Gets the number of slots in use, counting both live elements and the holes left by removed elements.
     /// </summary>
     /// <remarks>This is the distance from <see cref="StartPosition"/> to <see cref="EndPosition"/>, and never exceeds <see cref="Capacity"/>.</remarks>
-    public int Consumed => this.consumed;
+    public int UsedSlotCount => this.consumed;
 
     /// <summary>
     /// Gets a value indicating whether the <see cref="SlidingList{T}"/> has a free slot, and therefore whether <see cref="Add(T)"/> will succeed.
     /// </summary>
-    /// <remarks>A hole in the middle of the window does not count as free space; only <see cref="TrySlide"/> reclaims slots.</remarks>
+    /// <remarks>A hole in the middle of the window does not count as free space; only <see cref="Slide"/> reclaims slots.</remarks>
     public bool CanAdd => this.consumed < this.items.Length;
 
     /// <summary>
-    /// Gets the number of live elements, excluding the holes counted by <see cref="Consumed"/>.
+    /// Gets the number of live elements, excluding the holes counted by <see cref="UsedSlotCount"/>.
     /// </summary>
     int ICollection<T>.Count => this.count;
 
     /// <inheritdoc cref="ICollection{T}.Count"/>
     int IReadOnlyCollection<T>.Count => this.count;
 
+    #endregion
+
     /// <summary>
-    /// Gets the element at <see cref="StartPosition"/>, or <see langword="null"/> if the <see cref="SlidingList{T}"/> is empty.
+    /// Returns the element at <see cref="StartPosition"/>, or <see langword="null"/> if the <see cref="SlidingList{T}"/> is empty.
     /// </summary>
+    /// <returns>The first live element, or <see langword="null"/> if there is none.</returns>
     /// <remarks>
-    /// <b>This getter is not read-only:</b> it calls <see cref="TrySlide"/> to drop any leading holes, which may
+    /// <b>This method is not read-only:</b> it calls <see cref="Slide"/> to drop any leading holes, which may
     /// advance <see cref="StartPosition"/> and invalidate outstanding enumerators.
     /// </remarks>
-    public T? FirstOrDefault
+    public T? GetFirstOrDefault()
     {
-        get
+        if (this.consumed == 0)
         {
-            if (this.consumed == 0)
-            {
-                return null;
-            }
-
-            this.TrySlide();
-            return this.items[this.headIndex];
+            return null;
         }
-    }
 
-    #endregion
+        this.Slide();
+        return this.items[this.headIndex];
+    }
 
     /// <summary>
     /// Copies the live elements to a new array, in order from <see cref="StartPosition"/>, skipping holes.
@@ -166,9 +164,9 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// Changes the <see cref="Capacity"/> of the <see cref="SlidingList{T}"/>, preserving the elements and their positions.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="capacity">The new capacity. It must be at least <see cref="Consumed"/>.</param>
+    /// <param name="capacity">The new capacity. It must be at least <see cref="UsedSlotCount"/>.</param>
     /// <returns><see langword="true"/> if the capacity was changed or already equal to <paramref name="capacity"/>;
-    /// <see langword="false"/> if <paramref name="capacity"/> is smaller than <see cref="Consumed"/>, in which case the list is left untouched.</returns>
+    /// <see langword="false"/> if <paramref name="capacity"/> is smaller than <see cref="UsedSlotCount"/>, in which case the list is left untouched.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public bool Resize(int capacity)
     {
@@ -200,7 +198,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <returns>The number of slots the window advanced by; <c>0</c> if the first slot holds a live element or the list is empty.</returns>
     /// <remarks>The positions skipped this way become invalid. A non-zero result invalidates outstanding enumerators.</remarks>
-    public int TrySlide()
+    public int Slide()
     {
         var consumed = this.consumed;
         if (consumed == 0)
@@ -276,8 +274,8 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="position">The position of the element to remove.</param>
     /// <returns><see langword="true"/> if an element was removed; <see langword="false"/> if <paramref name="position"/>
     /// is outside the window or the slot is already empty.</returns>
-    /// <remarks>Removing the element at <see cref="StartPosition"/> also calls <see cref="TrySlide"/>.</remarks>
-    public bool Remove(int position)
+    /// <remarks>Removing the element at <see cref="StartPosition"/> also calls <see cref="Slide"/>.</remarks>
+    public bool TryRemoveAt(int position)
     {
         var offset = this.PositionToOffset(position);
         if (offset < 0)
@@ -296,7 +294,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
         this.version++;
         if (offset == 0)
         {
-            this.TrySlide();
+            this.Slide();
         }
 
         return true;
@@ -307,7 +305,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="position">The position of the element.</param>
     /// <returns>The element, or <see langword="null"/> if <paramref name="position"/> is outside the window or the slot is empty.</returns>
-    public T? Get(int position)
+    public T? GetOrDefault(int position)
     {
         var offset = this.PositionToOffset(position);
         return offset < 0 ? null : this.items[this.OffsetToIndex(offset)];
@@ -320,8 +318,8 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="value">The value to store.</param>
     /// <returns><see langword="true"/> if the value was stored; <see langword="false"/> if <paramref name="position"/> is outside the window.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
-    /// <remarks>Setting a position beyond <see cref="EndPosition"/> extends <see cref="Consumed"/> and leaves the slots in between as holes.</remarks>
-    public bool Set(int position, T value)
+    /// <remarks>Setting a position beyond <see cref="EndPosition"/> extends <see cref="UsedSlotCount"/> and leaves the slots in between as holes.</remarks>
+    public bool TrySet(int position, T value)
     {
         if (value is null)
         {
@@ -523,7 +521,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     public bool Remove(T value)
     {
         var position = this.IndexOf(value);
-        return position >= 0 && this.Remove(position);
+        return position >= 0 && this.TryRemoveAt(position);
     }
 
     /// <summary>
@@ -544,14 +542,14 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="position">The position of the element.</param>
     /// <returns>The element at <paramref name="position"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window, or, when getting,
-    /// the slot is empty. Use <see cref="Get(int)"/> or <see cref="Set(int, T)"/> to test instead of throwing.</exception>
+    /// the slot is empty. Use <see cref="GetOrDefault(int)"/> or <see cref="TrySet(int, T)"/> to test instead of throwing.</exception>
     /// <exception cref="ArgumentNullException">The value being set is <see langword="null"/>.</exception>
     public T this[int position]
     {
-        get => this.Get(position) ?? throw ThrowHelper.PositionOutOfRange();
+        get => this.GetOrDefault(position) ?? throw ThrowHelper.PositionOutOfRange();
         set
         {
-            if (!this.Set(position, value))
+            if (!this.TrySet(position, value))
             {
                 throw ThrowHelper.PositionOutOfRange();
             }
@@ -597,7 +595,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Stores an element at the specified position. Unlike <see cref="IList{T}.Insert(int, T)"/>, this overwrites
-    /// the slot and does not shift the subsequent elements; it is equivalent to <see cref="Set(int, T)"/>.
+    /// the slot and does not shift the subsequent elements; it is equivalent to <see cref="TrySet(int, T)"/>.
     /// </summary>
     /// <param name="position">The position at which the item is stored.</param>
     /// <param name="item">The object to store.</param>
@@ -607,13 +605,13 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Removes the element at the specified position. The parameter is a position, not a zero-based index;
-    /// it is <see cref="Remove(int)"/> with an exception instead of a <see langword="false"/> result.
+    /// it is <see cref="TryRemoveAt(int)"/> with an exception instead of a <see langword="false"/> result.
     /// </summary>
     /// <param name="position">The position of the element to remove.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window, or the slot is already empty.</exception>
     public void RemoveAt(int position)
     {
-        if (!this.Remove(position))
+        if (!this.TryRemoveAt(position))
         {
             throw ThrowHelper.PositionOutOfRange();
         }

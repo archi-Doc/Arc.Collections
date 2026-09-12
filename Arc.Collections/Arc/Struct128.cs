@@ -20,7 +20,7 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     /// <summary>
     /// The display name used by <see cref="ToString"/>.
     /// </summary>
-    public const string Name = "Struct128";
+    public const string TypeName = "Struct128";
 
     /// <summary>
     /// The size of the structure, in bytes.
@@ -96,10 +96,10 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     /// <summary>
     /// Initializes a new instance of the <see cref="Struct128"/> struct from a 32-bit value.
     /// </summary>
-    /// <param name="int0">The value stored in the lowest 64 bits. The remaining bits are cleared.</param>
-    public Struct128(int int0)
+    /// <param name="value">The value stored in the lowest 64 bits. The remaining bits are cleared.</param>
+    public Struct128(int value)
     {
-        this.Long0 = int0;
+        this.Long0 = value;
         this.Long1 = 0;
     }
 
@@ -127,11 +127,11 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     /// <summary>
     /// Initializes a new instance of the <see cref="Struct128"/> struct by copying another value.
     /// </summary>
-    /// <param name="struct128">The value to copy.</param>
-    public Struct128(ref Struct128 struct128)
+    /// <param name="source">The value to copy.</param>
+    public Struct128(ref Struct128 source)
     {
-        this.Long0 = struct128.Long0;
-        this.Long1 = struct128.Long1;
+        this.Long0 = source.Long0;
+        this.Long1 = source.Long1;
     }
 
     /// <summary>
@@ -213,10 +213,10 @@ public readonly partial struct Struct128 : IEquatable<Struct128>, IComparable<St
     {
         if (this.UInt128 <= 9)
         {
-            return $"{Name}: {(ulong)this.UInt128}";
+            return $"{TypeName}: {(ulong)this.UInt128}";
         }
 
-        return $"{Name}: {this.UInt128:X32}";
+        return $"{TypeName}: {this.UInt128:X32}";
     }
 
     /// <summary>

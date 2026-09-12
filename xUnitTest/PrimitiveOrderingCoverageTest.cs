@@ -90,7 +90,7 @@ public class PrimitiveOrderingCoverageTest
                 Assert.True(map.TryGetValue(pair.Key, out var value));
                 Assert.Equal(pair.Value, value);
                 Assert.Equal(expectedMulti.Where(x => comparer.Compare(x.Key, pair.Key) == 0).Select(x => x.Value),
-                    multi.EnumerateValue(pair.Key));
+                    multi.EnumerateValues(pair.Key));
             }
 
             foreach (var key in input)

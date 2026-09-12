@@ -60,7 +60,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         /// Determines whether the node currently holds an element.
         /// </summary>
         /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
-        public readonly bool IsValid() => this.next >= -1;
+        public readonly bool IsInUse() => this.next >= -1;
     }
 
     private int[] _buckets;
@@ -78,15 +78,15 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Initializes an empty map with the specified minimum capacity.
     /// </summary>
-    /// <param name="minimumSize">The minimum required capacity.</param>
-    public UnorderedMapSlim(uint minimumSize = 0)
+    /// <param name="minimumCapacity">The minimum required capacity.</param>
+    public UnorderedMapSlim(uint minimumCapacity = 0)
     {
-        if (minimumSize > MaximumCapacity)
+        if (minimumCapacity > MaximumCapacity)
         {
-            throw new ArgumentOutOfRangeException(nameof(minimumSize));
+            throw new ArgumentOutOfRangeException(nameof(minimumCapacity));
         }
 
-        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
+        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumCapacity);
         this._buckets = new int[capacity];
         this._nodes = new Node[capacity];
         this._hashMask = (int)capacity - 1;
@@ -125,11 +125,11 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
-    /// Only nodes with <see cref="Node.IsValid"/> are active; the array may be replaced
+    /// Only nodes with <see cref="Node.IsInUse"/> are active; the array may be replaced
     /// when the map is resized.
     /// </summary>
     /// <returns>The internal node array and the number of node slots in use.</returns>
-    public (Node[] Nodes, int Max) UnsafeGetNodes()
+    public (Node[] Nodes, int SlotCount) UnsafeGetNodes()
         => (this._nodes, this._count);
 
     /// <summary>
@@ -138,7 +138,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Add(TKey key, TValue value)
+    public void AddOrUpdate(TKey key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>

@@ -22,16 +22,16 @@ public static class VersionHelper
     /// <summary>
     /// Updates version information from the first loaded assembly whose name contains the specified text.
     /// </summary>
-    /// <param name="assemblyName">A case-sensitive, ordinal substring of the assembly's simple name.</param>
+    /// <param name="partialAssemblyName">A case-sensitive, ordinal substring of the assembly's simple name.</param>
     /// <remarks>Leaves the current information unchanged if no matching assembly is loaded.</remarks>
-    public static void SetAssembly(string assemblyName)
+    public static void SetAssembly(string partialAssemblyName)
     {
-        ArgumentNullException.ThrowIfNull(assemblyName);
+        ArgumentNullException.ThrowIfNull(partialAssemblyName);
 
         foreach (var x in AppDomain.CurrentDomain.GetAssemblies())
         {
             // Assembly.GetName() is used instead of ManifestModule.Name, since the latter is not available in single-file/Native AOT apps.
-            if (x.GetName().Name?.Contains(assemblyName, StringComparison.Ordinal) == true)
+            if (x.GetName().Name?.Contains(partialAssemblyName, StringComparison.Ordinal) == true)
             {
                 Update(x);
                 break;
@@ -46,11 +46,11 @@ public static class VersionHelper
         {
             MajorVersion = version.Major;
             MinorVersion = version.Minor;
-            Build = version.Build;
+            BuildVersion = version.Build;
         }
 
-        VersionString = $"{MajorVersion}.{MinorVersion}.{Build}";
-        VersionInt = (MajorVersion << 24) + (MinorVersion << 16) + (Build << 8);
+        VersionString = $"{MajorVersion}.{MinorVersion}.{BuildVersion}";
+        EncodedVersion = (MajorVersion << 24) + (MinorVersion << 16) + (BuildVersion << 8);
     }
 
     /// <summary>
@@ -71,10 +71,10 @@ public static class VersionHelper
     /// <summary>
     /// Gets the build number.
     /// </summary>
-    public static int Build { get; private set; }
+    public static int BuildVersion { get; private set; }
 
     /// <summary>
-    /// Gets the version as an integer, encoded as (Major &lt;&lt; 24) + (Minor &lt;&lt; 16) + (Build &lt;&lt; 8).
+    /// Gets the version as an integer, encoded as (Major &lt;&lt; 24) + (Minor &lt;&lt; 16) + (BuildVersion &lt;&lt; 8).
     /// </summary>
-    public static int VersionInt { get; private set; }
+    public static int EncodedVersion { get; private set; }
 }

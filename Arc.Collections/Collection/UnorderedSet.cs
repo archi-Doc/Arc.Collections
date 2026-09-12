@@ -26,9 +26,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified duplicate behavior.
     /// </summary>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(bool allowDuplicate = false)
-        : this(0, null, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(bool allowDuplicates = false)
+        : this(0, null, allowDuplicates)
     {
     }
 
@@ -36,9 +36,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Initializes an empty set with the specified capacity.
     /// </summary>
     /// <param name="capacity">The capacity.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(int capacity, bool allowDuplicate = false)
-        : this(capacity, null, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(int capacity, bool allowDuplicates = false)
+        : this(capacity, null, allowDuplicates)
     {
     }
 
@@ -46,9 +46,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Initializes an empty set with the specified comparer.
     /// </summary>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(IEqualityComparer<T>? comparer, bool allowDuplicate = false)
-        : this(0, comparer, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(IEqualityComparer<T>? comparer, bool allowDuplicates = false)
+        : this(0, comparer, allowDuplicates)
     {
     }
 
@@ -57,10 +57,10 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// </summary>
     /// <param name="capacity">The capacity.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(int capacity, IEqualityComparer<T>? comparer, bool allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(int capacity, IEqualityComparer<T>? comparer, bool allowDuplicates)
     {
-        this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicate);
+        this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicates);
     }
 
     /// <summary>
@@ -86,9 +86,9 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Initializes a set containing the specified elements using the specified duplicate behavior.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(IEnumerable<T> collection, bool allowDuplicate)
-        : this(collection, null, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(IEnumerable<T> collection, bool allowDuplicates)
+        : this(collection, null, allowDuplicates)
     {
     }
 
@@ -97,15 +97,15 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool allowDuplicates)
     {
         ArgumentNullException.ThrowIfNull(collection);
 
         this.map = new UnorderedMap<T, byte>(
             GetCollectionCount(collection),
             comparer,
-            allowDuplicate);
+            allowDuplicates);
 
         foreach (var item in collection)
         {
@@ -116,7 +116,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Gets a value indicating whether duplicate elements are allowed.
     /// </summary>
-    public bool AllowDuplicate => this.map.AllowDuplicate;
+    public bool AllowDuplicates => this.map.AllowDuplicates;
 
     /// <summary>
     /// Gets the number of elements in the set.

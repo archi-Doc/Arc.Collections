@@ -28,7 +28,7 @@ public class Utf16HashtableBenchmark2
             var key = $"Key-{i}";
             this.keys[i] = key;
 
-            this.utf16Hashtable.Add(key, i);
+            this.utf16Hashtable.AddOrUpdate(key, i);
             this.dictionary.Add(key, i);
             this.concurrentDictionary.TryAdd(key, i);
         }
@@ -42,7 +42,7 @@ public class Utf16HashtableBenchmark2
 
         for (var i = 0; i < Count; i++)
         {
-            table.Add(keys[i], i);
+            table.AddOrUpdate(keys[i], i);
         }
 
         return table;

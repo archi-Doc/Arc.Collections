@@ -42,7 +42,7 @@ public class UnorderedSetTest
     [Fact]
     public void DuplicateCanBeAllowed()
     {
-        var set = new UnorderedSet<int>(allowDuplicate: true);
+        var set = new UnorderedSet<int>(allowDuplicates: true);
 
         Assert.True(set.Add(1));
         Assert.True(set.Add(1));
@@ -74,7 +74,7 @@ public class UnorderedSetTest
     [Fact]
     public void RemoveOnlyOneDuplicate()
     {
-        var set = new UnorderedSet<int>(allowDuplicate: true);
+        var set = new UnorderedSet<int>(allowDuplicates: true);
 
         set.Add(1);
         set.Add(1);
@@ -104,7 +104,7 @@ public class UnorderedSetTest
     [Fact]
     public void NullDuplicates()
     {
-        var set = new UnorderedSet<string?>(allowDuplicate: true);
+        var set = new UnorderedSet<string?>(allowDuplicates: true);
 
         Assert.True(set.Add(null));
         Assert.True(set.Add(null));
@@ -143,7 +143,7 @@ public class UnorderedSetTest
     {
         var set = new UnorderedSet<int>(
             new[] { 1, 2, 2, 3, 3, 3 },
-            allowDuplicate: true);
+            allowDuplicates: true);
 
         Assert.Equal(6, set.Count);
 

@@ -218,7 +218,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     #endregion
 
     private readonly IComparer<TKey> comparer;
-    private readonly IHotMethod2<TKey, TValue>? hotMethod2;
+    private readonly IHotTreeMethod<TKey, TValue>? hotTreeMethod;
     private Node? root;
     private int version;
     private int count;
@@ -231,7 +231,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Gets a value indicating whether the collection is sorted in reverse order.
     /// </summary>
-    public bool Reverse { get; }
+    public bool IsReversed { get; }
 
     /// <summary>
     /// Gets the comparer used to order the keys.
@@ -242,7 +242,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Gets the specialized tree-search implementation for <typeparamref name="TKey"/>,
     /// or <see langword="null"/> when none is available.
     /// </summary>
-    public IHotMethod2<TKey, TValue>? HotMethod2 => this.hotMethod2;
+    public IHotTreeMethod<TKey, TValue>? HotTreeMethod => this.hotTreeMethod;
 
     /// <summary>
     /// Gets an allocation-free enumerable over the keys.
@@ -278,9 +278,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
     public OrderedMultiMap(IComparer<TKey>? comparer, bool reverse = false)
     {
-        this.Reverse = reverse;
+        this.IsReversed = reverse;
         this.comparer = comparer ?? Comparer<TKey>.Default;
-        this.hotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.comparer);
+        this.hotTreeMethod = HotMethodResolver.Get<TKey, TValue>(this.comparer);
     }
 
     /// <summary>
@@ -828,15 +828,15 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     #region Search
 
-    private (int Cmp, Node? Leaf) SearchFirstNode(Node? target, TKey? key)
+    private (int Comparison, Node? Node) SearchFirstNode(Node? target, TKey? key)
     {
         var node = target;
         Node? parent = null;
         var cmp = 0;
         var comparer = this.comparer;
-        var hotMethod = this.hotMethod2;
+        var hotMethod = this.hotTreeMethod;
 
-        if (!this.Reverse)
+        if (!this.IsReversed)
         {
             // Handle null before HotMethod because HotMethod is intended for non-null value keys.
             if (key is null)
@@ -1040,7 +1040,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     public Node? FindFirstNode(TKey? key)
     {
         var result = this.SearchFirstNode(this.root, key);
-        return result.Cmp == 0 ? result.Leaf : null;
+        return result.Comparison == 0 ? result.Node : null;
     }
 
     /// <summary>
@@ -1052,12 +1052,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     public Node? FindNode(TKey? key, TValue value)
     {
         var result = this.SearchFirstNode(this.root, key);
-        if (result.Cmp != 0 || result.Leaf is null)
+        if (result.Comparison != 0 || result.Node is null)
         {
             return null;
         }
 
-        var node = result.Leaf;
+        var node = result.Node;
         var comparer = EqualityComparer<TValue>.Default;
         if (node.IsSingleNode)
         {
@@ -1150,7 +1150,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching nodes.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public NodeEnumerable EnumerateNode(TKey? key)
+    public NodeEnumerable EnumerateNodes(TKey? key)
         => new(this, key);
 
     /// <summary>
@@ -1159,7 +1159,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching values.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatchedValueEnumerable EnumerateValue(TKey? key)
+    public MatchedValueEnumerable EnumerateValues(TKey? key)
         => new(this, key);
 
     /// <summary>
@@ -2084,7 +2084,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             cmp = this.comparer.Compare(x, y);
         }
 
-        if (!this.Reverse)
+        if (!this.IsReversed)
         {
             return cmp;
         }

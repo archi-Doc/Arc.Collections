@@ -12,12 +12,12 @@ public class PoolCoverageTest
     [Fact]
     public void SharedArrayIsReturnedOnlyAfterEveryOwnerReleasesIt()
     {
-        var owner = BytePool.RentArray.CreateFrom(new byte[16]);
+        var owner = BytePool.RentedArray.CreateFrom(new byte[16]);
         Parallel.For(0, 1000, _ => owner.IncrementAndShare());
-        Assert.Equal(1001, owner.Count);
+        Assert.Equal(1001, owner.ReferenceCount);
         Parallel.For(0, 1000, _ => owner.Return());
-        Assert.Equal(1, owner.Count);
-        Assert.True(owner.IsRent);
+        Assert.Equal(1, owner.ReferenceCount);
+        Assert.True(owner.IsRented);
         owner.Return();
         Assert.True(owner.IsReturned);
         Assert.False(owner.TryIncrement());
@@ -28,30 +28,30 @@ public class PoolCoverageTest
     [Fact]
     public void ReferenceCountCannotOverflowIntoSingleOwnerSentinel()
     {
-        var owner = BytePool.RentArray.CreateFrom(new byte[1]);
-        var counter = typeof(BytePool.RentArray).GetField("count", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var owner = BytePool.RentedArray.CreateFrom(new byte[1]);
+        var counter = typeof(BytePool.RentedArray).GetField("count", BindingFlags.Instance | BindingFlags.NonPublic)!;
         counter.SetValue(owner, BytePool.SingleCount - 1);
         Assert.Throws<InvalidOperationException>(() => owner.TryIncrement());
         Assert.Throws<InvalidOperationException>(() => owner.IncrementAndShare());
-        Assert.Equal(BytePool.SingleCount - 1, owner.Count);
+        Assert.Equal(BytePool.SingleCount - 1, owner.ReferenceCount);
     }
 
     [Fact]
     public void SlicesShareOwnershipAndPreserveOffsets()
     {
-        var owner = BytePool.RentArray.CreateFrom(new byte[16]);
+        var owner = BytePool.RentedArray.CreateFrom(new byte[16]);
         var memory = owner.AsMemory(4, 4);
         memory.Span.Fill(7);
         var shared = memory.Slice(1, 2).IncrementAndShareReadOnly();
         memory.Return();
-        Assert.True(shared.IsRent);
+        Assert.True(shared.IsRented);
         Assert.Equal(new byte[] { 7, 7 }, shared.Span.ToArray());
         Assert.Equal(0, shared.Slice(2).Length);
         Assert.Equal(0, shared.Slice(2, 0).Length);
         shared.Return();
         Assert.True(owner.IsReturned);
-        Assert.Equal(0, BytePool.RentMemory.Empty.Slice(0, 0).Length);
-        Assert.Equal(0, BytePool.RentReadOnlyMemory.Empty.Slice(0, 0).Length);
+        Assert.Equal(0, BytePool.RentedMemory.Empty.Slice(0, 0).Length);
+        Assert.Equal(0, BytePool.RentedReadOnlyMemory.Empty.Slice(0, 0).Length);
     }
 
     [Fact]

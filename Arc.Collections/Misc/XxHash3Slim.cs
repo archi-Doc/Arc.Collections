@@ -170,20 +170,20 @@ public static unsafe class XxHash3Slim
     /// <summary>
     /// Static function: Calculates a 64bit hash from the given string.
     /// </summary>
-    /// <param name="input">The read-only span that contains input data.</param>
+    /// <param name="source">The read-only span that contains input data.</param>
     /// <returns>A 64bit hash.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe ulong Hash64(ReadOnlySpan<char> input)
-        => Hash64(MemoryMarshal.Cast<char, byte>(input));
+    public static unsafe ulong Hash64(ReadOnlySpan<char> source)
+        => Hash64(MemoryMarshal.Cast<char, byte>(source));
 
     /// <summary>
     /// Static function: Calculates a 64bit hash from the given string.
     /// </summary>
-    /// <param name="str">The string containing the characters to calculates.</param>
+    /// <param name="source">The string containing the characters to calculates.</param>
     /// <returns>A 64bit hash.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe ulong Hash64(string str)
-        => Hash64(MemoryMarshal.Cast<char, byte>(str));
+    public static unsafe ulong Hash64(string source)
+        => Hash64(MemoryMarshal.Cast<char, byte>(source));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong XxHash64Avalanche(ulong hash)

@@ -101,7 +101,7 @@ public class Int64Hashtable<TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(long key, TValue value)
+    public void AddOrUpdate(long key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
     /// <summary>

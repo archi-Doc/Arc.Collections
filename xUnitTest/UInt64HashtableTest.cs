@@ -11,13 +11,13 @@ namespace XunitTest;
 public class UInt64HashtableTest
 {
     [Fact]
-    public void AddAndTryGetValue()
+    public void AddOrUpdateAndTryGetValue()
     {
         var table = new UInt64Hashtable<string>();
 
-        table.Add(1, "A");
-        table.Add(2, "B");
-        table.Add(3, "C");
+        table.AddOrUpdate(1, "A");
+        table.AddOrUpdate(2, "B");
+        table.AddOrUpdate(3, "C");
 
         Assert.Equal(3, table.Count);
 
@@ -33,12 +33,12 @@ public class UInt64HashtableTest
     }
 
     [Fact]
-    public void AddUpdatesExistingValue()
+    public void AddOrUpdateUpdatesExistingValue()
     {
         var table = new UInt64Hashtable<string>();
 
-        table.Add(1, "A");
-        table.Add(1, "B");
+        table.AddOrUpdate(1, "A");
+        table.AddOrUpdate(1, "B");
 
         Assert.Equal(1, table.Count);
         Assert.True(table.TryGetValue(1, out var value));
@@ -76,7 +76,7 @@ public class UInt64HashtableTest
     {
         var table = new UInt64Hashtable<int>();
 
-        table.Add(1, 10);
+        table.AddOrUpdate(1, 10);
 
         var called = false;
         var value = table.GetOrAdd(1, _ =>
@@ -95,9 +95,9 @@ public class UInt64HashtableTest
     {
         var table = new UInt64Hashtable<string>();
 
-        table.Add(1, "A");
-        table.Add(2, "B");
-        table.Add(3, "C");
+        table.AddOrUpdate(1, "A");
+        table.AddOrUpdate(2, "B");
+        table.AddOrUpdate(3, "C");
 
         table.Clear();
 
@@ -107,7 +107,7 @@ public class UInt64HashtableTest
         Assert.False(table.TryGetValue(3, out _));
 
         // The table remains usable after Clear.
-        table.Add(4, "D");
+        table.AddOrUpdate(4, "D");
 
         Assert.Equal(1, table.Count);
         Assert.True(table.TryGetValue(4, out var value));
@@ -119,10 +119,10 @@ public class UInt64HashtableTest
     {
         var table = new UInt64Hashtable<int>();
 
-        table.Add(1, 10);
-        table.Add(2, 20);
-        table.Add(3, 30);
-        table.Add(4, 40);
+        table.AddOrUpdate(1, 10);
+        table.AddOrUpdate(2, 20);
+        table.AddOrUpdate(3, 30);
+        table.AddOrUpdate(4, 40);
 
         var values = table.ToArray();
         Array.Sort(values);
@@ -141,8 +141,8 @@ public class UInt64HashtableTest
 
         Assert.Equal(key1.GetHashCode(), key2.GetHashCode());
 
-        table.Add(key1, "A");
-        table.Add(key2, "B");
+        table.AddOrUpdate(key1, "A");
+        table.AddOrUpdate(key2, "B");
 
         Assert.Equal(2, table.Count);
 
@@ -167,7 +167,7 @@ public class UInt64HashtableTest
 
         for (var i = 0; i < count; i++)
         {
-            table.Add((ulong)i, i * 10);
+            table.AddOrUpdate((ulong)i, i * 10);
         }
 
         Assert.Equal(count, table.Count);
@@ -184,9 +184,9 @@ public class UInt64HashtableTest
     {
         var table = new UInt64Hashtable<string>();
 
-        table.Add(0, "Zero");
-        table.Add(ulong.MaxValue, "Max");
-        table.Add(0x123456789ABCDEF0UL, "Value");
+        table.AddOrUpdate(0, "Zero");
+        table.AddOrUpdate(ulong.MaxValue, "Max");
+        table.AddOrUpdate(0x123456789ABCDEF0UL, "Value");
 
         Assert.True(table.TryGetValue(0, out var zero));
         Assert.True(table.TryGetValue(ulong.MaxValue, out var max));
@@ -218,7 +218,7 @@ public class UInt64HashtableTest
     }
 
     [Fact]
-    public void ConcurrentAddDifferentKeys()
+    public void ConcurrentAddOrUpdateDifferentKeys()
     {
         var table = new UInt64Hashtable<int>();
 
@@ -226,7 +226,7 @@ public class UInt64HashtableTest
 
         Parallel.For(0, count, i =>
         {
-            table.Add((ulong)i, i);
+            table.AddOrUpdate((ulong)i, i);
         });
 
         Assert.Equal(count, table.Count);
@@ -247,7 +247,7 @@ public class UInt64HashtableTest
 
         for (var i = 0; i < count; i++)
         {
-            table.Add((ulong)i, i);
+            table.AddOrUpdate((ulong)i, i);
         }
 
         Parallel.For(0, count, i =>

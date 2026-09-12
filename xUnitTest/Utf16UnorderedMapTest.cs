@@ -10,13 +10,13 @@ namespace XunitTest;
 public class Utf16UnorderedMapTest
 {
     [Fact]
-    public void AddAndTryGetValue()
+    public void AddOrUpdateAndTryGetValue()
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         Assert.Equal(3, map.Count);
 
@@ -32,12 +32,12 @@ public class Utf16UnorderedMapTest
     }
 
     [Fact]
-    public void AddOverwritesExistingValue()
+    public void AddOrUpdateOverwritesExistingValue()
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("A", 2);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("A", 2);
 
         Assert.Equal(1, map.Count);
         Assert.Equal(2, map["A"]);
@@ -76,7 +76,7 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("Alpha", 1);
+        map.AddOrUpdate("Alpha", 1);
 
         Assert.False(map.TryAdd("Alpha".AsSpan(), 2));
         Assert.Equal(1, map.Count);
@@ -109,7 +109,7 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("Alpha", 1);
+        map.AddOrUpdate("Alpha", 1);
 
         Assert.True(map.ContainsKey("Alpha"));
         Assert.True(map.ContainsKey("Alpha".AsSpan()));
@@ -123,9 +123,9 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 10);
-        map.Add("B", 20);
-        map.Add("C", 30);
+        map.AddOrUpdate("A", 10);
+        map.AddOrUpdate("B", 20);
+        map.AddOrUpdate("C", 30);
 
         Assert.True(map.ContainsValue(10));
         Assert.True(map.ContainsValue(30));
@@ -137,8 +137,8 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<string?>();
 
-        map.Add("A", "Value");
-        map.Add("B", null);
+        map.AddOrUpdate("A", "Value");
+        map.AddOrUpdate("B", null);
 
         Assert.True(map.ContainsValue("Value"));
         Assert.True(map.ContainsValue(null));
@@ -150,9 +150,9 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         Assert.True(map.Remove("B"));
 
@@ -169,7 +169,7 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("Alpha", 1);
+        map.AddOrUpdate("Alpha", 1);
 
         Assert.True(map.Remove("Alpha".AsSpan()));
         Assert.False(map.ContainsKey("Alpha"));
@@ -181,15 +181,15 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>(4);
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         var capacity = map.Capacity;
 
         Assert.True(map.Remove("B"));
 
-        map.Add("D", 4);
+        map.AddOrUpdate("D", 4);
 
         Assert.Equal(3, map.Count);
         Assert.Equal(capacity, map.Capacity);
@@ -208,9 +208,9 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         map.Clear();
 
@@ -220,7 +220,7 @@ public class Utf16UnorderedMapTest
         Assert.False(map.ContainsKey("C"));
 
         // The map remains usable after Clear.
-        map.Add("D", 4);
+        map.AddOrUpdate("D", 4);
 
         Assert.Equal(1, map.Count);
         Assert.Equal(4, map["D"]);
@@ -235,7 +235,7 @@ public class Utf16UnorderedMapTest
 
         for (var i = 0; i < count; i++)
         {
-            map.Add($"Key-{i}", i);
+            map.AddOrUpdate($"Key-{i}", i);
         }
 
         Assert.Equal(count, map.Count);
@@ -253,7 +253,7 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add(string.Empty, 123);
+        map.AddOrUpdate(string.Empty, 123);
 
         Assert.True(map.TryGetValue(string.Empty, out var value1));
         Assert.True(map.TryGetValue(ReadOnlySpan<char>.Empty, out var value2));
@@ -267,8 +267,8 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("ABC", 1);
-        map.Add("abc", 2);
+        map.AddOrUpdate("ABC", 1);
+        map.AddOrUpdate("abc", 2);
 
         Assert.Equal(2, map.Count);
         Assert.Equal(1, map["ABC"]);
@@ -280,9 +280,9 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         var result = new Dictionary<string, int>();
 
@@ -302,9 +302,9 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        map.Add("A", 1);
-        map.Add("B", 2);
-        map.Add("C", 3);
+        map.AddOrUpdate("A", 1);
+        map.AddOrUpdate("B", 2);
+        map.AddOrUpdate("C", 3);
 
         map.Remove("B");
 
@@ -326,7 +326,7 @@ public class Utf16UnorderedMapTest
     {
         var map = new Utf16UnorderedMap<int>();
 
-        Assert.Throws<ArgumentNullException>(() => map.Add(null!, 1));
+        Assert.Throws<ArgumentNullException>(() => map.AddOrUpdate(null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.TryAdd(null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.ContainsKey((string)null!));
         Assert.Throws<ArgumentNullException>(() => map.TryGetValue((string)null!, out _));

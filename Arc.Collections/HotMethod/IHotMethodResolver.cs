@@ -16,15 +16,15 @@ public interface IHotMethodResolver
     /// </summary>
     /// <typeparam name="T">The type of value to be processed.</typeparam>
     /// <returns><see cref="IHotMethod{T}"/>, if this resolver supplies one for type <typeparamref name="T"/>; otherwise <c>null</c>.</returns>
-    IHotMethod<T>? TryGet<T>();
+    IHotMethod<T>? GetHotMethod<T>();
 
     /// <summary>
-    /// Gets an <see cref="IHotMethod2{TKey, TValue}"/> instance that can process some type.
+    /// Gets an <see cref="IHotTreeMethod{TKey, TValue}"/> instance that can process some type.
     /// </summary>
     /// <typeparam name="TKey">The key to be processed.</typeparam>
     /// <typeparam name="TValue">The value to be processed.</typeparam>
     /// <returns>The specialized tree search, or <see langword="null"/> if this resolver has none.</returns>
-    IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>();
+    IHotTreeMethod<TKey, TValue>? GetHotTreeMethod<TKey, TValue>();
 }
 
 /// <summary>
@@ -45,47 +45,47 @@ public static class HotMethodResolver
 
         if (comparer == Comparer<T>.Default)
         {
-            method = PrimitiveResolver.Instance.TryGet<T>();
+            method = PrimitiveResolver.Instance.GetHotMethod<T>();
         }
 
         return method;
     }
 
     /// <summary>
-    /// Gets the specialized <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>.
+    /// Gets the specialized <see cref="IHotTreeMethod{TKey, TValue}"/> for <typeparamref name="TKey"/>.
     /// </summary>
     /// <typeparam name="TKey">The key type.</typeparam>
     /// <typeparam name="TValue">The value type.</typeparam>
     /// <param name="comparer">The comparer in use. A specialized implementation is returned only for <see cref="Comparer{T}.Default"/>.</param>
     /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IComparer<TKey> comparer)
+    public static IHotTreeMethod<TKey, TValue>? Get<TKey, TValue>(IComparer<TKey> comparer)
     {
-        IHotMethod2<TKey, TValue>? method = null;
+        IHotTreeMethod<TKey, TValue>? method = null;
 
         if (comparer == Comparer<TKey>.Default)
         {
-            method = PrimitiveResolver.Instance.TryGet<TKey, TValue>();
+            method = PrimitiveResolver.Instance.GetHotTreeMethod<TKey, TValue>();
         }
 
         return method;
     }
 
     /// <summary>
-    /// Gets the specialized <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>.
+    /// Gets the specialized <see cref="IHotTreeMethod{TKey, TValue}"/> for <typeparamref name="TKey"/>.
     /// </summary>
     /// <typeparam name="TKey">The key type.</typeparam>
     /// <typeparam name="TValue">The value type.</typeparam>
     /// <param name="comparer">The equality comparer in use. A specialized implementation is returned only for <see cref="EqualityComparer{T}.Default"/>.</param>
     /// <returns>The specialized implementation, or <see langword="null"/> if none is available.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IHotMethod2<TKey, TValue>? Get<TKey, TValue>(IEqualityComparer<TKey> comparer)
+    public static IHotTreeMethod<TKey, TValue>? Get<TKey, TValue>(IEqualityComparer<TKey> comparer)
     {
-        IHotMethod2<TKey, TValue>? method = null;
+        IHotTreeMethod<TKey, TValue>? method = null;
 
         if (comparer == EqualityComparer<TKey>.Default)
         {
-            method = PrimitiveResolver.Instance.TryGet<TKey, TValue>();
+            method = PrimitiveResolver.Instance.GetHotTreeMethod<TKey, TValue>();
         }
 
         return method;

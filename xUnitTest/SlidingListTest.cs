@@ -42,9 +42,9 @@ public class SlidingListTest
         s.Add(new(5));
         s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4, 3, 5]).IsTrue();
 
-        s.Remove(0).IsTrue();
-        s.Remove(0).IsFalse();
-        s.Remove(1).IsTrue();
+        s.TryRemoveAt(0).IsTrue();
+        s.TryRemoveAt(0).IsFalse();
+        s.TryRemoveAt(1).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([4, 3, 5]).IsTrue();
 
         s.Add(new(10));
@@ -53,15 +53,15 @@ public class SlidingListTest
         array = ((IEnumerable<SlidingListClass>)s).ToArray().Select(x => x!.Id);
         array.SequenceEqual([4, 3, 5, 10, 20]).IsTrue();
 
-        s.Remove(3).IsTrue();
-        s.Remove(4).IsTrue();
-        s.Remove(2).IsTrue();
+        s.TryRemoveAt(3).IsTrue();
+        s.TryRemoveAt(4).IsTrue();
+        s.TryRemoveAt(2).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([10, 20]).IsTrue();
 
         s.Add(new(11)).Is(7);
         s.Add(new(22)).Is(8);
         s.Add(new(33)).Is(9);
-        s.Remove(5).IsTrue();
+        s.TryRemoveAt(5).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([20, 11, 22, 33]).IsTrue();
         s.Resize(4);
         s.ToArray().Select(x => x!.Id).SequenceEqual([20, 11, 22, 33]).IsTrue();
@@ -74,24 +74,24 @@ public class SlidingListTest
         s.StartPosition.Is(int.MaxValue - 1);
         s.EndPosition.Is(2);
 
-        s.Get(int.MaxValue - 1)!.Id.Is(20);
-        s.Get(int.MaxValue)!.Id.Is(11);
-        s.Get(0)!.Id.Is(22);
-        s.Get(1)!.Id.Is(33);
+        s.GetOrDefault(int.MaxValue - 1)!.Id.Is(20);
+        s.GetOrDefault(int.MaxValue)!.Id.Is(11);
+        s.GetOrDefault(0)!.Id.Is(22);
+        s.GetOrDefault(1)!.Id.Is(33);
 
         s.Resize(5);
         s.Add(new(99)).Is(2);
 
-        s.Remove(int.MaxValue - 1).IsTrue();
+        s.TryRemoveAt(int.MaxValue - 1).IsTrue();
 
-        s.Get(int.MaxValue)!.Id.Is(11);
-        s.Get(0)!.Id.Is(22);
-        s.Get(1)!.Id.Is(33);
-        s.Get(2)!.Id.Is(99);
+        s.GetOrDefault(int.MaxValue)!.Id.Is(11);
+        s.GetOrDefault(0)!.Id.Is(22);
+        s.GetOrDefault(1)!.Id.Is(33);
+        s.GetOrDefault(2)!.Id.Is(99);
 
         s.ToArray().Select(x => x!.Id).SequenceEqual([11, 22, 33, 99]).IsTrue();
 
-        s.Set(0, new(23)).IsTrue();
+        s.TrySet(0, new(23)).IsTrue();
         s.ToArray().Select(x => x!.Id).SequenceEqual([11, 23, 33, 99]).IsTrue();
 
         s.Add(new(0));
@@ -126,15 +126,15 @@ public class SlidingListTest
         s.Add(new(3));
         s.Add(new(4));
 
-        s.Remove(0).IsTrue();
+        s.TryRemoveAt(0).IsTrue();
         s.StartPosition.Is(1);
-        s.Remove(1).IsTrue();
+        s.TryRemoveAt(1).IsTrue();
         s.StartPosition.Is(2);
-        s.Remove(2).IsTrue();
+        s.TryRemoveAt(2).IsTrue();
         s.StartPosition.Is(3);
-        s.Remove(3).IsTrue();
+        s.TryRemoveAt(3).IsTrue();
         s.StartPosition.Is(4);
-        s.Consumed.Is(0);
+        s.UsedSlotCount.Is(0);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class SlidingListTest
         var array = s.ToArray().Select(x => x!.Id);
         array.SequenceEqual([1, 2, 3, 4]).IsTrue();
 
-        s.Remove(2);
+        s.TryRemoveAt(2);
         s.ToArray().Select(x => x!.Id).SequenceEqual([1, 2, 4,]).IsTrue();
 
         s.Add(new(5));

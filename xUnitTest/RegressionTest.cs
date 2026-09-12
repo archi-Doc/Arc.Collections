@@ -104,10 +104,10 @@ public class RegressionTest
         var first = new DisposableObject();
         var second = new DisposableObject();
 
-        cache.Cache(1, first).IsTrue();
+        cache.TryAdd(1, first).IsTrue();
 
         // The key is already present, so 'second' is not cached and must be disposed.
-        cache.CreateInterface(1, second).Return();
+        cache.CreateLease(1, second).Return();
 
         first.IsDisposed.IsFalse();
         second.IsDisposed.IsTrue();

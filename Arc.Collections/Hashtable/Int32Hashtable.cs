@@ -103,7 +103,7 @@ public class Int32Hashtable<TValue>
     /// </summary>
     /// <param name="key">The key to add or update.</param>
     /// <param name="value">The value to store.</param>
-    public void Add(int key, TValue value)
+    public void AddOrUpdate(int key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
     /// <summary>

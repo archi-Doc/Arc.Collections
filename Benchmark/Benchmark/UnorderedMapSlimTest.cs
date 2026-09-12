@@ -33,7 +33,7 @@ public class UnorderedMapSlimTest
         {
             this.IntDictionary.TryAdd(x, x * 2);
             this.IntUnorderedMap.Add(x, x * 2);
-            this.IntUnorderedMapSlim.Add(x, x * 2);
+            this.IntUnorderedMapSlim.AddOrUpdate(x, x * 2);
         }
     }
 
@@ -67,7 +67,7 @@ public class UnorderedMapSlimTest
         var c = new UnorderedMapSlim<int, int>();
         for (var n = 0; n < this.Count; n++)
         {
-            c.Add(n, n);
+            c.AddOrUpdate(n, n);
         }
 
         return c.Count;
@@ -103,7 +103,7 @@ public class UnorderedMapSlimTest
         var c = new UnorderedMapSlim<int, int>();
         for (var n = 0; n < this.Count; n++)
         {
-            c.Add(this.IntArray[n], this.IntArray[n]);
+            c.AddOrUpdate(this.IntArray[n], this.IntArray[n]);
         }
 
         return c.Count;
@@ -187,9 +187,9 @@ public class UnorderedMapSlimTest
         this.IntUnorderedMapSlim.Remove(this.IntArray[1]);
         this.IntUnorderedMapSlim.Remove(this.IntArray[2]);
         this.IntUnorderedMapSlim.Remove(this.IntArray[3]);
-        this.IntUnorderedMapSlim.Add(this.IntArray[0], this.IntArray[0] * 2);
-        this.IntUnorderedMapSlim.Add(this.IntArray[1], this.IntArray[1] * 2);
-        this.IntUnorderedMapSlim.Add(this.IntArray[2], this.IntArray[2] * 2);
-        this.IntUnorderedMapSlim.Add(this.IntArray[3], this.IntArray[3] * 2);
+        this.IntUnorderedMapSlim.AddOrUpdate(this.IntArray[0], this.IntArray[0] * 2);
+        this.IntUnorderedMapSlim.AddOrUpdate(this.IntArray[1], this.IntArray[1] * 2);
+        this.IntUnorderedMapSlim.AddOrUpdate(this.IntArray[2], this.IntArray[2] * 2);
+        this.IntUnorderedMapSlim.AddOrUpdate(this.IntArray[3], this.IntArray[3] * 2);
     }
 }

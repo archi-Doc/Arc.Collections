@@ -11,13 +11,13 @@ namespace XunitTest;
 public class UnorderedMapSlimTest2
 {
     [Fact]
-    public void AddAndTryGetValue()
+    public void AddOrUpdateAndTryGetValue()
     {
         var map = new UnorderedMapSlim<int, string>();
 
-        map.Add(1, "A");
-        map.Add(2, "B");
-        map.Add(3, "C");
+        map.AddOrUpdate(1, "A");
+        map.AddOrUpdate(2, "B");
+        map.AddOrUpdate(3, "C");
 
         Assert.Equal(3, map.Count);
 
@@ -33,12 +33,12 @@ public class UnorderedMapSlimTest2
     }
 
     [Fact]
-    public void AddUpdatesExistingValue()
+    public void AddOrUpdateUpdatesExistingValue()
     {
         var map = new UnorderedMapSlim<int, string>();
 
-        map.Add(1, "A");
-        map.Add(1, "B");
+        map.AddOrUpdate(1, "A");
+        map.AddOrUpdate(1, "B");
 
         Assert.Equal(1, map.Count);
         Assert.Equal("B", map[1]);
@@ -84,8 +84,8 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, int>();
 
-        map.Add(1, 10);
-        map.Add(2, 20);
+        map.AddOrUpdate(1, 10);
+        map.AddOrUpdate(2, 20);
 
         Assert.True(map.ContainsKey(1));
         Assert.True(map.ContainsKey(2));
@@ -97,8 +97,8 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, int>();
 
-        map.Add(1, 10);
-        map.Add(2, 20);
+        map.AddOrUpdate(1, 10);
+        map.AddOrUpdate(2, 20);
 
         Assert.True(map.ContainsValue(10));
         Assert.True(map.ContainsValue(20));
@@ -110,8 +110,8 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, string?>();
 
-        map.Add(1, null);
-        map.Add(2, "A");
+        map.AddOrUpdate(1, null);
+        map.AddOrUpdate(2, "A");
 
         Assert.True(map.ContainsValue(null));
         Assert.True(map.ContainsValue("A"));
@@ -123,9 +123,9 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, string>();
 
-        map.Add(1, "A");
-        map.Add(2, "B");
-        map.Add(3, "C");
+        map.AddOrUpdate(1, "A");
+        map.AddOrUpdate(2, "B");
+        map.AddOrUpdate(3, "C");
 
         Assert.True(map.Remove(2));
 
@@ -142,17 +142,17 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, int>(4);
 
-        map.Add(1, 1);
-        map.Add(2, 2);
-        map.Add(3, 3);
-        map.Add(4, 4);
+        map.AddOrUpdate(1, 1);
+        map.AddOrUpdate(2, 2);
+        map.AddOrUpdate(3, 3);
+        map.AddOrUpdate(4, 4);
 
         var capacity = map.Capacity;
 
         Assert.True(map.Remove(2));
         Assert.Equal(3, map.Count);
 
-        map.Add(5, 5);
+        map.AddOrUpdate(5, 5);
 
         Assert.Equal(4, map.Count);
         Assert.Equal(capacity, map.Capacity);
@@ -166,9 +166,9 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, int>();
 
-        map.Add(1, 10);
-        map.Add(2, 20);
-        map.Add(3, 30);
+        map.AddOrUpdate(1, 10);
+        map.AddOrUpdate(2, 20);
+        map.AddOrUpdate(3, 30);
 
         map.Clear();
 
@@ -178,7 +178,7 @@ public class UnorderedMapSlimTest2
         Assert.False(map.ContainsKey(2));
         Assert.False(map.ContainsKey(3));
 
-        map.Add(4, 40);
+        map.AddOrUpdate(4, 40);
 
         Assert.Equal(1, map.Count);
         Assert.Equal(40, map[4]);
@@ -193,7 +193,7 @@ public class UnorderedMapSlimTest2
 
         for (var i = 0; i < count; i++)
         {
-            map.Add(i, i * 10);
+            map.AddOrUpdate(i, i * 10);
         }
 
         Assert.Equal(count, map.Count);
@@ -213,7 +213,7 @@ public class UnorderedMapSlimTest2
 
         for (var i = 0; i < 100; i++)
         {
-            map.Add(i, i);
+            map.AddOrUpdate(i, i);
         }
 
         for (var i = 0; i < 100; i += 2)
@@ -223,7 +223,7 @@ public class UnorderedMapSlimTest2
 
         for (var i = 100; i < 1000; i++)
         {
-            map.Add(i, i);
+            map.AddOrUpdate(i, i);
         }
 
         Assert.Equal(950, map.Count);
@@ -249,8 +249,8 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<string, int>();
 
-        map.Add("Alpha", 1);
-        map.Add("Beta", 2);
+        map.AddOrUpdate("Alpha", 1);
+        map.AddOrUpdate("Beta", 2);
 
         Assert.True(map.ContainsKey("Alpha"));
         Assert.True(map.ContainsKey("Beta"));
@@ -264,8 +264,8 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<string, int>();
 
-        map.Add("ABC", 1);
-        map.Add("abc", 2);
+        map.AddOrUpdate("ABC", 1);
+        map.AddOrUpdate("abc", 2);
 
         Assert.Equal(2, map.Count);
         Assert.Equal(1, map["ABC"]);
@@ -277,7 +277,7 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<string, int>();
 
-        Assert.Throws<ArgumentNullException>(() => map.Add(null!, 1));
+        Assert.Throws<ArgumentNullException>(() => map.AddOrUpdate(null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.TryAdd(null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.ContainsKey(null!));
         Assert.Throws<ArgumentNullException>(() => map.TryGetValue(null!, out _));
@@ -289,9 +289,9 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, string>();
 
-        map.Add(1, "A");
-        map.Add(2, "B");
-        map.Add(3, "C");
+        map.AddOrUpdate(1, "A");
+        map.AddOrUpdate(2, "B");
+        map.AddOrUpdate(3, "C");
 
         var result = new Dictionary<int, string>();
 
@@ -311,9 +311,9 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, string>();
 
-        map.Add(1, "A");
-        map.Add(2, "B");
-        map.Add(3, "C");
+        map.AddOrUpdate(1, "A");
+        map.AddOrUpdate(2, "B");
+        map.AddOrUpdate(3, "C");
 
         map.Remove(2);
 
@@ -335,9 +335,9 @@ public class UnorderedMapSlimTest2
     {
         var map = new UnorderedMapSlim<int, int>();
 
-        map.Add(5, 50);
-        map.Add(1, 10);
-        map.Add(3, 30);
+        map.AddOrUpdate(5, 50);
+        map.AddOrUpdate(1, 10);
+        map.AddOrUpdate(3, 30);
 
         var values = map
             .OrderBy(x => x.Key)
@@ -356,7 +356,7 @@ public class UnorderedMapSlimTest2
 
         for (var i = 0; i < 9; i++)
         {
-            map.Add(i, i);
+            map.AddOrUpdate(i, i);
         }
 
         Assert.True(map.Capacity > 4);
@@ -369,7 +369,7 @@ public class UnorderedMapSlimTest2
 
         for (var i = 0; i < 100; i++)
         {
-            map.Add(i, i);
+            map.AddOrUpdate(i, i);
         }
 
         var capacity = map.Capacity;

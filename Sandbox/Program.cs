@@ -25,7 +25,7 @@ class Program
         Require(lines.SequenceEqual(["one", "two", "three"]), nameof(BaseHelper.SplitLines));
 
         Require(BaseHelper.CountDecimalChars(int.MinValue) == 11, nameof(BaseHelper.CountDecimalChars));
-        Require(BaseHelper.GetValidUtf8Length(Encoding.UTF8.GetBytes("abc")) == 3, nameof(BaseHelper.GetValidUtf8Length));
+        Require(BaseHelper.GetCompleteUtf8Length(Encoding.UTF8.GetBytes("abc")) == 3, nameof(BaseHelper.GetCompleteUtf8Length));
         Require(XxHash3Slim.Hash64("abc") != 0, nameof(XxHash3Slim.Hash64));
     }
 
@@ -46,7 +46,7 @@ class Program
         Require(unorderedMap.TryGetValue(10, out var ten) && ten == "ten", nameof(UnorderedMap<int, string>));
 
         var unorderedMapSlim = new UnorderedMapSlim<int, string>();
-        unorderedMapSlim.Add(20, "twenty");
+        unorderedMapSlim.AddOrUpdate(20, "twenty");
         Require(unorderedMapSlim.TryGetValue(20, out var twenty) && twenty == "twenty", nameof(UnorderedMapSlim<int, string>));
 
         var list = new TemporaryList<int>();
@@ -62,23 +62,23 @@ class Program
     private static void VerifyHashtableVariants()
     {
         var intTable = new Int32Hashtable<string>();
-        intTable.Add(1, "one");
+        intTable.AddOrUpdate(1, "one");
         Require(intTable.TryGetValue(1, out var one) && one == "one", nameof(Int32Hashtable<string>));
 
         var utf8Table = new Utf8Hashtable<int>();
-        utf8Table.Add("key"u8, 42);
+        utf8Table.AddOrUpdate("key"u8, 42);
         Require(utf8Table.TryGetValue("key"u8, out var value) && value == 42, nameof(Utf8Hashtable<int>));
 
         var utf16Table = new Utf16Hashtable<int>();
-        utf16Table.Add("key", 43);
+        utf16Table.AddOrUpdate("key", 43);
         Require(utf16Table.TryGetValue("key", out value) && value == 43, nameof(Utf16Hashtable<int>));
 
         var utf8Map = new Utf8UnorderedMap<int>();
-        utf8Map.Add("abc"u8, 1);
+        utf8Map.AddOrUpdate("abc"u8, 1);
         Require(utf8Map.TryGetValue("abc"u8, out value) && value == 1, nameof(Utf8UnorderedMap<int>));
 
         var utf16Map = new Utf16UnorderedMap<int>();
-        utf16Map.Add("abc", 2);
+        utf16Map.AddOrUpdate("abc", 2);
         Require(utf16Map.TryGetValue("abc", out value) && value == 2, nameof(Utf16UnorderedMap<int>));
     }
 

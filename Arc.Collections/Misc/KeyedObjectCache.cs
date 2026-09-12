@@ -26,12 +26,12 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// Return or dispose a lease once. This readonly struct retains its fields after returning;
     /// copies refer to the same object and must not be returned independently.
     /// </remarks>
-    public readonly struct Interface : IDisposable
+    public readonly struct Lease : IDisposable
     {
         /// <summary>
         /// The cache that the object is returned to.
         /// </summary>
-        public readonly KeyedObjectCache<TKey, TObject> ObjectCache;
+        public readonly KeyedObjectCache<TKey, TObject> Cache;
 
         /// <summary>
         /// The key associated with the object.
@@ -43,9 +43,9 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         /// </summary>
         public readonly TObject? Object;
 
-        internal Interface(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
+        internal Lease(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
         {
-            this.ObjectCache = objectCache;
+            this.Cache = objectCache;
             this.Key = key;
             this.Object = obj;
         }
@@ -55,17 +55,17 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         /// If the object cannot be cached because its key already exists or the cache is disposed,
         /// it is disposed when it implements <see cref="IDisposable"/>.
         /// </summary>
-        /// <returns>An <see cref="Interface"/> with the object set to its default value.</returns>
-        public Interface Return()
+        /// <returns>A <see cref="Lease"/> with the object set to its default value.</returns>
+        public Lease Return()
         {
             if (this.Object is not null &&
-                !this.ObjectCache.Cache(this.Key, this.Object) &&
+                !this.Cache.TryAdd(this.Key, this.Object) &&
                 this.Object is IDisposable disposable)
             {// Not cached and therefore no longer owned by anyone.
                 disposable.Dispose();
             }
 
-            return new(this.ObjectCache, this.Key, default);
+            return new(this.Cache, this.Key, default);
         }
 
         /// <summary>
@@ -104,12 +104,12 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     }
 
     /// <summary>
-    /// Creates an <see cref="Interface"/> that returns <paramref name="obj"/> to this cache when disposed.
+    /// Creates a <see cref="Lease"/> that returns <paramref name="obj"/> to this cache when disposed.
     /// </summary>
     /// <param name="key">The key associated with the object.</param>
     /// <param name="obj">The object to be returned to the cache, or <see langword="null"/>.</param>
-    /// <returns>An <see cref="Interface"/> instance.</returns>
-    public Interface CreateInterface(TKey key, TObject? obj)
+    /// <returns>A <see cref="Lease"/> instance.</returns>
+    public Lease CreateLease(TKey key, TObject? obj)
         => new(this, key, obj);
 
     /// <summary>
@@ -117,7 +117,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     /// <param name="key">The key used to retrieve an object from the cache.</param>
     /// <returns>The cached object, or the default value if the key is absent.</returns>
-    public TObject? TryGet(TKey key)
+    public TObject? TakeOrDefault(TKey key)
     {
         Item? item;
         using (this.lockObject.EnterScope())
@@ -142,7 +142,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <returns><see langword="true"/>; The object is successfully cached.<br/>
     /// <see langword="false"/>; An object with the same key already exists, or the cache has been disposed.
     /// The caller retains ownership when this method returns <see langword="false"/>.</returns>
-    public bool Cache(TKey key, TObject obj)
+    public bool TryAdd(TKey key, TObject obj)
     {
         using (this.lockObject.EnterScope())
         {

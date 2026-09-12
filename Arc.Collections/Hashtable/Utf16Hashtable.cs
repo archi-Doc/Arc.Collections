@@ -140,7 +140,7 @@ public class Utf16Hashtable<TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(string key, TValue value)
+    public void AddOrUpdate(string key, TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
         this.AddInternal(key, value, true, out _);
@@ -151,7 +151,7 @@ public class Utf16Hashtable<TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(ReadOnlySpan<char> key, TValue value)
+    public void AddOrUpdate(ReadOnlySpan<char> key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
     /// <summary>

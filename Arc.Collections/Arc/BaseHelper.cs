@@ -64,7 +64,7 @@ public static class BaseHelper
     /// A 256-entry lookup table indicating whether a character in the range U+0000 to U+00FF
     /// is a separator or whitespace character. See <see cref="IsSeparator(char)"/>.
     /// </summary>
-    public static readonly bool[] SeparatorCharFlag = [
+    public static readonly bool[] SeparatorCharFlags = [
         false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
         true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, // 0x20-0x2F
@@ -242,13 +242,13 @@ public static class BaseHelper
     /// <summary>
     /// Determines whether the specified <see cref="Type"/> implements the <see cref="IStringConvertible{T}"/> interface for itself.
     /// </summary>
-    /// <param name="t">The type to check for <see cref="IStringConvertible{T}"/> implementation.</param>
+    /// <param name="type">The type to check for <see cref="IStringConvertible{T}"/> implementation.</param>
     /// <returns>
     /// <c>true</c> if the type implements <see cref="IStringConvertible{T}"/> where <c>T</c> is the type itself; otherwise, <c>false</c>.
     /// </returns>
-    public static bool ImplementsIStringConvertible([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type t)
+    public static bool ImplementsIStringConvertible([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type)
     {
-        foreach (var interfaces in t.GetInterfaces())
+        foreach (var interfaces in type.GetInterfaces())
         {
             if (!interfaces.IsGenericType)
             {
@@ -261,7 +261,7 @@ public static class BaseHelper
             }
 
             var arg = interfaces.GetGenericArguments()[0];
-            if (arg == t)
+            if (arg == type)
             {
                 return true;
             }
@@ -286,7 +286,7 @@ public static class BaseHelper
 
             if (val <= 0xFF)
             {
-                if (SeparatorCharFlag[val])
+                if (SeparatorCharFlags[val])
                 {
                     return i;
                 }
@@ -313,23 +313,23 @@ public static class BaseHelper
     /// <summary>
     /// Determines whether the specified character is a separator or whitespace character.
     /// </summary>
-    /// <param name="val">The character to evaluate.</param>
+    /// <param name="value">The character to evaluate.</param>
     /// <returns>
     /// <c>true</c> if the character is a separator or whitespace character; otherwise, <c>false</c>.
     /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
     /// </returns>
-    public static bool IsSeparator(char val)
+    public static bool IsSeparator(char value)
     {
-        if (val <= 0xFF)
+        if (value <= 0xFF)
         {
-            return SeparatorCharFlag[val];
+            return SeparatorCharFlags[value];
         }
 
-        if (val >= '\u2000' && val <= '\u200A')
+        if (value >= '\u2000' && value <= '\u200A')
         {// U+2000 to U+200A
             return true;
         }
-        else if (val == '\u2028' || val == '\u2029' || val == '\u3000')
+        else if (value == '\u2028' || value == '\u2029' || value == '\u3000')
         {// U+2028, U+2029, U+3000
             return true;
         }
@@ -530,7 +530,7 @@ public static class BaseHelper
     /// A new string with all newline characters removed. If the input is null or empty, returns an empty string.
     /// If there are no newline characters, returns the original string.
     /// </returns>
-    public static string RemoveCrLf(string input)
+    public static string RemoveCrAndLfChars(string input)
     {
         if (string.IsNullOrEmpty(input))
         {
@@ -572,7 +572,7 @@ public static class BaseHelper
     /// </summary>
     /// <param name="bytes">The byte span to inspect.</param>
     /// <returns>The estimated prefix length in bytes, without a validity guarantee.</returns>
-    public static int GetValidUtf8Length(ReadOnlySpan<byte> bytes)
+    public static int GetCompleteUtf8Length(ReadOnlySpan<byte> bytes)
     {
         var length = bytes.Length;
         if (length == 0)
@@ -959,12 +959,12 @@ public static class BaseHelper
     /// Throws an <see cref="ArgumentOutOfRangeException"/> indicating a size mismatch.
     /// </summary>
     /// <param name="argumentName">The name of the argument.</param>
-    /// <param name="size">The expected size.</param>
+    /// <param name="expectedSize">The expected size.</param>
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowSizeMismatchException(string argumentName, int size)
+    public static void ThrowSizeMismatchException(string argumentName, int expectedSize)
     {
-        throw new ArgumentOutOfRangeException(argumentName, $"The {argumentName} length must be {size} bytes.");
+        throw new ArgumentOutOfRangeException(argumentName, $"The {argumentName} length must be {expectedSize} bytes.");
     }
 
     /// <summary>
@@ -1006,54 +1006,54 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="instance"/> parameter.
+    /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="result"/> parameter.
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
     /// <param name="source">The source value to parse.</param>
-    /// <param name="variable">The name of the environment variable to check if the source value is empty.</param>
-    /// <param name="instance">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
+    /// <param name="environmentVariableName">The name of the environment variable to check if the source value is empty.</param>
+    /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
-    public static bool TryParseFromSourceOrEnvironmentVariable<T>(ReadOnlySpan<char> source, string variable, [MaybeNullWhen(false)] out T instance, IConversionOptions? conversionOptions = default)
+    public static bool TryParseFromSourceOrEnvironmentVariable<T>(ReadOnlySpan<char> source, string environmentVariableName, [MaybeNullWhen(false)] out T result, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
         // 1st Source
-        if (T.TryParse(source, out instance!, out _, conversionOptions))
+        if (T.TryParse(source, out result!, out _, conversionOptions))
         {// source.Length > 0 &&
             return true;
         }
 
         // 2nd: Environment variable
-        if (Environment.GetEnvironmentVariable(variable) is { } source2)
+        if (Environment.GetEnvironmentVariable(environmentVariableName) is { } source2)
         {
-            if (T.TryParse(source2, out instance!, out _, conversionOptions))
+            if (T.TryParse(source2, out result!, out _, conversionOptions))
             {
                 return true;
             }
         }
 
-        instance = default;
+        result = default;
         return false;
     }
 
     /// <summary>
-    /// Parses the value from the provided environment variable and assigns it to the <paramref name="instance"/> parameter.
+    /// Parses the value from the provided environment variable and assigns it to the <paramref name="result"/> parameter.
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
-    /// <param name="variable">The name of the environment variable to check if the source value is empty.</param>
-    /// <param name="instance">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
+    /// <param name="environmentVariableName">The name of the environment variable to check if the source value is empty.</param>
+    /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
-    public static bool TryParseFromEnvironmentVariable<T>(string variable, [MaybeNullWhen(false)] out T instance, IConversionOptions? conversionOptions = default)
+    public static bool TryParseFromEnvironmentVariable<T>(string environmentVariableName, [MaybeNullWhen(false)] out T result, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
-        if (Environment.GetEnvironmentVariable(variable) is { } source)
+        if (Environment.GetEnvironmentVariable(environmentVariableName) is { } source)
         {
-            return T.TryParse(source, out instance, out _, conversionOptions);
+            return T.TryParse(source, out result, out _, conversionOptions);
         }
         else
         {
-            instance = default;
+            result = default;
             return false;
         }
     }

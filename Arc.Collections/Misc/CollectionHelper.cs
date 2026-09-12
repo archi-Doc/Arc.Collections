@@ -26,51 +26,51 @@ public static class CollectionHelper
     /// <summary>
     /// Rounds a requested capacity up to a power of two, subject to the supported limits.
     /// </summary>
-    /// <param name="minimumSize">The minimum required capacity.</param>
+    /// <param name="minimumCapacity">The minimum required capacity.</param>
     /// <returns>
-    /// A power-of-two value that is greater than or equal to <paramref name="minimumSize"/>,
+    /// A power-of-two value that is greater than or equal to <paramref name="minimumCapacity"/>,
     /// clamped between <see cref="MinimumCapacity"/> and <see cref="MaximumCapacity"/>.
     /// </returns>
     /// <remarks>
     /// Requests above <see cref="MaximumCapacity"/> return that maximum.
     /// </remarks>
-    public static uint CalculatePowerOfTwoCapacity(uint minimumSize)
+    public static uint CalculatePowerOfTwoCapacity(uint minimumCapacity)
     {
-        if (minimumSize < MinimumCapacity)
+        if (minimumCapacity < MinimumCapacity)
         {
             return MinimumCapacity;
         }
-        else if (minimumSize >= MaximumCapacity)
+        else if (minimumCapacity >= MaximumCapacity)
         {
             return MaximumCapacity;
         }
 
-        return 1u << (32 - BitOperations.LeadingZeroCount(minimumSize - 1));
+        return 1u << (32 - BitOperations.LeadingZeroCount(minimumCapacity - 1));
     }
 
     /// <summary>
     /// Rounds a requested capacity up to a power of two, subject to the supported limits.
     /// </summary>
-    /// <param name="minimumSize">The minimum required capacity.</param>
+    /// <param name="minimumCapacity">The minimum required capacity.</param>
     /// <returns>
-    /// A power-of-two value that is greater than or equal to <paramref name="minimumSize"/>,
+    /// A power-of-two value that is greater than or equal to <paramref name="minimumCapacity"/>,
     /// clamped between <see cref="MinimumCapacity"/> and <see cref="MaximumCapacity"/>.
     /// </returns>
     /// <remarks>
     /// Requests above <see cref="MaximumCapacity"/> return that maximum.
     /// </remarks>
-    public static int CalculatePowerOfTwoCapacity(int minimumSize)
+    public static int CalculatePowerOfTwoCapacity(int minimumCapacity)
     {
-        if (minimumSize < MinimumCapacity)
+        if (minimumCapacity < MinimumCapacity)
         {
             return (int)MinimumCapacity;
         }
-        else if (minimumSize >= MaximumCapacity)
+        else if (minimumCapacity >= MaximumCapacity)
         {
             return (int)MaximumCapacity;
         }
 
-        return 1 << (32 - BitOperations.LeadingZeroCount((uint)minimumSize - 1));
+        return 1 << (32 - BitOperations.LeadingZeroCount((uint)minimumCapacity - 1));
     }
 
     /// <summary>
@@ -93,13 +93,13 @@ public static class CollectionHelper
     /// <summary>
     /// Gets the smallest prime in <see cref="Primes"/> that is greater than or equal to the specified value.
     /// </summary>
-    /// <param name="min">The minimum required value.</param>
+    /// <param name="minimum">The minimum required value.</param>
     /// <returns>The matching prime, or the largest entry of <see cref="Primes"/> if none is large enough.</returns>
-    public static int GetPrime(int min)
+    public static int GetPrime(int minimum)
     {
         for (var i = 0; i < Primes.Length; i++)
         {
-            if (Primes[i] >= min)
+            if (Primes[i] >= minimum)
             {
                 return Primes[i];
             }

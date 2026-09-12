@@ -21,11 +21,11 @@ public interface IStringConvertible<T>
     /// Attempts to parse an instance from a UTF-16 span and reports the consumed characters.
     /// </summary>
     /// <param name="source">The source UTF-16 span.</param>
-    /// <param name="object">An object converted from the UTF-16 span.</param>
-    /// <param name="read">The number of chars read from the source span.</param>
+    /// <param name="result">An object converted from the UTF-16 span.</param>
+    /// <param name="charsRead">The number of chars read from the source span.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? @object, out int read, IConversionOptions? conversionOptions = default);
+    static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? result, out int charsRead, IConversionOptions? conversionOptions = default);
 
     /// <summary>
     /// Gets the maximum formatted length in characters, or -1 when unavailable.
@@ -46,8 +46,8 @@ public interface IStringConvertible<T>
     /// <param name="destination">The destination span of <see cref="char"/> (UTF-16).<br/>
     /// Use a nonnegative length from <see cref="GetStringLength"/> or <see cref="MaxStringLength"/>,
     /// allowing for any additional space required by the conversion options.</param>
-    /// <param name="written">The number of UTF-16 characters written to the destination.</param>
+    /// <param name="charsWritten">The number of UTF-16 characters written to the destination.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
-    bool TryFormat(Span<char> destination, out int written, IConversionOptions? conversionOptions = default);
+    bool TryFormat(Span<char> destination, out int charsWritten, IConversionOptions? conversionOptions = default);
 }

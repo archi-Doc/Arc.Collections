@@ -19,7 +19,7 @@ public class ObjectCacheBenchmark
     {
         for (var i = 0; i < (N / 2); i++)
         {
-            this.cache.Cache(i, new(i, i.ToString()));
+            this.cache.TryAdd(i, new(i, i.ToString()));
         }
     }
 
@@ -39,7 +39,7 @@ public class ObjectCacheBenchmark
         var cache = new KeyedObjectCache<int, ObjectCacheClass>(10);
         for (var i = 0; i < 5; i++)
         {
-            cache.Cache(i, new(i, i.ToString()));
+            cache.TryAdd(i, new(i, i.ToString()));
         }
 
         return cache;
@@ -48,10 +48,10 @@ public class ObjectCacheBenchmark
     [Benchmark]
     public int TryGetAndCache()
     {
-        var t = this.cache.TryGet(10);
+        var t = this.cache.TakeOrDefault(10);
         if (t != null)
         {
-            this.cache.Cache(10, t);
+            this.cache.TryAdd(10, t);
         }
 
         return this.cache.Count;

@@ -8,7 +8,7 @@ namespace XunitTest;
 public class Utf8ValidatorTests
 {
     [Fact]
-    public void SeparatorFlag()
+    public void SeparatorCharFlags()
     {
         for (char c = default; c < 0xFF; c++)
         {
@@ -17,7 +17,7 @@ public class Utf8ValidatorTests
             }
             else
             {
-                BaseHelper.SeparatorCharFlag[c].Is(char.IsWhiteSpace(c));
+                BaseHelper.SeparatorCharFlags[c].Is(char.IsWhiteSpace(c));
             }
         }
     }
@@ -25,7 +25,7 @@ public class Utf8ValidatorTests
     [Fact]
     public void EmptyBytes_ReturnsZero()
     {
-        var result = BaseHelper.GetValidUtf8Length(new byte[0]);
+        var result = BaseHelper.GetCompleteUtf8Length(new byte[0]);
         Assert.Equal(0, result);
     }
 
@@ -33,7 +33,7 @@ public class Utf8ValidatorTests
     public void AsciiOnly_ReturnsFullLength()
     {
         var bytes = Encoding.UTF8.GetBytes("Hello World");
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(bytes.Length, result);
     }
 
@@ -41,7 +41,7 @@ public class Utf8ValidatorTests
     public void CompleteUtf8Japanese_ReturnsFullLength()
     {
         var bytes = Encoding.UTF8.GetBytes("こんにちは");
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(bytes.Length, result);
     }
 
@@ -49,12 +49,12 @@ public class Utf8ValidatorTests
     public void CompleteUtf8Mixed_ReturnsFullLength()
     {
         var bytes = Encoding.UTF8.GetBytes("Hello世界123");
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(bytes.Length, result);
     }
 
     [Fact]
-    public void TruncatedTwoByteChar_ReturnsValidLength()
+    public void TruncatedTwoByteChar_ReturnsCompleteLength()
     {
         // "あ" = E3 81 82 (3バイト)
         // "い" = E3 81 84 (3バイト)
@@ -63,7 +63,7 @@ public class Utf8ValidatorTests
         Array.Copy(bytes, truncated, bytes.Length);
         truncated[bytes.Length] = 0xE3; // 3バイト文字の最初の1バイトのみ
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(bytes.Length, result);
 
         // 変換可能であることを確認
@@ -72,19 +72,19 @@ public class Utf8ValidatorTests
     }
 
     [Fact]
-    public void TruncatedThreeByteChar_FirstByteOnly_ReturnsValidLength()
+    public void TruncatedThreeByteChar_FirstByteOnly_ReturnsCompleteLength()
     {
         var complete = Encoding.UTF8.GetBytes("Test");
         var truncated = new byte[complete.Length + 1];
         Array.Copy(complete, truncated, complete.Length);
         truncated[complete.Length] = 0xE3; // 3バイト文字の1バイト目のみ
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(complete.Length, result);
     }
 
     [Fact]
-    public void TruncatedThreeByteChar_TwoBytesOnly_ReturnsValidLength()
+    public void TruncatedThreeByteChar_TwoBytesOnly_ReturnsCompleteLength()
     {
         var complete = Encoding.UTF8.GetBytes("Test");
         var truncated = new byte[complete.Length + 2];
@@ -92,19 +92,19 @@ public class Utf8ValidatorTests
         truncated[complete.Length] = 0xE3;     // 3バイト文字の1バイト目
         truncated[complete.Length + 1] = 0x81; // 2バイト目
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(complete.Length, result);
     }
 
     [Fact]
-    public void TruncatedFourByteChar_Emoji_ReturnsValidLength()
+    public void TruncatedFourByteChar_Emoji_ReturnsCompleteLength()
     {
         // 😀 = F0 9F 98 80 (4バイト)
         var bytes = Encoding.UTF8.GetBytes("Hello😀");
         var truncated = new byte[bytes.Length - 1]; // 最後の1バイトを削除
         Array.Copy(bytes, truncated, truncated.Length);
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(5, result); // "Hello" の部分のみ
 
         var str = Encoding.UTF8.GetString(truncated, 0, result);
@@ -112,14 +112,14 @@ public class Utf8ValidatorTests
     }
 
     [Fact]
-    public void TruncatedFourByteChar_OnlyFirstByte_ReturnsValidLength()
+    public void TruncatedFourByteChar_OnlyFirstByte_ReturnsCompleteLength()
     {
         var complete = Encoding.UTF8.GetBytes("ABC");
         var truncated = new byte[complete.Length + 1];
         Array.Copy(complete, truncated, complete.Length);
         truncated[complete.Length] = 0xF0; // 4バイト文字の1バイト目のみ
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(complete.Length, result);
     }
 
@@ -127,12 +127,12 @@ public class Utf8ValidatorTests
     public void CompleteEmoji_ReturnsFullLength()
     {
         var bytes = Encoding.UTF8.GetBytes("😀😁😂");
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(bytes.Length, result);
     }
 
     [Fact]
-    public void MixedWithTruncatedAtEnd_ReturnsValidLength()
+    public void MixedWithTruncatedAtEnd_ReturnsCompleteLength()
     {
         var complete = Encoding.UTF8.GetBytes("ABC日本語123");
         var truncated = new byte[complete.Length + 2];
@@ -140,7 +140,7 @@ public class Utf8ValidatorTests
         truncated[complete.Length] = 0xE3;
         truncated[complete.Length + 1] = 0x81;
 
-        var result = BaseHelper.GetValidUtf8Length(truncated);
+        var result = BaseHelper.GetCompleteUtf8Length(truncated);
         Assert.Equal(complete.Length, result);
     }
 
@@ -148,12 +148,12 @@ public class Utf8ValidatorTests
     public void WithOffsetAndCount_ReturnsCorrectLength()
     {
         var bytes = Encoding.UTF8.GetBytes("___Test___");
-        var result = BaseHelper.GetValidUtf8Length(bytes.AsSpan(3, 4));
+        var result = BaseHelper.GetCompleteUtf8Length(bytes.AsSpan(3, 4));
         Assert.Equal(4, result);
     }
 
     [Fact]
-    public void WithOffsetAndTruncated_ReturnsValidLength()
+    public void WithOffsetAndTruncated_ReturnsCompleteLength()
     {
         var full = Encoding.UTF8.GetBytes("___Test");
         var bytes = new byte[full.Length + 2];
@@ -161,7 +161,7 @@ public class Utf8ValidatorTests
         bytes[full.Length] = 0xE3;
         bytes[full.Length + 1] = 0x81;
 
-        var result = BaseHelper.GetValidUtf8Length(bytes.AsSpan(3, bytes.Length - 3));
+        var result = BaseHelper.GetCompleteUtf8Length(bytes.AsSpan(3, bytes.Length - 3));
         Assert.Equal(4, result);
     }
 
@@ -169,7 +169,7 @@ public class Utf8ValidatorTests
     public void SingleAsciiChar_ReturnsOne()
     {
         var bytes = new byte[] { 0x41 }; // 'A'
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(1, result);
     }
 
@@ -177,7 +177,7 @@ public class Utf8ValidatorTests
     public void SingleCompleteThreeByteChar_ReturnsThree()
     {
         var bytes = Encoding.UTF8.GetBytes("あ");
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(3, result);
     }
 
@@ -192,7 +192,7 @@ public class Utf8ValidatorTests
     public void CompleteStrings_AlwaysReturnFullLength(string input)
     {
         var bytes = Encoding.UTF8.GetBytes(input);
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(bytes.Length, result);
     }
 
@@ -200,7 +200,7 @@ public class Utf8ValidatorTests
     public void ContinuationByteOnly_ReturnsZero()
     {
         var bytes = new byte[] { 0x80 }; // 継続バイトのみ
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(0, result);
     }
 
@@ -208,7 +208,7 @@ public class Utf8ValidatorTests
     public void MultipleContinuationBytes_ReturnsZero()
     {
         var bytes = new byte[] { 0x80, 0x81, 0x82 }; // 継続バイトのみ
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
         Assert.Equal(0, result);
     }
 
@@ -217,7 +217,7 @@ public class Utf8ValidatorTests
     {
         byte[] bytes = [0x41, 0x80];
 
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
 
         Assert.Equal(1, result);
     }
@@ -227,7 +227,7 @@ public class Utf8ValidatorTests
     {
         byte[] bytes = [0xC2, 0x80, 0x80];
 
-        var result = BaseHelper.GetValidUtf8Length(bytes);
+        var result = BaseHelper.GetCompleteUtf8Length(bytes);
 
         Assert.Equal(2, result);
     }

@@ -52,12 +52,12 @@ public class SlidingListTest2
         var list = new SlidingList<string>(capacity);
 
         Assert.Equal(capacity, list.Capacity);
-        Assert.Equal(0, list.Consumed);
+        Assert.Equal(0, list.UsedSlotCount);
         Assert.Equal(0, Count(list));
         Assert.Equal(0, list.StartPosition);
         Assert.Equal(0, list.EndPosition);
         Assert.Equal(capacity > 0, list.CanAdd);
-        Assert.Null(list.FirstOrDefault);
+        Assert.Null(list.GetFirstOrDefault());
         Assert.Empty(list.ToArray());
     }
 
@@ -77,11 +77,11 @@ public class SlidingListTest2
         Assert.Equal(0, list.Add("a"));
         Assert.Equal(1, list.Add("b"));
         Assert.Equal(2, list.Add("c"));
-        Assert.Equal(3, list.Consumed);
+        Assert.Equal(3, list.UsedSlotCount);
         Assert.Equal(0, list.StartPosition);
         Assert.Equal(3, list.EndPosition);
         Assert.Equal(3, Count(list));
-        Assert.Equal("a", list.FirstOrDefault);
+        Assert.Equal("a", list.GetFirstOrDefault());
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class SlidingListTest2
 
         Assert.False(list.CanAdd);
         Assert.Equal(-1, list.Add("x"));
-        Assert.Equal(3, list.Consumed);
+        Assert.Equal(3, list.UsedSlotCount);
     }
 
     [Fact]
@@ -115,38 +115,38 @@ public class SlidingListTest2
 
     #endregion
 
-    #region Get / Set
+    #region GetOrDefault / TrySet
 
     [Fact]
-    public void GetSet_RoundTrip()
+    public void GetOrDefaultTrySet_RoundTrip()
     {
         var list = new SlidingList<string>(4);
         var position = list.Add("a");
 
-        Assert.Equal("a", list.Get(position));
-        Assert.True(list.Set(position, "b"));
-        Assert.Equal("b", list.Get(position));
+        Assert.Equal("a", list.GetOrDefault(position));
+        Assert.True(list.TrySet(position, "b"));
+        Assert.Equal("b", list.GetOrDefault(position));
         Assert.Equal(1, Count(list));
     }
 
     [Fact]
-    public void Get_OutsideWindow_ReturnsNull()
+    public void GetOrDefault_OutsideWindow_ReturnsNull()
     {
         var list = Filled(4);
 
-        Assert.Null(list.Get(-1));
-        Assert.Null(list.Get(list.StartPosition + 4));
-        Assert.Null(list.Get(MaxPosition));
+        Assert.Null(list.GetOrDefault(-1));
+        Assert.Null(list.GetOrDefault(list.StartPosition + 4));
+        Assert.Null(list.GetOrDefault(MaxPosition));
     }
 
     [Fact]
-    public void Set_OutsideWindow_ReturnsFalse()
+    public void TrySet_OutsideWindow_ReturnsFalse()
     {
         var list = new SlidingList<string>(4);
 
-        Assert.False(list.Set(-1, "x"));
-        Assert.False(list.Set(list.StartPosition + 4, "x"));
-        Assert.Equal(0, list.Consumed);
+        Assert.False(list.TrySet(-1, "x"));
+        Assert.False(list.TrySet(list.StartPosition + 4, "x"));
+        Assert.Equal(0, list.UsedSlotCount);
     }
 
     [Theory]
@@ -154,12 +154,12 @@ public class SlidingListTest2
     [InlineData(1, 2)]
     [InlineData(2, 3)]
     [InlineData(3, 4)]
-    public void Set_BeyondEndPosition_ExtendsConsumed(int offset, int expectedConsumed)
+    public void TrySet_BeyondEndPosition_ExtendsUsedSlotCount(int offset, int expectedUsedSlotCount)
     {
         var list = new SlidingList<string>(4);
 
-        Assert.True(list.Set(list.StartPosition + offset, "x"));
-        Assert.Equal(expectedConsumed, list.Consumed);
+        Assert.True(list.TrySet(list.StartPosition + offset, "x"));
+        Assert.Equal(expectedUsedSlotCount, list.UsedSlotCount);
         Assert.Equal(1, Count(list));
         Assert.Equal(new[] { "x" }, list.ToArray());
     }
@@ -168,103 +168,103 @@ public class SlidingListTest2
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void Set_AfterHeadWrapped_KeepsConsumedConsistent(int slides)
+    public void TrySet_AfterHeadWrapped_KeepsUsedSlotCountConsistent(int slides)
     {
         // Slide the head forward so that the window wraps around the end of the internal array.
         var list = Filled(4);
         for (var i = 0; i < slides; i++)
         {
-            Assert.True(list.Remove(list.StartPosition));
+            Assert.True(list.TryRemoveAt(list.StartPosition));
         }
 
         var position = MaxPosition & (list.StartPosition + 3);
-        Assert.True(list.Set(position, "x"));
+        Assert.True(list.TrySet(position, "x"));
 
-        Assert.Equal("x", list.Get(position));
-        Assert.Equal(4, list.Consumed);
+        Assert.Equal("x", list.GetOrDefault(position));
+        Assert.Equal(4, list.UsedSlotCount);
         Assert.Equal(4 - slides + 1, Count(list));
     }
 
     [Fact]
-    public void Set_Null_Throws()
+    public void TrySet_Null_Throws()
     {
         var list = new SlidingList<string>(4);
         var position = list.Add("a");
 
-        Assert.Throws<ArgumentNullException>(() => list.Set(position, null!));
+        Assert.Throws<ArgumentNullException>(() => list.TrySet(position, null!));
     }
 
     #endregion
 
-    #region Remove / TrySlide
+    #region TryRemoveAt / Slide
 
     [Fact]
-    public void Remove_Head_SlidesTheWindow()
+    public void TryRemoveAt_Head_SlidesTheWindow()
     {
         var list = Filled(3);
 
-        Assert.True(list.Remove(list.StartPosition));
+        Assert.True(list.TryRemoveAt(list.StartPosition));
 
         Assert.Equal(1, list.StartPosition);
-        Assert.Equal(2, list.Consumed);
+        Assert.Equal(2, list.UsedSlotCount);
         Assert.Equal(2, Count(list));
         Assert.True(list.CanAdd);
-        Assert.Equal("a1", list.FirstOrDefault);
+        Assert.Equal("a1", list.GetFirstOrDefault());
     }
 
     [Fact]
-    public void Remove_Middle_LeavesAHole()
+    public void TryRemoveAt_Middle_LeavesAHole()
     {
         var list = Filled(3);
 
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(1));
 
         Assert.Equal(0, list.StartPosition);
-        Assert.Equal(3, list.Consumed); // the hole still occupies a slot
+        Assert.Equal(3, list.UsedSlotCount); // the hole still occupies a slot
         Assert.Equal(2, Count(list));
         Assert.False(list.CanAdd);
         Assert.Equal(new[] { "a0", "a2" }, list.ToArray());
     }
 
     [Fact]
-    public void Remove_Twice_ReturnsFalse()
+    public void TryRemoveAt_Twice_ReturnsFalse()
     {
         var list = Filled(3);
 
-        Assert.True(list.Remove(1));
-        Assert.False(list.Remove(1));
+        Assert.True(list.TryRemoveAt(1));
+        Assert.False(list.TryRemoveAt(1));
     }
 
     [Fact]
-    public void Remove_OutsideWindow_ReturnsFalse()
+    public void TryRemoveAt_OutsideWindow_ReturnsFalse()
     {
         var list = Filled(3);
 
-        Assert.False(list.Remove(-1));
-        Assert.False(list.Remove(list.StartPosition + 3));
+        Assert.False(list.TryRemoveAt(-1));
+        Assert.False(list.TryRemoveAt(list.StartPosition + 3));
     }
 
     [Fact]
-    public void TrySlide_ReclaimsLeadingHoles()
+    public void Slide_ReclaimsLeadingHoles()
     {
         var list = Filled(4);
 
         // Remove the middle elements first, so no implicit slide happens.
-        Assert.True(list.Remove(1));
-        Assert.True(list.Remove(2));
-        Assert.Equal(0, list.TrySlide());
+        Assert.True(list.TryRemoveAt(1));
+        Assert.True(list.TryRemoveAt(2));
+        Assert.Equal(0, list.Slide());
 
-        Assert.True(list.Remove(0)); // removing the head slides over positions 0, 1 and 2
+        Assert.True(list.TryRemoveAt(0)); // removing the head slides over positions 0, 1 and 2
         Assert.Equal(3, list.StartPosition);
-        Assert.Equal(1, list.Consumed);
-        Assert.Equal(0, list.TrySlide());
+        Assert.Equal(1, list.UsedSlotCount);
+        Assert.Equal(0, list.Slide());
     }
 
     [Fact]
-    public void TrySlide_OnEmptyList_ReturnsZero()
+    public void Slide_OnEmptyList_ReturnsZero()
     {
-        Assert.Equal(0, new SlidingList<string>(0).TrySlide());
-        Assert.Equal(0, new SlidingList<string>(4).TrySlide());
+        Assert.Equal(0, new SlidingList<string>(0).Slide());
+        Assert.Equal(0, new SlidingList<string>(4).Slide());
     }
 
     [Fact]
@@ -273,10 +273,10 @@ public class SlidingListTest2
         var list = Filled(3);
         for (var position = 0; position < 3; position++)
         {
-            Assert.True(list.Remove(position));
+            Assert.True(list.TryRemoveAt(position));
         }
 
-        Assert.Equal(0, list.Consumed);
+        Assert.Equal(0, list.UsedSlotCount);
         Assert.Equal(0, Count(list));
         Assert.Equal(3, list.StartPosition);
         Assert.Equal(3, list.Add("next"));
@@ -287,12 +287,12 @@ public class SlidingListTest2
     #region Count / ToArray / CopyTo
 
     [Fact]
-    public void Count_ExcludesHoles_ConsumedIncludesThem()
+    public void Count_ExcludesHoles_UsedSlotCountIncludesThem()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(2));
+        Assert.True(list.TryRemoveAt(2));
 
-        Assert.Equal(4, list.Consumed);
+        Assert.Equal(4, list.UsedSlotCount);
         Assert.Equal(3, Count(list));
         Assert.Equal(3, list.ToArray().Length);
         Assert.Equal(3, list.Count()); // LINQ agrees with the enumeration
@@ -302,8 +302,8 @@ public class SlidingListTest2
     public void ToArray_SkipsHolesAndKeepsOrder()
     {
         var list = Filled(5);
-        Assert.True(list.Remove(1));
-        Assert.True(list.Remove(3));
+        Assert.True(list.TryRemoveAt(1));
+        Assert.True(list.TryRemoveAt(3));
 
         Assert.Equal(new[] { "a0", "a2", "a4" }, list.ToArray());
     }
@@ -312,8 +312,8 @@ public class SlidingListTest2
     public void ToArray_WhenWrapped_KeepsOrder()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(0));
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(0));
+        Assert.True(list.TryRemoveAt(1));
         list.Add("b0");
         list.Add("b1");
 
@@ -324,7 +324,7 @@ public class SlidingListTest2
     public void CopyTo_CopiesLiveElementsAtTheGivenIndex()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(1));
         var array = new string[5];
 
         list.CopyTo(array, 2);
@@ -350,8 +350,8 @@ public class SlidingListTest2
     public void IndexOf_ReturnsPositionUsableWithTheIndexer()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(0));
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(0));
+        Assert.True(list.TryRemoveAt(1));
         var position = list.Add("target");
 
         Assert.Equal(position, list.IndexOf("target"));
@@ -378,7 +378,7 @@ public class SlidingListTest2
         list.Add("dup");
 
         Assert.True(list.Remove("dup"));
-        Assert.Null(list.Get(second));
+        Assert.Null(list.GetOrDefault(second));
         Assert.Equal(2, Count(list));
         Assert.False(list.Remove("missing"));
     }
@@ -387,7 +387,7 @@ public class SlidingListTest2
     public void Indexer_Get_InvalidPosition_Throws()
     {
         var list = Filled(2);
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(1));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => list[1]); // the slot is empty
         Assert.Throws<ArgumentOutOfRangeException>(() => list[99]); // outside the window
@@ -435,16 +435,16 @@ public class SlidingListTest2
     public void Resize_PreservesElementsAndPositions(int capacity)
     {
         var list = Filled(4);
-        Assert.True(list.Remove(0)); // head slides to position 1
+        Assert.True(list.TryRemoveAt(0)); // head slides to position 1
         var start = list.StartPosition;
 
         Assert.True(list.Resize(capacity));
 
         Assert.Equal(capacity, list.Capacity);
         Assert.Equal(start, list.StartPosition);
-        Assert.Equal(3, list.Consumed);
+        Assert.Equal(3, list.UsedSlotCount);
         Assert.Equal(new[] { "a1", "a2", "a3" }, list.ToArray());
-        Assert.Equal("a2", list.Get(start + 1));
+        Assert.Equal("a2", list.GetOrDefault(start + 1));
     }
 
     [Fact]
@@ -472,10 +472,10 @@ public class SlidingListTest2
 
         list.Clear();
 
-        Assert.Equal(0, list.Consumed);
+        Assert.Equal(0, list.UsedSlotCount);
         Assert.Equal(0, Count(list));
         Assert.Empty(list.ToArray());
-        Assert.Null(list.Get(first)); // positions handed out before Clear are gone
+        Assert.Null(list.GetOrDefault(first)); // positions handed out before Clear are gone
         Assert.Equal(3, list.Add("new")); // and are not handed out again
     }
 
@@ -487,7 +487,7 @@ public class SlidingListTest2
     public void Enumerator_SkipsHolesAndKeepsOrder()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(1));
 
         Assert.Equal(new[] { "a0", "a2", "a3" }, list.ToList());
     }
@@ -503,7 +503,7 @@ public class SlidingListTest2
         var enumerator = list.GetEnumerator();
         Assert.True(enumerator.MoveNext());
 
-        Assert.True(list.Remove(2));
+        Assert.True(list.TryRemoveAt(2));
 
         Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
     }
@@ -512,8 +512,8 @@ public class SlidingListTest2
     public void Enumerator_Reset_RestartsFromTheHead()
     {
         var list = Filled(4);
-        Assert.True(list.Remove(0));
-        Assert.True(list.Remove(1));
+        Assert.True(list.TryRemoveAt(0));
+        Assert.True(list.TryRemoveAt(1));
         list.Add("b0");
 
         IEnumerator enumerator = list.GetEnumerator();
@@ -550,14 +550,14 @@ public class SlidingListTest2
         Assert.Equal(MaxPosition & (start + 4), list.EndPosition);
         for (var i = 0; i < 4; i++)
         {
-            Assert.Equal("a" + i, list.Get(positions[i]));
+            Assert.Equal("a" + i, list.GetOrDefault(positions[i]));
         }
 
         // The wrapped positions round-trip through the whole API.
         Assert.Equal(positions[2], list.IndexOf("a2"));
-        Assert.True(list.Set(positions[3], "z"));
+        Assert.True(list.TrySet(positions[3], "z"));
         Assert.Equal("z", list[positions[3]]);
-        Assert.True(list.Remove(positions[0]));
+        Assert.True(list.TryRemoveAt(positions[0]));
         Assert.Equal(positions[1], list.StartPosition);
         Assert.Equal(new[] { "a1", "a2", "z" }, list.ToArray());
     }
