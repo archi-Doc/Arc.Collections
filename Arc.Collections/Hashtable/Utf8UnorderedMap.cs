@@ -75,15 +75,15 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf8UnorderedMap{TValue}"/> class.
     /// </summary>
-    /// <param name="minimumSize">The minimum required capacity.</param>
-    public Utf8UnorderedMap(uint minimumSize = 0)
+    /// <param name="minimumCapacity">The minimum required capacity.</param>
+    public Utf8UnorderedMap(uint minimumCapacity = 0)
     {
-        if (minimumSize > MaximumCapacity)
+        if (minimumCapacity > MaximumCapacity)
         {
-            throw new ArgumentOutOfRangeException(nameof(minimumSize));
+            throw new ArgumentOutOfRangeException(nameof(minimumCapacity));
         }
 
-        this.Initialize(minimumSize);
+        this.Initialize(minimumCapacity);
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(byte[] key, TValue value)
+    public void AddOrUpdate(byte[] key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
@@ -117,7 +117,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(ReadOnlySpan<byte> key, TValue value)
+    public void AddOrUpdate(ReadOnlySpan<byte> key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
@@ -455,9 +455,9 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     }
 
     [MemberNotNull(nameof(_buckets), nameof(_nodes))]
-    private void Initialize(uint minimumSize)
+    private void Initialize(uint minimumCapacity)
     {
-        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
+        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumCapacity);
         var size = checked((int)capacity);
 
         this._buckets = new int[size];

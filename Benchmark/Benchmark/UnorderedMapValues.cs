@@ -106,7 +106,7 @@ public class UnorderedMapValues
     {
         var r = this.map.UnsafeGetNodes();
         var sum = 0;
-        for (var i = 0; i < r.Max; i++)
+        for (var i = 0; i < r.SlotCount; i++)
         {
             sum += r.Nodes[i].Value;
         }

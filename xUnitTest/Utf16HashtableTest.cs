@@ -11,13 +11,13 @@ namespace XunitTest;
 public class Utf16HashtableTest
 {
     [Fact]
-    public void AddAndTryGetValue()
+    public void AddOrUpdateAndTryGetValue()
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 1);
-        table.Add("B", 2);
-        table.Add("C", 3);
+        table.AddOrUpdate("A", 1);
+        table.AddOrUpdate("B", 2);
+        table.AddOrUpdate("C", 3);
 
         Assert.Equal(3, table.Count);
 
@@ -33,12 +33,12 @@ public class Utf16HashtableTest
     }
 
     [Fact]
-    public void AddUpdatesExistingValue()
+    public void AddOrUpdateUpdatesExistingValue()
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 1);
-        table.Add("A", 2);
+        table.AddOrUpdate("A", 1);
+        table.AddOrUpdate("A", 2);
 
         Assert.Equal(1, table.Count);
         Assert.True(table.TryGetValue("A", out var value));
@@ -76,7 +76,7 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("Alpha", 1);
+        table.AddOrUpdate("Alpha", 1);
 
         Assert.False(table.TryAdd("Alpha".AsSpan(), 2));
         Assert.Equal(1, table.Count);
@@ -103,7 +103,7 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 10);
+        table.AddOrUpdate("A", 10);
 
         var called = false;
 
@@ -138,9 +138,9 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 1);
-        table.Add("B", 2);
-        table.Add("C", 3);
+        table.AddOrUpdate("A", 1);
+        table.AddOrUpdate("B", 2);
+        table.AddOrUpdate("C", 3);
 
         table.Clear();
 
@@ -150,7 +150,7 @@ public class Utf16HashtableTest
         Assert.False(table.TryGetValue("B", out _));
         Assert.False(table.TryGetValue("C", out _));
 
-        table.Add("D", 4);
+        table.AddOrUpdate("D", 4);
 
         Assert.Equal(1, table.Count);
         Assert.True(table.TryGetValue("D", out var value));
@@ -162,9 +162,9 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 10);
-        table.Add("B", 20);
-        table.Add("C", 30);
+        table.AddOrUpdate("A", 10);
+        table.AddOrUpdate("B", 20);
+        table.AddOrUpdate("C", 30);
 
         var values = table.ToArray();
         Array.Sort(values);
@@ -177,9 +177,9 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("A", 1);
-        table.Add("B", 2);
-        table.Add("C", 3);
+        table.AddOrUpdate("A", 1);
+        table.AddOrUpdate("B", 2);
+        table.AddOrUpdate("C", 3);
 
         var pairs = table.ToKeyValuePairs();
         Array.Sort(pairs, static (x, y) => string.CompareOrdinal(x.Key, y.Key));
@@ -205,7 +205,7 @@ public class Utf16HashtableTest
 
         for (var i = 0; i < count; i++)
         {
-            table.Add($"Key-{i}", i);
+            table.AddOrUpdate($"Key-{i}", i);
         }
 
         Assert.Equal(count, table.Count);
@@ -222,7 +222,7 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add(string.Empty, 123);
+        table.AddOrUpdate(string.Empty, 123);
 
         Assert.True(table.TryGetValue(string.Empty, out var value1));
         Assert.True(table.TryGetValue(ReadOnlySpan<char>.Empty, out var value2));
@@ -236,8 +236,8 @@ public class Utf16HashtableTest
     {
         var table = new Utf16Hashtable<int>();
 
-        table.Add("ABC", 1);
-        table.Add("abc", 2);
+        table.AddOrUpdate("ABC", 1);
+        table.AddOrUpdate("abc", 2);
 
         Assert.Equal(2, table.Count);
 
@@ -268,7 +268,7 @@ public class Utf16HashtableTest
     }
 
     [Fact]
-    public void ConcurrentAddDifferentKeys()
+    public void ConcurrentAddOrUpdateDifferentKeys()
     {
         var table = new Utf16Hashtable<int>();
 
@@ -276,7 +276,7 @@ public class Utf16HashtableTest
 
         Parallel.For(0, count, i =>
         {
-            table.Add($"Key-{i}", i);
+            table.AddOrUpdate($"Key-{i}", i);
         });
 
         Assert.Equal(count, table.Count);
@@ -297,7 +297,7 @@ public class Utf16HashtableTest
 
         for (var i = 0; i < count; i++)
         {
-            table.Add($"Key-{i}", i);
+            table.AddOrUpdate($"Key-{i}", i);
         }
 
         Parallel.For(0, count, i =>

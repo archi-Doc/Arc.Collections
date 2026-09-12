@@ -107,7 +107,7 @@ public class UInt64Hashtable<TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(ulong key, TValue value)
+    public void AddOrUpdate(ulong key, TValue value)
         => this.AddInternal(key, value, true, out _);
 
     /// <summary>

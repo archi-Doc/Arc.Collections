@@ -41,8 +41,8 @@ public class OrderedSetCoverageTest
             Assert.Equal(values.OrderBy(x => x, comparer), multi);
         }
 
-        Assert.Equal(reverse, set.Reverse);
-        Assert.Equal(reverse, multi.Reverse);
+        Assert.Equal(reverse, set.IsReversed);
+        Assert.Equal(reverse, multi.IsReversed);
         Assert.Same(Comparer<int>.Default, set.Comparer);
         Assert.Same(Comparer<int>.Default, multi.Comparer);
         Assert.Equal(reference.Min, set.FirstNode!.Key);
@@ -55,7 +55,7 @@ public class OrderedSetCoverageTest
             Assert.Equal(reference.Contains(key), set.Contains(key));
             Assert.Equal(values.Contains(key), multi.Contains(key));
             Assert.Equal(values.Count(x => x == key), multi.GetCount(key));
-            Assert.Equal(values.Count(x => x == key), multi.EnumerateNode(key).Count());
+            Assert.Equal(values.Count(x => x == key), multi.EnumerateNodes(key).Count());
             Assert.Equal(reference.Where(x => comparer.Compare(x, key) >= 0).Select(x => (int?)x).FirstOrDefault(), set.GetLowerBound(key)?.Key);
             Assert.Equal(reference.Where(x => comparer.Compare(x, key) <= 0).Select(x => (int?)x).LastOrDefault(), set.GetUpperBound(key)?.Key);
             Assert.Equal(sorted.Where(x => comparer.Compare(x, key) >= 0).Select(x => (int?)x).FirstOrDefault(), multi.GetLowerBound(key)?.Key);
@@ -92,13 +92,13 @@ public class OrderedSetCoverageTest
         Assert.True(set.Contains(null));
         Assert.True(multi.Contains(null));
         var node = set.FindNode("a")!;
-        Assert.False(set.SetNodeValue(node, "b"));
-        Assert.True(set.SetNodeValue(node, "c"));
+        Assert.False(set.SetNodeKey(node, "b"));
+        Assert.True(set.SetNodeKey(node, "c"));
         set.RemoveNode(node);
         Assert.Same(node, set.AddNode("d", node).Node);
         Assert.False(set.AddNode("d").NewlyAdded);
         var duplicate = multi.FindFirstNode("a")!;
-        Assert.True(multi.SetNodeValue(duplicate, "b"));
+        Assert.True(multi.SetNodeKey(duplicate, "b"));
         Assert.Equal(2, multi.GetCount("b"));
         multi.RemoveNode(duplicate);
         Assert.Same(duplicate, multi.Add("c", duplicate));

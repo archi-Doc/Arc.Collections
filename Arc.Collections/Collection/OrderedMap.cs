@@ -206,7 +206,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// <summary>
     /// Gets a value indicating whether the collection is sorted in reverse order.
     /// </summary>
-    public bool Reverse { get; }
+    public bool IsReversed { get; }
 
     /// <summary>
     /// Gets the comparer used to order the keys.
@@ -217,7 +217,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// Gets the specialized tree-search implementation for <typeparamref name="TKey"/>,
     /// or <see langword="null"/> when none is available.
     /// </summary>
-    public IHotMethod2<TKey, TValue>? HotMethod2 { get; }
+    public IHotTreeMethod<TKey, TValue>? HotTreeMethod { get; }
 
     /// <summary>
     /// Initializes an empty map.
@@ -235,9 +235,9 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// <param name="reverse"><see langword="true"/> to sort in descending order.</param>
     public OrderedMap(IComparer<TKey>? comparer, bool reverse = false)
     {
-        this.Reverse = reverse;
+        this.IsReversed = reverse;
         this.Comparer = comparer ?? Comparer<TKey>.Default;
-        this.HotMethod2 = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
+        this.HotTreeMethod = HotMethodResolver.Get<TKey, TValue>(this.Comparer);
     }
 
     /// <summary>
@@ -788,8 +788,8 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     public Node? FindNode(TKey? key)
     {
         var result = this.SearchNode(this.root, key);
-        return result.Cmp == 0
-            ? result.Leaf
+        return result.Comparison == 0
+            ? result.Node
             : null;
     }
 
@@ -853,15 +853,15 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         return (lowerNode, upperNode);
     }
 
-    private (int Cmp, Node? Leaf) SearchNode(Node? target, TKey? key)
+    private (int Comparison, Node? Node) SearchNode(Node? target, TKey? key)
     {
         var node = target;
         Node? parent = null;
         var cmp = 0;
         var comparer = this.Comparer;
-        var hotMethod = this.HotMethod2;
+        var hotMethod = this.HotTreeMethod;
 
-        if (!this.Reverse)
+        if (!this.IsReversed)
         {
             // Handle null before HotMethod, which is only defined for non-null value keys.
             if (key is null)
@@ -1695,7 +1695,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             cmp = this.Comparer.Compare(x, y);
         }
 
-        if (!this.Reverse)
+        if (!this.IsReversed)
         {
             return cmp;
         }

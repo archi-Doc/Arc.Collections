@@ -166,7 +166,7 @@ public class UnorderedMapClass<TKey, TValue>
 
     public IEqualityComparer<TKey> Comparer { get; private set; }
 
-    public IHotMethod2<TKey, TValue>? HotMethod2 { get; private set; }
+    public IHotTreeMethod<TKey, TValue>? HotMethod2 { get; private set; }
 
     public bool AllowMultiple { get; protected set; }
 

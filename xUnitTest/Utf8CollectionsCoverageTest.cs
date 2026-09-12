@@ -33,7 +33,7 @@ public class Utf8CollectionsCoverageTest
                 case 1:
                     if (useSpan)
                     {
-                        map.Add(bytes.AsSpan(), value);
+                        map.AddOrUpdate(bytes.AsSpan(), value);
                     }
                     else
                     {
@@ -92,7 +92,7 @@ public class Utf8CollectionsCoverageTest
         Assert.False(map.ContainsValue(null));
         Assert.False(map.TryGetValue("missing"u8, out _));
         Assert.Throws<KeyNotFoundException>(() => map["missing"u8.ToArray()]);
-        map.Add(Array.Empty<byte>(), "empty");
+        map.AddOrUpdate(Array.Empty<byte>(), "empty");
         Assert.Equal("empty", map[Array.Empty<byte>()]);
     }
 
@@ -111,11 +111,11 @@ public class Utf8CollectionsCoverageTest
             Assert.False(useSpan ? table.TryAdd(bytes.AsSpan(), -1) : table.TryAdd(bytes, -1));
             if (useSpan)
             {
-                table.Add(bytes.AsSpan(), i + 1);
+                table.AddOrUpdate(bytes.AsSpan(), i + 1);
             }
             else
             {
-                table.Add(bytes, i + 1);
+                table.AddOrUpdate(bytes, i + 1);
             }
 
             expected[key] = i + 1;
@@ -164,8 +164,8 @@ public class Utf8CollectionsCoverageTest
         var bytes = "original"u8.ToArray();
         var map = new Utf8UnorderedMap<int>();
         var table = new Utf8Hashtable<int>();
-        map.Add(bytes.AsSpan(), 1);
-        table.Add(bytes.AsSpan(), 2);
+        map.AddOrUpdate(bytes.AsSpan(), 1);
+        table.AddOrUpdate(bytes.AsSpan(), 2);
         bytes[0] = 0;
         Assert.True(map.TryGetValue("original"u8, out var value));
         Assert.Equal(1, value);
@@ -187,13 +187,13 @@ public class Utf8CollectionsCoverageTest
         var table = new Utf8Hashtable<int>();
         Assert.Throws<ArgumentOutOfRangeException>(() => new Utf8UnorderedMap<int>(uint.MaxValue));
         Assert.Throws<ArgumentOutOfRangeException>(() => new Utf8Hashtable<int>(-1));
-        Assert.Throws<ArgumentNullException>(() => map.Add((byte[])null!, 1));
+        Assert.Throws<ArgumentNullException>(() => map.AddOrUpdate((byte[])null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.TryAdd((byte[])null!, 1));
         Assert.Throws<ArgumentNullException>(() => map.Remove((byte[])null!));
         Assert.Throws<ArgumentNullException>(() => map.ContainsKey((byte[])null!));
         Assert.Throws<ArgumentNullException>(() => map.TryGetValue((byte[])null!, out _));
         Assert.Throws<ArgumentNullException>(() => map.GetValueRefOrAddDefault((byte[])null!, out _));
-        Assert.Throws<ArgumentNullException>(() => table.Add((byte[])null!, 1));
+        Assert.Throws<ArgumentNullException>(() => table.AddOrUpdate((byte[])null!, 1));
         Assert.Throws<ArgumentNullException>(() => table.TryAdd((byte[])null!, 1));
         Assert.Throws<ArgumentNullException>(() => table.TryRemove((byte[])null!));
         Assert.Throws<ArgumentNullException>(() => table.TryGetValue((byte[])null!, out _));

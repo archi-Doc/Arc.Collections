@@ -50,9 +50,9 @@ public class UnorderedMapTest2
     }
 
     [Fact]
-    public void AllowDuplicateAddsMultipleNodes()
+    public void AllowDuplicatesAddsMultipleNodes()
     {
-        var map = new UnorderedMap<int, string>(allowDuplicate: true);
+        var map = new UnorderedMap<int, string>(allowDuplicates: true);
 
         var r1 = map.Add(1, "A");
         var r2 = map.Add(1, "B");
@@ -63,7 +63,7 @@ public class UnorderedMapTest2
         Assert.True(r3.NewlyAdded);
         Assert.Equal(3, map.Count);
 
-        var values = map.EnumerateValue(1).OrderBy(x => x).ToArray();
+        var values = map.EnumerateValues(1).OrderBy(x => x).ToArray();
 
         Assert.Equal(["A", "B", "C"], values);
     }
@@ -86,7 +86,7 @@ public class UnorderedMapTest2
     [Fact]
     public void NullKeyDuplicate()
     {
-        var map = new UnorderedMap<string?, int>(allowDuplicate: true);
+        var map = new UnorderedMap<string?, int>(allowDuplicates: true);
 
         map.Add(null, 1);
         map.Add(null, 2);
@@ -94,7 +94,7 @@ public class UnorderedMapTest2
 
         Assert.Equal(3, map.Count);
 
-        var values = map.EnumerateValue(null).OrderBy(x => x).ToArray();
+        var values = map.EnumerateValues(null).OrderBy(x => x).ToArray();
 
         Assert.Equal([1, 2, 3], values);
     }
@@ -174,7 +174,7 @@ public class UnorderedMapTest2
     [Fact]
     public void FindNode()
     {
-        var map = new UnorderedMap<int, string>(allowDuplicate: true);
+        var map = new UnorderedMap<int, string>(allowDuplicates: true);
 
         var a = map.Add(1, "A");
         var b = map.Add(1, "B");
@@ -203,7 +203,7 @@ public class UnorderedMapTest2
     [Fact]
     public void RemoveByKeyAndValue()
     {
-        var map = new UnorderedMap<int, string>(allowDuplicate: true);
+        var map = new UnorderedMap<int, string>(allowDuplicates: true);
 
         map.Add(1, "A");
         map.Add(1, "B");

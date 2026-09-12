@@ -97,7 +97,7 @@ public class BytePoolTest
     [Benchmark]
     public byte TemporarySpan_BytePool_Stackalloc()
     {
-        BytePool.RentMemory rent = default;
+        BytePool.RentedMemory rent = default;
         Span<byte> span = this.n <= StackallocThreshold ?
             stackalloc byte[this.n] : (rent = BytePool.Default.Rent(this.n).AsMemory()).Span;
 
@@ -117,7 +117,7 @@ public class BytePoolTest
     [Benchmark]
     public byte TemporarySpan_BytePool_BytePool()
     {
-        BytePool.RentMemory rent = default;
+        BytePool.RentedMemory rent = default;
         Span<byte> span = this.n <= StackallocThreshold2 ?
             stackalloc byte[this.n] : (rent = BytePool.Default.Rent(this.n).AsMemory()).Span;
 

@@ -33,7 +33,7 @@ public class HelperCoverageTest
     [Fact]
     public void TagsRoundTripUsingCachedObjects()
     {
-        for (var tag = 0; tag < TagObject.MaxTag; tag++)
+        for (var tag = 0; tag < TagObject.TagCount; tag++)
         {
             var value = TagObject.FromTag(tag);
             Assert.Same(value, TagObject.FromTag(tag));
@@ -44,7 +44,7 @@ public class HelperCoverageTest
         Assert.Equal(TagObject.InvalidTag, TagObject.ToTag(null));
         Assert.Equal(TagObject.InvalidTag, TagObject.ToTag(1));
         Assert.Throws<IndexOutOfRangeException>(() => TagObject.FromTag(-1));
-        Assert.Throws<IndexOutOfRangeException>(() => TagObject.FromTag(TagObject.MaxTag));
+        Assert.Throws<IndexOutOfRangeException>(() => TagObject.FromTag(TagObject.TagCount));
     }
 
     [Fact]

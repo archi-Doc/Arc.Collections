@@ -16,7 +16,7 @@ public class NumericHashtableCoverageTest
     {
         var table = new Int32Hashtable<string>(0);
         Verify<int>(new int[] { int.MinValue, -1, 0, 1, int.MaxValue }.Concat(Enumerable.Range(1, 256).Select(i => (int)(i * 1024))).Distinct().ToArray(),
-            table.Add, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
+            table.AddOrUpdate, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
             table.ContainsKey, () => table.Count, table.ToArray, table.Clear);
         Assert.Throws<ArgumentOutOfRangeException>(() => new Int32Hashtable<string>(-1));
     }
@@ -43,7 +43,7 @@ public class NumericHashtableCoverageTest
     {
         var table = new UInt32Hashtable<string>(0);
         Verify<uint>(new uint[] { 0, 1, uint.MaxValue }.Concat(Enumerable.Range(1, 256).Select(i => (uint)(i * 1024))).Distinct().ToArray(),
-            table.Add, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
+            table.AddOrUpdate, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
             table.ContainsKey, () => table.Count, table.ToArray, table.Clear);
         Assert.Throws<ArgumentOutOfRangeException>(() => new UInt32Hashtable<string>(-1));
     }
@@ -70,7 +70,7 @@ public class NumericHashtableCoverageTest
     {
         var table = new Int64Hashtable<string>(0);
         Verify<long>(new long[] { long.MinValue, -1, 0, 1, 0x100000001L, long.MaxValue }.Concat(Enumerable.Range(1, 256).Select(i => (long)(i * 1024))).Distinct().ToArray(),
-            table.Add, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
+            table.AddOrUpdate, table.TryAdd, table.TryGetValue, table.TryRemove, table.GetOrAdd,
             table.ContainsKey, () => table.Count, table.ToArray, table.Clear);
         Assert.Throws<ArgumentOutOfRangeException>(() => new Int64Hashtable<string>(-1));
     }

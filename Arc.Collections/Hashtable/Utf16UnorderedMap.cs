@@ -75,15 +75,15 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf16UnorderedMap{TValue}"/> class.
     /// </summary>
-    /// <param name="minimumSize">The minimum required capacity.</param>
-    public Utf16UnorderedMap(uint minimumSize = 0)
+    /// <param name="minimumCapacity">The minimum required capacity.</param>
+    public Utf16UnorderedMap(uint minimumCapacity = 0)
     {
-        if (minimumSize > MaximumCapacity)
+        if (minimumCapacity > MaximumCapacity)
         {
-            throw new ArgumentOutOfRangeException(nameof(minimumSize));
+            throw new ArgumentOutOfRangeException(nameof(minimumCapacity));
         }
 
-        this.Initialize(minimumSize);
+        this.Initialize(minimumCapacity);
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(string key, TValue value)
+    public void AddOrUpdate(string key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
@@ -117,7 +117,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    public void Add(ReadOnlySpan<char> key, TValue value)
+    public void AddOrUpdate(ReadOnlySpan<char> key, TValue value)
         => this.TryInsert(key, value, true);
 
     /// <summary>
@@ -353,7 +353,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.<br/>
     /// Computes the hash and traverses the bucket once, avoiding the repeated lookup
-    /// of a TryGetValue/Add pair.
+    /// of a TryGetValue/AddOrUpdate pair.
     /// </summary>
     /// <param name="key">The key to look up or add.</param>
     /// <param name="exists"><see langword="true"/> if the key already existed.</param>
@@ -458,9 +458,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     }
 
     [MemberNotNull(nameof(_buckets), nameof(_nodes))]
-    private void Initialize(uint minimumSize)
+    private void Initialize(uint minimumCapacity)
     {
-        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumSize);
+        var capacity = CollectionHelper.CalculatePowerOfTwoCapacity(minimumCapacity);
         var size = checked((int)capacity);
         this._buckets = new int[size];
         this._nodes = new Node[size];

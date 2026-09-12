@@ -38,18 +38,18 @@ internal sealed class PrimitiveResolver : IHotMethodResolver
     {
     }
 
-    public IHotMethod<T>? TryGet<T>()
+    public IHotMethod<T>? GetHotMethod<T>()
     {
         return MethodCache<T>.Method;
     }
 
-    public IHotMethod2<TKey, TValue>? TryGet<TKey, TValue>()
+    public IHotTreeMethod<TKey, TValue>? GetHotTreeMethod<TKey, TValue>()
     {
         return MethodCache2<TKey, TValue>.Method;
     }
 
     /// <summary>
-    /// Creates the <see cref="IHotMethod2{TKey, TValue}"/> for <typeparamref name="TKey"/>, if one exists.<br/>
+    /// Creates the <see cref="IHotTreeMethod{TKey, TValue}"/> for <typeparamref name="TKey"/>, if one exists.<br/>
     /// The closed generic types are named explicitly (instead of <see cref="Type.MakeGenericType(Type[])"/>)
     /// so that Native AOT can generate the code ahead of time.
     /// </summary>
@@ -132,11 +132,11 @@ internal sealed class PrimitiveResolver : IHotMethodResolver
 
     private static class MethodCache2<TKey, TValue>
     {
-        public static readonly IHotMethod2<TKey, TValue>? Method;
+        public static readonly IHotTreeMethod<TKey, TValue>? Method;
 
         static MethodCache2()
         {
-            MethodCache2<TKey, TValue>.Method = (IHotMethod2<TKey, TValue>?)PrimitiveResolver.CreateMethod2<TKey, TValue>();
+            MethodCache2<TKey, TValue>.Method = (IHotTreeMethod<TKey, TValue>?)PrimitiveResolver.CreateMethod2<TKey, TValue>();
         }
     }
 }

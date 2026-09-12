@@ -20,7 +20,7 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     /// <summary>
     /// The display name used by <see cref="ToString"/>.
     /// </summary>
-    public const string Name = "Struct256";
+    public const string TypeName = "Struct256";
 
     /// <summary>
     /// The size of the structure, in bytes.
@@ -138,10 +138,10 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     /// <summary>
     /// Initializes a new instance of the <see cref="Struct256"/> struct from a 32-bit value.
     /// </summary>
-    /// <param name="int0">The value stored in the lowest 64 bits. The remaining bits are cleared.</param>
-    public Struct256(int int0)
+    /// <param name="value">The value stored in the lowest 64 bits. The remaining bits are cleared.</param>
+    public Struct256(int value)
     {
-        this.Long0 = int0;
+        this.Long0 = value;
         this.Long1 = 0;
         this.Long2 = 0;
         this.Long3 = 0;
@@ -177,13 +177,13 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     /// <summary>
     /// Initializes a new instance of the <see cref="Struct256"/> struct by copying another value.
     /// </summary>
-    /// <param name="struct256">The value to copy.</param>
-    public Struct256(ref Struct256 struct256)
+    /// <param name="source">The value to copy.</param>
+    public Struct256(ref Struct256 source)
     {
-        this.Long0 = struct256.Long0;
-        this.Long1 = struct256.Long1;
-        this.Long2 = struct256.Long2;
-        this.Long3 = struct256.Long3;
+        this.Long0 = source.Long0;
+        this.Long1 = source.Long1;
+        this.Long2 = source.Long2;
+        this.Long3 = source.Long3;
     }
 
     /// <summary>
@@ -265,10 +265,10 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     {
         if (this.UInt128Upper == 0 && this.UInt128Lower <= 9)
         {
-            return $"{Name}: {(ulong)this.UInt128Lower}";
+            return $"{TypeName}: {(ulong)this.UInt128Lower}";
         }
 
-        return $"{Name}: {this.UInt128Upper:X32}{this.UInt128Lower:X32}";
+        return $"{TypeName}: {this.UInt128Upper:X32}{this.UInt128Lower:X32}";
     }
 
     /// <summary>

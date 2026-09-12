@@ -26,12 +26,12 @@ public sealed class ObjectPool<T> : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.<br/>
     /// </summary>
-    /// <param name="createFunc">A thread-safe factory that creates a distinct instance on each call.</param>
+    /// <param name="factory">A thread-safe factory that creates a distinct instance on each call.</param>
     /// <param name="poolSize">The requested maximum number of objects in the pool.<br/>
     /// Rounded up to a power of two and clamped between 2 and <see cref="CircularQueue{T}.MaximumCapacity"/>.</param>
-    public ObjectPool(Func<T> createFunc, int poolSize = DefaultPoolSize)
+    public ObjectPool(Func<T> factory, int poolSize = DefaultPoolSize)
     {
-        this.createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
+        this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
         this.queue = new(poolSize);
     }
 
@@ -42,7 +42,7 @@ public sealed class ObjectPool<T> : IDisposable
     /// </summary>
     public int PoolSize => this.queue.Capacity;
 
-    private readonly Func<T> createFunc;
+    private readonly Func<T> factory;
     private readonly CircularQueue<T> queue;
 
     #endregion
@@ -61,7 +61,7 @@ public sealed class ObjectPool<T> : IDisposable
             return item;
         }
 
-        return this.createFunc();
+        return this.factory();
     }
 
     /// <summary>

@@ -35,11 +35,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         /// <summary>
         /// The <c>previous</c> value that marks a node as removed and available for reuse.
         /// </summary>
-        public const int UnusedNode = -2;
+        public const int UnusedMarker = -2;
 
 #pragma warning disable SA1307 // Accessible fields should begin with upper-case letter
         internal int hashCode;
-        internal int previous; // UnusedNode if unused.
+        internal int previous; // UnusedMarker if unused.
         internal int next;
         internal TKey key;
         internal TValue value;
@@ -49,13 +49,13 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         /// Determines whether the node currently holds an element.
         /// </summary>
         /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
-        public readonly bool IsValid() => this.previous != UnusedNode;
+        public readonly bool IsInUse() => this.previous != UnusedMarker;
 
         /// <summary>
         /// Determines whether the node has been removed.
         /// </summary>
         /// <returns><see langword="true"/> if the node is unused; otherwise, <see langword="false"/>.</returns>
-        public readonly bool IsInvalid() => this.previous == UnusedNode;
+        public readonly bool IsUnused() => this.previous == UnusedMarker;
 
         /// <summary>
         /// Gets the key stored in the node.
@@ -109,9 +109,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified duplicate-key behavior.
     /// </summary>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedMap(bool allowDuplicate)
-        : this(0, null, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedMap(bool allowDuplicates)
+        : this(0, null, allowDuplicates)
     {
     }
 
@@ -129,9 +129,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// Initializes an empty map with the specified capacity and duplicate-key behavior.
     /// </summary>
     /// <param name="capacity">The capacity.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedMap(int capacity, bool allowDuplicate)
-        : this(capacity, null, allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedMap(int capacity, bool allowDuplicates)
+        : this(capacity, null, allowDuplicates)
     {
     }
 
@@ -140,11 +140,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// </summary>
     /// <param name="capacity">The capacity.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicate"><see langword="true"/> to allow duplicate keys.</param>
-    public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer, bool allowDuplicate)
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer, bool allowDuplicates)
     {
         this.Initialize(capacity);
-        this.AllowDuplicate = allowDuplicate;
+        this.AllowDuplicates = allowDuplicates;
 
         var defaultComparer = EqualityComparer<TKey>.Default;
         this.comparer = comparer is null || ReferenceEquals(comparer, defaultComparer)
@@ -171,7 +171,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Gets a value indicating whether duplicate keys are allowed.
     /// </summary>
-    public bool AllowDuplicate { get; }
+    public bool AllowDuplicates { get; }
 
     /// <summary>
     /// Gets an allocation-free enumerable over the keys.
@@ -213,12 +213,12 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
-    /// Only nodes with <see cref="Node.IsValid"/> are active, and the array may be
+    /// Only nodes with <see cref="Node.IsInUse"/> are active, and the array may be
     /// replaced when the map is resized; do not hold it across mutations.
     /// </summary>
     /// <returns>The internal node array and the number of node slots in use.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (Node[] Nodes, int Max) UnsafeGetNodes()
+    public (Node[] Nodes, int SlotCount) UnsafeGetNodes()
         => (this.nodes, this.nodeCount);
 
     /// <summary>
@@ -266,7 +266,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             {
                 ref var node = ref nodes[i];
 
-                if (node.previous != Node.UnusedNode &&
+                if (node.previous != Node.UnusedMarker &&
                     node.value is null)
                 {
                     return true;
@@ -282,7 +282,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         {
             ref var node = ref nodes[i];
 
-            if (node.previous != Node.UnusedNode &&
+            if (node.previous != Node.UnusedMarker &&
                 comparer.Equals(node.value, value))
             {
                 return true;
@@ -545,7 +545,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         var nodes = this.nodes;
         ref var node = ref nodes[nodeIndex];
 
-        if (node.previous == Node.UnusedNode)
+        if (node.previous == Node.UnusedMarker)
         {
             return;
         }
@@ -583,7 +583,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             nodes[next].previous = previous;
         }
 
-        node.previous = Node.UnusedNode;
+        node.previous = Node.UnusedMarker;
         node.next = this.freeList;
 
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
@@ -617,7 +617,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         var nodes = this.nodes;
         ref var node = ref nodes[nodeIndex];
 
-        if (node.previous == Node.UnusedNode)
+        if (node.previous == Node.UnusedMarker)
         {
             return false;
         }
@@ -635,7 +635,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             return false;
         }
 
-        if (!this.AllowDuplicate)
+        if (!this.AllowDuplicates)
         {
             var existing = this.FindFirstNode(key);
 
@@ -725,7 +725,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public bool SetNodeValue(int nodeIndex, TValue value)
     {
         if ((uint)nodeIndex >= (uint)this.nodeCount ||
-            this.nodes[nodeIndex].previous == Node.UnusedNode)
+            this.nodes[nodeIndex].previous == Node.UnusedMarker)
         {
             return false;
         }
@@ -776,7 +776,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching nodes.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public NodeEnumerable EnumerateNode(TKey? key)
+    public NodeEnumerable EnumerateNodes(TKey? key)
         => new(this, key);
 
     /// <summary>
@@ -785,7 +785,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching values.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatchedValueEnumerable EnumerateValue(TKey? key)
+    public MatchedValueEnumerable EnumerateValues(TKey? key)
         => new(this, key);
 
     #region Enumerator
@@ -875,7 +875,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             {
                 i++;
 
-                if (nodes[i - 1].previous != Node.UnusedNode)
+                if (nodes[i - 1].previous != Node.UnusedMarker)
                 {
                     this.index = i;
                     return true;
@@ -996,7 +996,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 {
                     i++;
 
-                    if (nodes[i - 1].previous != Node.UnusedNode)
+                    if (nodes[i - 1].previous != Node.UnusedMarker)
                     {
                         this.index = i;
                         return true;
@@ -1118,7 +1118,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
                 {
                     i++;
 
-                    if (nodes[i - 1].previous != Node.UnusedNode)
+                    if (nodes[i - 1].previous != Node.UnusedMarker)
                     {
                         this.index = i;
                         return true;
@@ -1531,7 +1531,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     {
         if (key is null)
         {
-            if (!this.AllowDuplicate && this.nullList >= 0)
+            if (!this.AllowDuplicates && this.nullList >= 0)
             {
                 return (this.nullList, false);
             }
@@ -1546,7 +1546,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         {
             var hashCode = key.GetHashCode();
 
-            if (!this.AllowDuplicate)
+            if (!this.AllowDuplicates)
             {
                 var i = this.buckets[hashCode & this.hashMask];
 
@@ -1570,7 +1570,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         {
             var hashCode = comparer.GetHashCode(key);
 
-            if (!this.AllowDuplicate)
+            if (!this.AllowDuplicates)
             {
                 var i = this.buckets[hashCode & this.hashMask];
 

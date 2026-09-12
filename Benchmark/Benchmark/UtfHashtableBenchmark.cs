@@ -38,8 +38,8 @@ public class UtfHashtableBenchmark
             this.stringKeys[i] = key;
             this.utf8Keys[i] = bytes;
 
-            this.utf16.Add(key, i);
-            this.utf8.Add(bytes, i);
+            this.utf16.AddOrUpdate(key, i);
+            this.utf8.AddOrUpdate(bytes, i);
         }
 
         this.hitString = this.stringKeys[Count - 1];
@@ -60,7 +60,7 @@ public class UtfHashtableBenchmark
 
         for (var i = 0; i < Count; i++)
         {
-            table.Add(this.stringKeys[i], i);
+            table.AddOrUpdate(this.stringKeys[i], i);
         }
 
         return table;
@@ -73,7 +73,7 @@ public class UtfHashtableBenchmark
 
         for (var i = 0; i < Count; i++)
         {
-            table.Add(this.utf8Keys[i], i);
+            table.AddOrUpdate(this.utf8Keys[i], i);
         }
 
         return table;
@@ -86,7 +86,7 @@ public class UtfHashtableBenchmark
 
         for (var i = 0; i < Count; i++)
         {
-            table.Add(this.utf8Keys[i].AsSpan(), i);
+            table.AddOrUpdate(this.utf8Keys[i].AsSpan(), i);
         }
 
         return table;

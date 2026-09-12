@@ -84,7 +84,7 @@ public class OrderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Gets a value indicating whether the collection is sorted in reverse order.
     /// </summary>
-    public bool Reverse => this.map.Reverse;
+    public bool IsReversed => this.map.IsReversed;
 
     /// <summary>
     /// Gets the first node in sort order.
@@ -171,11 +171,11 @@ public class OrderedSet<T> : IEnumerable<T>
     /// Changes the element stored in the specified node.
     /// </summary>
     /// <param name="node">The node.</param>
-    /// <param name="value">The value.</param>
-    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    /// <param name="key">The new element.</param>
+    /// <returns><see langword="true"/> if the element was changed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool SetNodeValue(OrderedMap<T, byte>.Node node, T value)
-        => this.map.SetNodeKey(node, value);
+    public bool SetNodeKey(OrderedMap<T, byte>.Node node, T key)
+        => this.map.SetNodeKey(node, key);
 
     /// <summary>
     /// Removes all elements from the set.

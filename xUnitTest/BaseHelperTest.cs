@@ -60,17 +60,17 @@ public class BaseHelperTest
     }
 
     [Fact]
-    public void RemoveCrLfTest()
+    public void RemoveCrAndLfCharsTest()
     {
-        BaseHelper.RemoveCrLf("ABC").Is("ABC");
-        BaseHelper.RemoveCrLf("ABC\n").Is("ABC");
-        BaseHelper.RemoveCrLf("ABC\r\n").Is("ABC");
-        BaseHelper.RemoveCrLf("ABC\n").Is("ABC");
-        BaseHelper.RemoveCrLf("\r\nABC\r\n\r\n").Is("ABC");
-        BaseHelper.RemoveCrLf("\r\nA\nB\r\nC").Is("ABC");
-        BaseHelper.RemoveCrLf("ABC\n012\r\n345").Is("ABC012345");
-        BaseHelper.RemoveCrLf("\r\nA\rBC\r\n012\n345\n\n").Is("ABC012345");
-        BaseHelper.RemoveCrLf("A\rB").Is("AB");
+        BaseHelper.RemoveCrAndLfChars("ABC").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("ABC\n").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("ABC\r\n").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("ABC\n").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("\r\nABC\r\n\r\n").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("\r\nA\nB\r\nC").Is("ABC");
+        BaseHelper.RemoveCrAndLfChars("ABC\n012\r\n345").Is("ABC012345");
+        BaseHelper.RemoveCrAndLfChars("\r\nA\rBC\r\n012\n345\n\n").Is("ABC012345");
+        BaseHelper.RemoveCrAndLfChars("A\rB").Is("AB");
     }
 
     [Fact]

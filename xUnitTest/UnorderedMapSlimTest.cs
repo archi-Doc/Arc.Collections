@@ -39,7 +39,7 @@ public class UnorderedMapSlimTest
         void AddAndValidate(int x, int y)
         {
             dic.Add(x, y);
-            um.Add(x, y);
+            um.AddOrUpdate(x, y);
             um.ValidateWithDictionary(dic);
         }
 
@@ -55,9 +55,9 @@ public class UnorderedMapSlimTest
     public void TestClass()
     {
         var um = new UnorderedMapSlim<UnorderedMapTestClass, int>();
-        um.Add(new UnorderedMapTestClass(1), 1);
-        um.Add(new UnorderedMapTestClass(2), 0);
-        um.Add(new UnorderedMapTestClass(3), 3);
+        um.AddOrUpdate(new UnorderedMapTestClass(1), 1);
+        um.AddOrUpdate(new UnorderedMapTestClass(2), 0);
+        um.AddOrUpdate(new UnorderedMapTestClass(3), 3);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class UnorderedMapSlimTest
         foreach (var x in array)
         {
             dic[x] = x;
-            um.Add(x, x);
+            um.AddOrUpdate(x, x);
         }
 
         um.ValidateWithDictionary(dic);

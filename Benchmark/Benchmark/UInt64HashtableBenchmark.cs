@@ -24,7 +24,7 @@ public class UInt64HashtableBenchmark
         {
             var key = (ulong)i;
 
-            this.hashtable.Add(key, i);
+            this.hashtable.AddOrUpdate(key, i);
             this.dictionary.Add(key, i);
             this.concurrentDictionary.TryAdd(key, i);
         }
@@ -37,7 +37,7 @@ public class UInt64HashtableBenchmark
 
         for (var i = 0; i < Count; i++)
         {
-            table.Add((ulong)i, i);
+            table.AddOrUpdate((ulong)i, i);
         }
 
         return table;

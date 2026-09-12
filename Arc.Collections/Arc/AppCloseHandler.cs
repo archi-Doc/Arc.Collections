@@ -20,27 +20,27 @@ public static partial class AppCloseHandler
     private static readonly object SyncObject = new();
     private static readonly ConsoleEventDelegate ConsoleEventHandler = ConsoleEventCallback;
 
-    private static Action? handler;
+    private static Action? registeredHandler;
     private static int handlerInvoked;
 
     /// <summary>
     /// Registers a handler for process exit and, on Windows, console close events.
     /// </summary>
-    /// <param name="closeEventHandler">The action to execute when a close event occurs.</param>
+    /// <param name="handler">The action to execute when a close event occurs.</param>
     /// <remarks>Only the first handler is registered; subsequent calls are ignored.
     /// The handler is invoked at most once.</remarks>
-    public static void Set(Action closeEventHandler)
+    public static void Register(Action handler)
     {
-        ArgumentNullException.ThrowIfNull(closeEventHandler);
+        ArgumentNullException.ThrowIfNull(handler);
 
         lock (SyncObject)
         {
-            if (handler is not null)
+            if (registeredHandler is not null)
             {
                 return;
             }
 
-            handler = closeEventHandler;
+            registeredHandler = handler;
             AppDomain.CurrentDomain.ProcessExit += ProcessExitCallback;
 
             if (OperatingSystem.IsWindows())
@@ -66,7 +66,7 @@ public static partial class AppCloseHandler
     {
         if (Interlocked.Exchange(ref handlerInvoked, 1) == 0)
         {
-            Volatile.Read(ref handler)?.Invoke();
+            Volatile.Read(ref registeredHandler)?.Invoke();
         }
     }
 

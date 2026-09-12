@@ -26,7 +26,7 @@ public class Utf16UnorderedMapBenchmark
             var key = $"Key-{i}";
             this.keys[i] = key;
 
-            this.unorderedMap.Add(key, i);
+            this.unorderedMap.AddOrUpdate(key, i);
             this.dictionary.Add(key, i);
         }
     }
@@ -39,7 +39,7 @@ public class Utf16UnorderedMapBenchmark
 
         for (var i = 0; i < Count; i++)
         {
-            map.Add(keys[i], i);
+            map.AddOrUpdate(keys[i], i);
         }
 
         return map;

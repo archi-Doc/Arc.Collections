@@ -50,7 +50,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["A", "B", "C"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["A", "B"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
     }
 
     [Fact]
@@ -260,7 +260,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["B", "C"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["A", "C"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["B", "C"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
 
         Assert.Equal(
             [1, 1, 2],
@@ -321,7 +321,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["A"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
     }
 
     [Fact]
@@ -429,7 +429,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["A"],
-            map.EnumerateValue(1).ToArray());
+            map.EnumerateValues(1).ToArray());
 
         Assert.Equal("B", map[3]);
 
@@ -455,7 +455,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             ["B", "C", "A"],
-            map.EnumerateValue(2).ToArray());
+            map.EnumerateValues(2).ToArray());
     }
 
     [Fact]
@@ -650,7 +650,7 @@ public class OrderedMultiMapTest2
 
         Assert.Equal(
             Enumerable.Range(0, count),
-            map.EnumerateValue(1));
+            map.EnumerateValues(1));
     }
 
     [Fact]

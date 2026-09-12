@@ -37,7 +37,7 @@ public class RemoveCrLfTest
     [Benchmark]
     public string Test1_IdexOf()
     {
-        return BaseHelper.RemoveCrLf(this.TestString);
+        return BaseHelper.RemoveCrAndLfChars(this.TestString);
     }
 
     [Benchmark]
@@ -49,7 +49,7 @@ public class RemoveCrLfTest
     [Benchmark]
     public string Test2_IdexOf()
     {
-        return BaseHelper.RemoveCrLf(this.TestString2);
+        return BaseHelper.RemoveCrAndLfChars(this.TestString2);
     }
 
     private string RemoveCrLf(string input)

@@ -13,10 +13,10 @@ namespace Arc.Collections;
 public sealed class TagObject
 {
     /// <summary>
-    /// Gets the exclusive upper bound of supported tag values.<br/>
+    /// The number of supported tag values (the exclusive upper bound of a tag).<br/>
     /// Valid tags are in the range <c>0</c> to <c>255</c>.
     /// </summary>
-    public const int MaxTag = 256;
+    public const int TagCount = 256;
 
     /// <summary>
     /// Represents an invalid or unresolved tag value.
@@ -27,8 +27,8 @@ public sealed class TagObject
 
     static TagObject()
     {
-        TagObjects = new TagObject[MaxTag];
-        for (var i = 0; i < MaxTag; i++)
+        TagObjects = new TagObject[TagCount];
+        for (var i = 0; i < TagCount; i++)
         {
             TagObjects[i] = new(i);
         }

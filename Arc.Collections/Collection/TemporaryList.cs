@@ -8,20 +8,20 @@ namespace Arc.Collections;
 /// <summary>
 /// Provides a temporary list with up to four elements stored inline.
 /// </summary>
-/// <typeparam name="TObject">The type of the objects.</typeparam>
+/// <typeparam name="T">The type of the objects.</typeparam>
 /// <remarks>
 /// Additional elements use a heap-allocated list.
 /// </remarks>
-public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
+public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
 {
     private const int StackObjectCount = 4;
 
     private int count;
-    private TObject obj0;
-    private TObject obj1;
-    private TObject obj2;
-    private TObject obj3;
-    private List<TObject>? list;
+    private T obj0;
+    private T obj1;
+    private T obj2;
+    private T obj3;
+    private List<T>? list;
 
     /// <summary>
     /// Gets the number of objects in the list.
@@ -31,36 +31,36 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
     /// <summary>
     /// Adds an object to the list.
     /// </summary>
-    /// <param name="obj">The object to add to the list.</param>
-    public void Add(TObject obj)
+    /// <param name="item">The object to add to the list.</param>
+    public void Add(T item)
     {
         if (this.count == 0)
         {
             this.count = 1;
-            this.obj0 = obj;
+            this.obj0 = item;
             return;
         }
         else if (this.count == 1)
         {
             this.count = 2;
-            this.obj1 = obj;
+            this.obj1 = item;
             return;
         }
         else if (this.count == 2)
         {
             this.count = 3;
-            this.obj2 = obj;
+            this.obj2 = item;
             return;
         }
         else if (this.count == 3)
         {
             this.count = 4;
-            this.obj3 = obj;
+            this.obj3 = item;
             return;
         }
 
         this.list ??= new();
-        this.list.Add(obj);
+        this.list.Add(item);
         this.count++;
     }
 
@@ -71,7 +71,7 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
     /// A new array containing all items in insertion order.<br/>
     /// Returns an empty array when the list contains no items.
     /// </returns>
-    public readonly TObject[] ToArray()
+    public readonly T[] ToArray()
     {
         var count = this.count;
         if (count == 0)
@@ -79,7 +79,7 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
             return [];
         }
 
-        var array = new TObject[count];
+        var array = new T[count];
         array[0] = this.obj0;
 
         if (count == 1)
@@ -122,15 +122,15 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
     /// </summary>
     public ref struct Enumerator
     {
-        private readonly TemporaryList<TObject> temporaryList;
+        private readonly TemporaryList<T> temporaryList;
         private int index;
-        private TObject? current;
+        private T? current;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Enumerator"/> struct.
         /// </summary>
         /// <param name="temporaryList">The list to enumerate.</param>
-        public Enumerator(TemporaryList<TObject> temporaryList)
+        public Enumerator(TemporaryList<T> temporaryList)
         {
             this.temporaryList = temporaryList;
             this.index = -1;
@@ -140,7 +140,7 @@ public ref struct TemporaryList<TObject> // : IEnumerable<TObject>, IEnumerable 
         /// <summary>
         /// Gets the element at the current position of the enumerator.
         /// </summary>
-        public TObject Current => this.current!;
+        public T Current => this.current!;
 
         /// <summary>
         /// Releases the resources used by the enumerator. This is a no-op.

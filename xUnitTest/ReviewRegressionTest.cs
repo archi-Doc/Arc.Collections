@@ -42,15 +42,15 @@ public class ReviewRegressionTest
         var first = new Disposable();
         var second = new Disposable();
         var rejected = new Disposable();
-        Assert.True(cache.Cache(1, first));
-        Assert.True(cache.Cache(2, second));
-        Assert.False(cache.Cache(duplicateKey, rejected));
+        Assert.True(cache.TryAdd(1, first));
+        Assert.True(cache.TryAdd(2, second));
+        Assert.False(cache.TryAdd(duplicateKey, rejected));
         Assert.Equal(2, cache.Count);
         Assert.Equal(0, first.DisposeCount);
         Assert.Equal(0, second.DisposeCount);
         Assert.Equal(0, rejected.DisposeCount);
-        Assert.Same(first, cache.TryGet(1));
-        Assert.Same(second, cache.TryGet(2));
+        Assert.Same(first, cache.TakeOrDefault(1));
+        Assert.Same(second, cache.TakeOrDefault(2));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class ReviewRegressionTest
     {
         var cache = new KeyedObjectCache<int, Disposable>(2);
         var value = new Disposable();
-        var lease = cache.CreateInterface(1, value);
+        var lease = cache.CreateLease(1, value);
         cache.Dispose();
         lease.Dispose();
         cache.Dispose();
@@ -101,7 +101,7 @@ public class ReviewRegressionTest
     [InlineData(int.MaxValue, int.MaxValue)]
     public void RentedMemorySliceCannotEscapeItsParent(int start, int length)
     {
-        using var owner = BytePool.RentArray.CreateFrom(new byte[16]);
+        using var owner = BytePool.RentedArray.CreateFrom(new byte[16]);
         var memory = owner.AsMemory(4, 4);
         Assert.Throws<ArgumentOutOfRangeException>(() => memory.Slice(start, length));
         Assert.Throws<ArgumentOutOfRangeException>(() => memory.ReadOnly.Slice(start, length));
@@ -112,12 +112,12 @@ public class ReviewRegressionTest
     [InlineData(5)]
     public void RentedMemorySliceStartMustBeInsideParent(int start)
     {
-        using var owner = BytePool.RentArray.CreateFrom(new byte[16]);
+        using var owner = BytePool.RentedArray.CreateFrom(new byte[16]);
         var memory = owner.AsMemory(4, 4);
         Assert.Throws<ArgumentOutOfRangeException>(() => memory.Slice(start));
         Assert.Throws<ArgumentOutOfRangeException>(() => memory.ReadOnly.Slice(start));
-        Assert.Throws<ArgumentOutOfRangeException>(() => BytePool.RentMemory.Empty.Slice(start));
-        Assert.Throws<ArgumentOutOfRangeException>(() => BytePool.RentReadOnlyMemory.Empty.Slice(start));
+        Assert.Throws<ArgumentOutOfRangeException>(() => BytePool.RentedMemory.Empty.Slice(start));
+        Assert.Throws<ArgumentOutOfRangeException>(() => BytePool.RentedReadOnlyMemory.Empty.Slice(start));
     }
 
     private sealed record Entry(int Key, int Sequence);

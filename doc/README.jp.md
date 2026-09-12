@@ -59,12 +59,12 @@ static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
 | `OrderedSet<T>`<br />(`SortedSet<T>`)                        | ソート済み（Red-Black Tree）のコレクション。実体は `OrderedMap<T, byte>` です（TValue は使用されません）。 |
 | `OrderedMultiMap<TKey, TValue>`                              | Keyでソート済み（Red-Black Tree）のKey/Value コレクション。重複キーを使用可能で、追加順が保持されます。 |
 | `OrderedMultiSet<T>`                                         | ソート済み（Red-Black Tree）のコレクション。重複オブジェクトも可。 |
-| `UnorderedMap<TKey, TValue>`<br />(`Dictionary<TKey, TValue>`) | Hash tableで管理されるKey/Value コレクション。`Dictionary<TKey, TValue>` より少し遅いですが、`Node index`操作が可能で、`TKey`がnullも可、`allowDuplicate` で重複キーも可です。 |
+| `UnorderedMap<TKey, TValue>`<br />(`Dictionary<TKey, TValue>`) | Hash tableで管理されるKey/Value コレクション。`Dictionary<TKey, TValue>` より少し遅いですが、`Node index`操作が可能で、`TKey`がnullも可、`allowDuplicates` で重複キーも可です。 |
 | `UnorderedSet<T>`                                            | 実体は `UnorderedMap<T, byte>` です（TValue は使用されません）。重複要素・null要素にも対応します。 |
 | `UnorderedMapSlim<TKey, TValue>`                             | メモリ効率を優先した軽量なHash map。キーはnull不可で、バージョンチェックを行いません。`GetValueRefOrAddDefault()` によりRead-Modify-Writeを高速に行えます。 |
 | `SlidingList<T>`                                             | Index ではなく安定した **Position** で要素を指す、固定容量のリングバッファ。送受信ウィンドウなどに使えます。 |
 | `CircularQueue<T>`                                           | スレッドセーフな固定容量の循環キュー（Vyukov方式のMPMC）。容量制限を許容できる場合は `ConcurrentQueue<T>` より高速です。 |
-| `TemporaryList<TObject>`                                     | 4個までヒープ確保なしで保持する `ref struct` のリスト。`foreach` 中に集めたオブジェクトを後から操作する用途に便利です。 |
+| `TemporaryList<T>`                                           | 4個までヒープ確保なしで保持する `ref struct` のリスト。`foreach` 中に集めたオブジェクトを後から操作する用途に便利です。 |
 
 ### Keyed lookup
 
@@ -79,7 +79,7 @@ static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `ObjectPool<T>`                                              | 高速でスレッドセーフなオブジェクトプール（`CircularQueue<T>` を使用）。プールに入らなかった `IDisposable` は破棄されます。 |
 | `KeyedObjectCache<TKey, TObject>`                            | キーで取り出す、コストの高いオブジェクト（暗号化など）のスレッドセーフなキャッシュ。 |
-| `BytePool`                                                   | 高速でスレッドセーフなbyte配列のプール。参照カウントで共有でき、`RentMemory` / `RentReadOnlyMemory` として扱えます。 |
+| `BytePool`                                                   | 高速でスレッドセーフなbyte配列のプール。参照カウントで共有でき、`RentedMemory` / `RentedReadOnlyMemory` として扱えます。 |
 | `SpanOwner<T>`                                               | 「小さければstackalloc、大きければArrayPool、最後にReturn」というパターンを `using` 一行にまとめる `ref struct`。 |
 | `SequenceBuilder<T>`                                         | プールされた配列から `ReadOnlySequence<T>` を構築します。    |
 | `PooledStringBuilder`                                        | プールされたchar配列で文字列を構築します。文字列補間に匹敵する性能を目指しています。 |
@@ -91,7 +91,7 @@ static void ConsoleWriteIEnumerable<T>(string header, IEnumerable<T> e)
 | `XxHash3Slim`                                                | `System.IO.Hashing` から移植した、アロケーションなしのXXH3(64bit)実装。 |
 | `CollectionHelper`                                           | 容量計算（2の冪／素数）のヘルパー。                          |
 | `TagObject`                                                  | 0～255 のタグに対応するキャッシュ済みオブジェクト。ボックス化なしでタグを `object` として渡せます。 |
-| `Arc.BaseHelper`                                             | Span/文字列のヘルパー。行分割、区切り文字の検索、10進桁数の計算、SIMDによるbyte合計、UTF-8長の検証、リソース読み込みなど。 |
+| `Arc.BaseHelper`                                             | Span/文字列のヘルパー。行分割、区切り文字の検索、10進桁数の計算、SIMDによるbyte合計、末尾の不完全なUTF-8シーケンスを除いた長さの計算、リソース読み込みなど。 |
 | `Arc.Struct128`, `Arc.Struct256`                             | 固定長バイナリを扱うための128bit／256bitの値型。             |
 | `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>`       | オブジェクトとUTF-16／UTF-8表現をアロケーションなしで相互変換するためのインターフェース。 |
 | `Arc.VersionHelper`, `Arc.AppCloseHandler`                   | アセンブリのバージョン情報と、アプリケーション終了（プロセス終了／コンソールクローズ）ハンドラー。 |
@@ -146,7 +146,7 @@ Reference: `System.Collections.Generic.SortedSet<T>`
 
 - `Ordered` コレクションはオブジェクトをソートするため、`IComparable<T>` または `IComparer<T>` が必要です。
 - Hash tableを使用するコレクション（`UnorderedMap<TKey, TValue>`とか）は適切な `IEquatable<T>`/`GetHashCode()` または `IEqualityComparer<T>` が必要です。
-- `Multi` がついたコレクションは、重複キーを使用可能です。`UnorderedMap<TKey, TValue>` と `UnorderedSet<T>` も `allowDuplicate: true` で重複キーを扱えます。
+- `Multi` がついたコレクションは、重複キーを使用可能です。`UnorderedMap<TKey, TValue>` と `UnorderedSet<T>` も `allowDuplicates: true` で重複キーを扱えます。
 - `OrderedMap<TKey, TValue>` は赤黒木（Red-black trees）を使用し、`OrderedKeyValueList<TKey, TValue>` よりもほとんどのシチュエーションで高速です。絶対にIndexアクセスが必要な場面以外は、`OrderedMap<TKey, TValue>` の使用をお勧めします。
 - `UnorderedList<T>` の `Add` は償却 O(1) です（内部配列の拡張が発生することがあります）。
 
