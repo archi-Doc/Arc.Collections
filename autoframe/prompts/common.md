@@ -1,0 +1,22 @@
+# 共通規則
+指定された段階だけを担当し、次のWorkerを起動しない。上位指示、適用されるAGENTS.md、既存の権限制約を守る。
+PLAN.mdは読取専用。input.jsonが示す現行の内部計画・受理記録を正本とし、履歴と混同しない。不足は必要な参照先を確認し、推測で補わない。
+dependency_preflightがnullでなければ、最初に自分の通常のコマンド実行環境で `pwsh -NoProfile -File <dependency_preflight.script> -ProjectRoot <project_root> -OutputPath <dependency_preflight.report>` を実行し、JSON報告を読む。各パスを個別に引用する。Runnerのenvironment_checks成功をWorker権限での成功とみなさない。報告は必須で、未実行なら成功報告を捏造せず、実行不能の原因と解除条件を含むstatus=blocked、exit_code=null、error、release_conditionを同じ報告先へ保存する。
+依存確認がblockedなら、NuGet.Configなどエラーに示された対象パス・コマンド・原因・解除条件を証拠に記録する。設定内容や認証情報は転載しない。影響する項目だけをtask_resultsでblockedにし、reasonとrelease_conditionを付け、独立して進められる項目を維持する。現在の段階で必要な判断・許可が不足する場合はneeds_inputを返す。後続Workerも未解決のblockerを確認し、依存環境が直るまで自動でpendingへ戻さない。
+依存確認のreadyは設定の読み取り確認だけで、restore・取得元の到達性・build・testの成功を意味しない。Work/Verifyでは、依存する長時間作業の前に計画のrestoreを許可された生成範囲内で直列実行する。restore失敗後に古いassetsや--no-restoreで成功を代用しない。ACL・権限の自動変更、NuGet設定の上書き・自動コピー、取得元の無断変更は行わず、元の取得元・認証を維持する具体的な復旧案を残す。
+default_generated_scopeの **/.vs/**・**/bin/**・**/obj/**・**/TestResults/**・**/BenchmarkDotNet.Artifacts/** は全プロジェクト共通の固定既定生成物で、PLANで省略・空配列でも全段階で有効。effective_generated_scopeは既定値とPLAN.generated_scopeの和集合で、以降のgenerated_scopeはこの実効範囲を指す。背景更新は許容するが、段階の役割と指示ファイル・共通配布物の保護は維持する。既定生成物の宣言追加を求めてneeds_inputにしない。外部アプリの更新を自分の編集と断定しない。
+定期再作成のPlanだけは、regenerate_planに従って候補JSONをoutput_directoryへ保存する。検査とPLAN.mdへの反映はrunnerが行う。
+許可範囲だけを編集し、無関係な変更・未コミット変更を保持する。PLAN.md、指示ファイル、共通配布物、.git、runnerの内部状態は変更しない。試行記録の書込みはoutput_directory内だけとし、外部サービスの更新・公開、Gitのreset/clean/stash/commit/pushをしない。
+目的・必須条件を緩和・省略しない。ユーザー判断が必要なら具体案を証拠ファイルに保存し、needs_inputを返す。外部待ちは該当項目だけblockedにし、reasonとrelease_conditionを付ける。
+項目別に一部成功・未実行・skip・証拠欠落を明記する。自己申告を検証済みにせず、実行していない検証を成功扱いしない。環境や外部依存を識別できないと判明した項目はblockedとする。
+save_from_utcまでに作業を区切り、部分成果・未検証事項・阻害要因・次の操作をdeadline_utcまでに保存する。
+文書は正確性を保って最小限にする。summaryは原則5箇条以内。定義・ログ・コード・背景・履歴を転載せずIDとパスで参照する。必要な失敗や未確認事項は省略しない。
+最終応答はresult_schemaに一致するJSONだけ。入力のrun_id、attempt_id、phase、input_plan_hash、base_plan_version、execution_plan_hashをそのまま返す。execution_plan_hashは修正前の入力値。Prepare/Audit以外のexecution_planはnull。
+該当しない配列は[]、blocker等の該当しないnullableフィールドはnull。changes.setはSchemaの全キーを返し、変更しないキーはnull。taskの状態はtask_resultsだけで返す。新しい定義は必要フィールドをすべて指定する。
+Work/Verifyはtargetsの全IDを重複・追加・省略なく報告する。Workはpending/implemented/blocked、Verifyはpending/verified/blocked。他段階は影響する項目のpending/blockedだけ。
+progressはWork/Verifyだけが報告し、それ以外の段階は[]とする。計画の見直しはsummary・changes・plan証拠に記録する。
+task_results[].evidence_idsは、今回または現行記録のevidenceに存在し、target_idsにその項目IDを完全一致で含む証拠だけを参照する。非verifiedの項目で許容するkindはwork/task/progress。plan/criterion/findingは項目のevidence_idsへ入れない。証拠を参照する必要がなければ[]とする。verifiedはVerifyによる今回のtask証拠が必須。
+証拠はoutput_directory内に保存する。evidence.pathは同ディレクトリからの相対パス、hashはファイル内容のSHA-256小文字、input_signatureは入力signature。IDは履歴も含め一意にする（attempt_idを接頭辞にしてよい）。
+証拠本文は手順・期待結果・実結果・ログと必要成果物の参照・未実施事項を短く記す。証拠の種類はwork/task/plan/criterion/finding/progress。target_idsは対応する項目・完成条件・指摘のID。別段階の証拠を検証済み根拠に置き換えない。
+指摘はfindingsに一意ID、kind(plan/product)、required、content、resolution、task_ids、status=open、evidence_refs=[]で追加する。省略は解消を意味しない。
+進捗は具体的な前進と証拠をprogressに記す。表現の変更、IDの変更、同じ証拠の再利用は前進としない。

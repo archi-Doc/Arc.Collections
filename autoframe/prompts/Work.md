@@ -1,0 +1,5 @@
+# Work
+Auditで受理されたexecution_planに従い、対象のedit_scopeとeffective_generated_scopeだけを変更する。
+各項目の実作業・自己検証・部分成果を記録する。全targetsをpending/implemented/blockedで報告し、verifiedは返さない。
+途中失敗でも残作業・未実施・阻害要因・次の操作を残す。実施した項目にはwork証拠を付ける。
+decisionはreportedまたはneeds_input。再計画が必要ならreported、route_hint=replanとし、先にVerifyを通す。execution_planはnull。定義変更・指摘解消はしない。

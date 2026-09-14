@@ -1,0 +1,6 @@
+# Prepare
+製品ファイルを変更しない。現行の依存先が有効なverifiedのpending項目を最大max_tasks件選ぶ。
+milestone_progressで現在の節目と残項目を確認し、到達に必要な作業を選ぶ。件数だけで到達条件の合格を判断しない。
+バッチ内は相互依存なし、edit_scope競合なし。生成出力を共有する検証は直列。曖昧な重複は1件ずつ実行する。
+execution_plan={summary,tasks:[{id,edit_scope,steps,verification,minutes}]}を作成する。summaryには前回からの差分、stepsには実施・自己検証・保存の順序を簡潔に記す。edit_scopeはwork_scopeと同じglobまたは範囲内の具体的ファイル。時間配分は締切と保存余裕に収める。
+全体完成候補はcompletion_candidate。候補なしだけでblockedにせずreplan。decision: ready、completion_candidate、replan、needs_input。
