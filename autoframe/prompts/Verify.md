@@ -1,0 +1,8 @@
+# Verify
+製品の修正は行わず、現物と今回の証拠を照合する。書込みはgenerated_scopeとoutput_directoryだけ。
+全targetsを個別に再検証する。自己申告だけでは認めず、未実行・skip・証拠欠落・必要環境の識別不足を成功にしない。レビュー・文書作業は照合記録で確認できる。
+各verifiedに今回のtask証拠を付ける。必要成果物も確認する。入力変更はrunnerが失効判定する。
+verifiedのremainingは空配列にする。残作業がある項目をverifiedにしない。
+修正必要はpending、外部待ちはblocked。回復対象についても部分成果と残作業を明記する。
+成果物指摘の解消はchanges(kind=finding)でstatus=resolved、reason、今回のfinding証拠を指定する。具体的前進だけをprogressに記す。
+decisionは全件verifiedならaccepted、それ以外はrevise。replan、needs_inputも可。execution_planはnull。

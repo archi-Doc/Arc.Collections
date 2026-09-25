@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Local runner state, evidence, and logs (including nested projects).
+.autoframe/
+
 # User-specific files
 *.rsuser
 *.suo

@@ -13,7 +13,7 @@ using System.Runtime.Intrinsics.X86;
 
 namespace Arc.Collections;
 
-// Ported from System.IO.Hashing.XxHash3Slim.
+// Ported from System.IO.Hashing.XxHash3.
 
 /// <summary>
 /// Provides a slim, allocation-free XXH3 (64-bit) implementation.

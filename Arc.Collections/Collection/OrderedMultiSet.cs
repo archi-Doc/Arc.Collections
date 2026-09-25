@@ -229,19 +229,23 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// <returns>The number of elements removed.</returns>
     public int RemoveAll(T? item)
     {
-        var count = 0;
-
-        while (true)
+        var node = this.map.FindFirstNode(item);
+        if (node is null)
         {
-            var node = this.map.FindFirstNode(item);
-            if (node is null)
-            {
-                return count;
-            }
+            return 0;
+        }
 
-            this.map.RemoveNode(node);
+        // Unlink the duplicates chained to the tree node in O(1) each, then remove the tree node,
+        // instead of searching the tree again for every duplicate.
+        var count = 1;
+        while (!node.IsSingleNode)
+        {
+            this.map.RemoveNode(node.ListNext!);
             count++;
         }
+
+        this.map.RemoveNode(node);
+        return count;
     }
 
     /// <summary>

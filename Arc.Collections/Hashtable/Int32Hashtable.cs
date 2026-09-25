@@ -52,16 +52,10 @@ public class Int32Hashtable<TValue>
     /// Initializes a new instance of the <see cref="Int32Hashtable{TValue}"/> class.
     /// </summary>
     /// <param name="capacity">The initial capacity.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^29 (536,870,912).</exception>
     public Int32Hashtable(int capacity = 4)
     {
-        if (capacity < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(capacity));
-        }
-
-        var size = HashtableHelper.CalculateCapacity(capacity);
-        this.table = new Item?[size];
+        this.table = new Item?[HashtableHelper.CalculateCapacity(capacity)];
     }
 
     /// <summary>
@@ -96,7 +90,7 @@ public class Int32Hashtable<TValue>
     /// <returns><see langword="true"/> if the pair was added;
     /// otherwise, <see langword="false"/> if the key already exists.</returns>
     public bool TryAdd(int key, TValue value)
-        => this.AddInternal(key, value, false, out _);
+        => this.AddInternal(key, value, false);
 
     /// <summary>
     /// Adds or updates a key-value pair.
@@ -104,7 +98,7 @@ public class Int32Hashtable<TValue>
     /// <param name="key">The key to add or update.</param>
     /// <param name="value">The value to store.</param>
     public void AddOrUpdate(int key, TValue value)
-        => this.AddInternal(key, value, true, out _);
+        => this.AddInternal(key, value, true);
 
     /// <summary>
     /// Gets the existing value, or creates and stores a value when the key is absent.
@@ -113,7 +107,8 @@ public class Int32Hashtable<TValue>
     /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
     /// <returns>The existing value, or the newly created value.</returns>
     /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
-    /// it must not call back into this hashtable.</remarks>
+    /// it must not modify this hashtable. A modification that would invalidate the insertion
+    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.</remarks>
     public TValue GetOrAdd(int key, Func<int, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -226,7 +221,7 @@ public class Int32Hashtable<TValue>
         }
     }
 
-    private bool AddInternal(int key, TValue value, bool updateValue, out TValue resultingValue)
+    private bool AddInternal(int key, TValue value, bool updateValue)
     {
         using (this.lockObject.EnterScope())
         {
@@ -243,12 +238,10 @@ public class Int32Hashtable<TValue>
 
                 if (!updateValue)
                 {
-                    resultingValue = item.Value;
                     return false;
                 }
 
                 Volatile.Write(ref table[bucketIndex], ReplaceValue(head!, item, value));
-                resultingValue = value;
                 return false;
             }
 
@@ -264,7 +257,6 @@ public class Int32Hashtable<TValue>
             Volatile.Write(ref table[bucketIndex], new Item(key, value, head));
             Volatile.Write(ref this.count, this.count + 1);
 
-            resultingValue = value;
             return true;
         }
     }
@@ -277,7 +269,8 @@ public class Int32Hashtable<TValue>
             var table = this.table;
             var bucketIndex = key & (table.Length - 1);
 
-            for (var item = table[bucketIndex]; item is not null; item = item.Next)
+            var head = table[bucketIndex];
+            for (var item = head; item is not null; item = item.Next)
             {
                 if (item.Key == key)
                 {
@@ -286,6 +279,11 @@ public class Int32Hashtable<TValue>
             }
 
             var value = valueFactory(key);
+
+            if (!ReferenceEquals(table, this.table) || !ReferenceEquals(head, table[bucketIndex]))
+            {// The lock is reentrant, so a factory calling back into this hashtable is not blocked.
+                HashtableHelper.ThrowFactoryModifiedTable();
+            }
 
             if (this.count >= (table.Length >> 1))
             {

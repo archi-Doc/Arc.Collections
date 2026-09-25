@@ -645,6 +645,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
         }
 
+        // Hash before unlinking: a throwing GetHashCode must leave the map unchanged.
+        var hashCode = key is null ? 0 : this.GetKeyHashCode(key);
         var previous = node.previous;
         var next = node.next;
 
@@ -694,7 +696,6 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         }
         else
         {
-            var hashCode = this.GetKeyHashCode(key);
             var bucketIndex = hashCode & this.hashMask;
             var head = this.buckets[bucketIndex];
 

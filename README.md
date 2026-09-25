@@ -57,7 +57,8 @@ map.RemoveNode(node);
 | `UnorderedMapSlim<TKey, TValue>` | Compact hash map for non-null keys, with direct value-reference access and no enumeration version checks. |
 
 Ordered collections use a supplied comparer or `Comparer<T>.Default`. Tree collections also
-support reverse ordering. Hash collections use their supported equality comparer; equal keys
+support reverse ordering. With the default comparer null keys sort first; a custom comparer
+receives null keys and decides where they belong. Hash collections use their supported equality comparer; equal keys
 must have equal hash codes. Keep keys' comparison and hash behavior unchanged while stored.
 
 For sorted arrays, lookup is O(log n), but insertion and removal may shift O(n) elements.
@@ -116,7 +117,8 @@ may retry or wait, and `Count` is an estimate during concurrent access.
 
 All these types update existing values with `AddOrUpdate`; `TryAdd` leaves existing values unchanged.
 The hashtables also provide `GetOrAdd`. Its factory runs under the write lock and must not
-reenter the same table.
+modify the same table; `GetOrAdd` throws `InvalidOperationException` when such a modification
+would invalidate its insertion.
 
 UTF keys are compared by ordinal content without validation, normalization, or case folding.
 Span-based insertion materializes a key only for a new entry. Array/string overloads retain
@@ -182,7 +184,7 @@ array-backed memory, or return an empty view if the underlying array cannot be o
 ### Temporary buffers and builders
 
 Do not copy a `SpanOwner<T>`, `SequenceBuilder<T>`, or `PooledStringBuilder` while it owns
-pooled resources. Dispose the owner after use and do not retain pooled spans or sequences
+pooled resources. Copies of a `TemporaryList<T>` share its heap-allocated overflow list. Dispose the owner after use and do not retain pooled spans or sequences
 past disposal. `SpanOwner<T>` clears reference-containing arrays on return.
 
 ```csharp

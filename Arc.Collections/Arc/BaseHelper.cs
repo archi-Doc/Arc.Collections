@@ -629,7 +629,7 @@ public static class BaseHelper
     /// Computes the sum of all elements in a span of signed bytes using SIMD acceleration when available.
     /// </summary>
     /// <param name="data">The read-only span of signed bytes to sum.</param>
-    /// <returns>The sum of all elements in the span as a 32-bit signed integer.</returns>
+    /// <returns>The sum of all elements in the span as a 32-bit signed integer; a sum outside the <see cref="int"/> range wraps around.</returns>
     public static int Sum(ReadOnlySpan<sbyte> data)
     {
         long sum = 0;
@@ -681,7 +681,7 @@ public static class BaseHelper
     /// Computes the sum of all elements in a span of unsigned bytes using SIMD acceleration when available.
     /// </summary>
     /// <param name="data">The read-only span of unsigned bytes to sum.</param>
-    /// <returns>The sum of all elements in the span as a 32-bit unsigned integer.</returns>
+    /// <returns>The sum of all elements in the span as a 64-bit unsigned integer.</returns>
     public static ulong Sum(ReadOnlySpan<byte> data)
     {
         ulong acc = 0;
@@ -692,7 +692,7 @@ public static class BaseHelper
         if (Avx2.IsSupported)
         {
             var accumulator = Vector256<ulong>.Zero;
-            for (; i + 32 <= len; i += 32)
+            for (; i <= len - 32; i += 32)
             {
                 var v256 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref p, i));
                 var sad = Avx2.SumAbsoluteDifferences(v256, Vector256<byte>.Zero).AsUInt64();
@@ -705,7 +705,7 @@ public static class BaseHelper
         if (Sse2.IsSupported)
         {
             var accumulator = Vector128<ulong>.Zero;
-            for (; i + 16 <= len; i += 16)
+            for (; i <= len - 16; i += 16)
             {
                 var v128 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref p, i));
                 var sad = Sse2.SumAbsoluteDifferences(v128, Vector128<byte>.Zero).AsUInt64();
@@ -1010,7 +1010,7 @@ public static class BaseHelper
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
     /// <param name="source">The source value to parse.</param>
-    /// <param name="environmentVariableName">The name of the environment variable to check if the source value is empty.</param>
+    /// <param name="environmentVariableName">The name of the environment variable to parse if <paramref name="source"/> cannot be parsed.</param>
     /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>

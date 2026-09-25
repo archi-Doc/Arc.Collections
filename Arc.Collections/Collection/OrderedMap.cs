@@ -34,7 +34,8 @@ internal enum NodeColor : byte
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 /// <remarks>
-/// Lookup, insertion, and removal take O(log n) time. Null keys are supported.
+/// Lookup, insertion, and removal take O(log n) time. Null keys are supported: the default comparer
+/// orders null first, and a custom comparer receives null keys and defines their order.
 /// Adding an existing key preserves its value; the indexer setter replaces it.
 /// </remarks>
 public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
@@ -566,9 +567,21 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             return false;
         }
 
+        var originalKey = node.Key;
         var value = node.Value;
         this.RemoveNode(node);
-        this.Probe(key, value, node);
+        try
+        {
+            this.Probe(key, value, node);
+        }
+        catch
+        {
+            // Probe only compares keys before it modifies the tree, so a throwing comparer
+            // leaves the node detached: put it back under its original key.
+            this.Probe(originalKey, value, node);
+            throw;
+        }
+
         return true;
     }
 
@@ -863,25 +876,29 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 
         if (!this.IsReversed)
         {
-            // Handle null before HotMethod, which is only defined for non-null value keys.
+            // Comparer<TKey>.Default orders null before every other key; a custom comparer
+            // defines its own null order, so null keys go through it (last loop below).
+            // This also runs before HotMethod, which is only defined for non-null value keys.
             if (key is null)
             {
-                while (node is not null)
+                if (ReferenceEquals(comparer, Comparer<TKey>.Default))
                 {
-                    if (node.Key is null)
+                    while (node is not null)
                     {
-                        return (0, node);
+                        if (node.Key is null)
+                        {
+                            return (0, node);
+                        }
+
+                        parent = node;
+                        cmp = -1;
+                        node = node.Left;
                     }
 
-                    parent = node;
-                    cmp = -1;
-                    node = node.Left;
+                    return (cmp, parent);
                 }
-
-                return (cmp, parent);
             }
-
-            if (hotMethod is not null)
+            else if (hotMethod is not null)
             {
                 return hotMethod.SearchNode(node, key);
             }
@@ -918,7 +935,8 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             {
                 while (node is not null)
                 {
-                    cmp = comparable.CompareTo(node.Key);
+                    // Comparer<TKey>.Default never passes null to CompareTo; a null key sorts first.
+                    cmp = node.Key is null ? 1 : comparable.CompareTo(node.Key);
                     parent = node;
                     if (cmp < 0)
                     {
@@ -957,25 +975,27 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         }
         else
         {
-            // Handle null before HotMethod, which is only defined for non-null value keys.
+            // See the forward direction for the null handling.
             if (key is null)
             {
-                while (node is not null)
+                if (ReferenceEquals(comparer, Comparer<TKey>.Default))
                 {
-                    if (node.Key is null)
+                    while (node is not null)
                     {
-                        return (0, node);
+                        if (node.Key is null)
+                        {
+                            return (0, node);
+                        }
+
+                        parent = node;
+                        cmp = 1;
+                        node = node.Right;
                     }
 
-                    parent = node;
-                    cmp = 1;
-                    node = node.Right;
+                    return (cmp, parent);
                 }
-
-                return (cmp, parent);
             }
-
-            if (hotMethod is not null)
+            else if (hotMethod is not null)
             {
                 return hotMethod.SearchNodeReverse(node, key);
             }
@@ -1011,7 +1031,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             {
                 while (node is not null)
                 {
-                    var c = comparable.CompareTo(node.Key);
+                    var c = node.Key is null ? 1 : comparable.CompareTo(node.Key);
                     parent = node;
                     if (c > 0)
                     {
@@ -1681,20 +1701,8 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 
     private int CompareInTreeOrder(TKey? x, TKey? y)
     {
-        int cmp;
-        if (x is null)
-        {
-            cmp = y is null ? 0 : -1;
-        }
-        else if (y is null)
-        {
-            cmp = 1;
-        }
-        else
-        {
-            cmp = this.Comparer.Compare(x, y);
-        }
-
+        // Comparer<TKey>.Default orders null first; a custom comparer defines its own null order.
+        var cmp = this.Comparer.Compare(x, y);
         if (!this.IsReversed)
         {
             return cmp;

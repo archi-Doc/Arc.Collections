@@ -1,0 +1,496 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "autoframe state",
+  "type": "object",
+  "properties": {
+    "plan_attempts": { "type": "integer", "minimum": 0 },
+    "plan_regeneration_pending": { "type": "boolean" },
+    "plan_publication": {
+      "type": ["object", "null"],
+      "properties": {
+        "old_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "new_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "text_ref": { "type": "string", "minLength": 1 }
+      },
+      "required": ["old_hash", "new_hash", "text_ref"],
+      "additionalProperties": false
+    },
+    "verify_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "plan_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_plan_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "logical_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "Running",
+        "Complete",
+        "Paused",
+        "Blocked",
+        "NeedsInput",
+        "Stalled",
+        "Error"
+      ],
+      "type": "string"
+    },
+    "phase": {
+      "enum": [
+        "Plan",
+        "Prepare",
+        "Audit",
+        "Work",
+        "Verify",
+        "CompletionAudit"
+      ],
+      "type": "string"
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "MaxRunMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "MaxPhaseAttempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "PhaseTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "SaveReserveMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "StopTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "MaxTasksPerWork": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "CompletionAuditInterval": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "PlanRegenerationInterval": { "type": "integer", "minimum": 1 },
+        "CodexCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "PhaseModels": {
+          "type": "object",
+          "properties": {
+            "Plan": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Prepare": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Audit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Work": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Verify": {
+              "type": "string",
+              "minLength": 1
+            },
+            "CompletionAudit": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "MaxRunMinutes",
+        "MaxPhaseAttempts",
+        "PhaseTimeoutMinutes",
+        "SaveReserveMinutes",
+        "StopTimeoutSeconds",
+        "MaxTasksPerWork",
+        "CompletionAuditInterval",
+        "CodexCommand",
+        "PhaseModels"
+      ],
+      "additionalProperties": false
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "heartbeat_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "running": {
+      "type": "boolean"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "counters": {
+      "type": "object",
+      "properties": {
+        "no_progress_works": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "workless_plan_returns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "audit_revisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "works_since_audit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "work_since_plan": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "no_progress_works",
+        "workless_plan_returns",
+        "audit_revisions",
+        "works_since_audit",
+        "work_since_plan"
+      ],
+      "additionalProperties": false
+    },
+    "active": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "phase": {
+              "enum": [
+                "Plan",
+                "Prepare",
+                "Audit",
+                "Work",
+                "Verify",
+                "CompletionAudit"
+              ],
+              "type": "string"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "before_manifest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "input_manifest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "signature": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "started_utc": {
+              "type": "string",
+              "minLength": 1
+            },
+            "process_receipt": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "attempt_id",
+            "phase",
+            "targets",
+            "directory",
+            "before_manifest",
+            "input_manifest",
+            "signature",
+            "started_utc",
+            "process_receipt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "uncertain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "enum": [
+              "Plan",
+              "Prepare",
+              "Audit",
+              "Work",
+              "Verify",
+              "CompletionAudit"
+            ],
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          },
+          "directory": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before_manifest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_manifest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_utc": {
+            "type": "string",
+            "minLength": 1
+          },
+          "process_receipt": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "attempt_id",
+          "phase",
+          "targets",
+          "directory",
+          "before_manifest",
+          "input_manifest",
+          "signature",
+          "started_utc",
+          "process_receipt"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "pending_work": {
+      "type": "boolean"
+    },
+    "pending_route": {
+      "enum": [
+        null,
+        "continue",
+        "replan"
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "accepted_attempts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0
+    },
+    "last_audit_key": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "complete_signature": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "approval_key": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "milestone_keys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "verify_targets",
+    "schema_version",
+    "run_id",
+    "project_root",
+    "project_id",
+    "plan_hash",
+    "plan_ref",
+    "base_plan_version",
+    "logical_ref",
+    "status",
+    "phase",
+    "settings",
+    "elapsed_seconds",
+    "heartbeat_utc",
+    "running",
+    "attempts",
+    "counters",
+    "active",
+    "uncertain",
+    "pending_work",
+    "pending_route",
+    "accepted_attempts",
+    "history",
+    "last_audit_key",
+    "complete_signature",
+    "approval_key",
+    "milestone_keys",
+    "message"
+  ],
+  "additionalProperties": false
+}
