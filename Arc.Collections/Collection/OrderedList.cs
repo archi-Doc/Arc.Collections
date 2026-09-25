@@ -1,11 +1,12 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using Arc.Collections.HotMethod;
 
@@ -29,6 +30,13 @@ namespace Arc.Collections;
 /// </remarks>
 public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 {
+    // Below this many added elements, inserting each one is cheaper than sorting the batch first.
+    private const int MergeThreshold = 16;
+
+    // When T implements IComparable<T>, Comparer<T>.Default orders exactly like the IComparable<T> search path.
+    // Otherwise (e.g., an interface), elements may still implement it and the search uses their implementation.
+    private static readonly bool TypeIsComparable = typeof(IComparable<T>).IsAssignableFrom(typeof(T));
+
     // Cached so hot paths can select a comparison strategy without a ReferenceEquals per call.
     private readonly bool comparerIsDefault;
 
@@ -86,17 +94,13 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
     /// <param name="comparer">The comparer to use for comparing elements.</param>
     public OrderedList(IEnumerable<T> collection, IComparer<T>? comparer)
+        : this(0, comparer)
     {
         ArgumentNullException.ThrowIfNull(collection);
 
-        this.Comparer = comparer ?? Comparer<T>.Default;
-        this.comparerIsDefault = ReferenceEquals(this.Comparer, Comparer<T>.Default);
-        this.HotMethod = HotMethodResolver.Get<T>(this.Comparer);
-
-        var array = collection.OrderBy(static x => x, this.Comparer).ToArray();
-
-        this.items = array;
-        this.size = array.Length;
+        // The source cannot observe a list under construction, so even a lazy one is added in bulk.
+        base.AddRange(collection);
+        this.MergeAppended(0);
     }
 
     /// <summary>
@@ -117,7 +121,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <param name="value">The value to add.</param>
     public new void Add(T value)
     {
-        base.Insert(this.UpperBoundExclusiveCore(value, 0), value);
+        base.Insert(this.UpperBoundExclusiveCore(value, 0, this.size), value);
     }
 
     /// <summary>
@@ -127,15 +131,22 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     public new void AddRange(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
-        if (ReferenceEquals(collection, this))
+        if (collection is ICollection<T> c)
         {
-            this.AddRange(this.AsReadOnlySpan());
-            return;
+            if (c.Count > 0)
+            {
+                var start = this.size;
+                base.AddRange(c); // Bulk copy; also handles a collection that is this list.
+                this.MergeAppended(start);
+            }
         }
-
-        foreach (var x in collection)
+        else
         {
-            this.Add(x);
+            // A lazy source may read this list while it is enumerated, so it must stay sorted after each element.
+            foreach (var x in collection)
+            {
+                this.Add(x);
+            }
         }
     }
 
@@ -155,14 +166,11 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <param name="source">The span whose elements are added.</param>
     public new void AddRange(ReadOnlySpan<T> source)
     {
-        if (source.Overlaps(this.items.AsSpan()))
+        if (!source.IsEmpty)
         {
-            source = source.ToArray();
-        }
-
-        foreach (var x in source)
-        {
-            this.Add(x);
+            var start = this.size;
+            base.AddRange(source); // Copies before any element is moved, so the source may overlap this list.
+            this.MergeAppended(start);
         }
     }
 
@@ -207,7 +215,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <returns>The index, or -1 if all elements are greater than the specified value.</returns>
     public int GetUpperBound(T value)
     {
-        return this.UpperBoundExclusiveCore(value, 0) - 1;
+        return this.UpperBoundExclusiveCore(value, 0, this.size) - 1;
     }
 
     /// <summary>
@@ -224,7 +232,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         }
 
         // The element at 'start' is known to be equal, so the search can begin at start + 1.
-        return (start, this.UpperBoundExclusiveCore(value, start + 1));
+        return (start, this.UpperBoundExclusiveCore(value, start + 1, this.size));
     }
 
     /// <summary>
@@ -288,6 +296,154 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         return index >= 0 ? index : -1;
     }
 
+    /// <summary>
+    /// Restores the sort order after unsorted elements were appended at [<paramref name="start"/>, size).
+    /// They are placed after existing equal elements and keep their relative order.
+    /// If the comparer throws, the list stays sorted and keeps the elements merged so far.
+    /// </summary>
+    /// <param name="start">The index of the first appended element.</param>
+    private void MergeAppended(int start)
+    {
+        var items = this.items;
+        var end = this.size;
+        var count = end - start;
+        if (count < MergeThreshold)
+        {
+            // Few elements: insert each one (a binary search and a block move).
+            // Add writes at most up to index i (== size), which is already read.
+            this.size = start;
+            try
+            {
+                for (var i = start; i < end; i++)
+                {
+                    this.Add(items[i]);
+                }
+            }
+            catch
+            {
+                this.ClearAfterSize(end);
+                throw;
+            }
+
+            return;
+        }
+
+        // Many elements: sort them stably (ties by original position), then insert them from the largest.
+        // A binary search over the unmerged existing elements finds those that follow each one, and they
+        // move as a block, so the cost is O(m log m + m log n) comparisons and O(n + m) moves.
+        SortEntry[]? pooled = null;
+        var existingEnd = start; // The unmerged existing elements are [0, existingEnd).
+        var mergedStart = end; // The merged elements are [mergedStart, end).
+        try
+        {
+            pooled = ArrayPool<SortEntry>.Shared.Rent(count);
+            var buffer = pooled.AsSpan(0, count);
+            for (var i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = new(items[start + i], i);
+            }
+
+            try
+            {
+                if (this.comparerIsDefault && (typeof(T).IsValueType || !TypeIsComparable))
+                {// Direct IComparable<SortEntry> calls: devirtualized for value types.
+                    buffer.Sort();
+                }
+                else
+                {// A class comparer: calls on a struct shared by reference types would go through instantiating stubs.
+                    buffer.Sort(new StableComparer(this.Comparer));
+                }
+            }
+            catch (InvalidOperationException e) when (e.InnerException is not null)
+            {// Sort wraps the comparer's exception; throw it as Add does.
+                ExceptionDispatchInfo.Throw(e.InnerException);
+            }
+
+            for (var i = count - 1; i >= 0; i--)
+            {
+                var value = buffer[i].Value;
+
+                // The upper bound keeps existing equal elements before the added one.
+                var index = this.UpperBoundExclusiveCore(value, 0, existingEnd);
+                var moved = existingEnd - index;
+                Array.Copy(items, index, items, mergedStart - moved, moved);
+                mergedStart -= moved + 1;
+                items[mergedStart] = value;
+                existingEnd = index;
+            }
+        }
+        catch
+        {
+            // [0, existingEnd) is untouched and [mergedStart, end) holds the merged maximums: join them.
+            Array.Copy(items, mergedStart, items, existingEnd, end - mergedStart);
+            this.size = existingEnd + (end - mergedStart);
+            this.ClearAfterSize(end);
+            throw;
+        }
+        finally
+        {
+            if (pooled is not null)
+            {
+                ArrayPool<SortEntry>.Shared.Return(pooled, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+            }
+        }
+
+        this.version++;
+    }
+
+    private void ClearAfterSize(int end)
+    {
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            Array.Clear(this.items, this.size, end - this.size);
+        }
+
+        this.version++;
+    }
+
+    // An element and its position in the batch: ties are ordered by position, which makes the sort stable.
+    private readonly struct SortEntry : IComparable<SortEntry>
+    {
+        public readonly T Value;
+        public readonly int Index;
+
+        public SortEntry(T value, int index)
+        {
+            this.Value = value;
+            this.Index = index;
+        }
+
+        // Used with the default comparer for value types, and for reference types that do not implement
+        // IComparable<T> (e.g., interfaces); compares like the search strategies (see IndexOfFirstCore).
+        public int CompareTo(SortEntry other)
+        {
+            int cmp;
+            if (!typeof(T).IsValueType && this.Value is IComparable<T> comparable)
+            {// Comparer<T>.Default would not use the element's IComparable<T>, but the search does.
+                cmp = other.Value is null ? 1 : comparable.CompareTo(other.Value);
+            }
+            else
+            {
+                cmp = Comparer<T>.Default.Compare(this.Value, other.Value);
+            }
+
+            return cmp != 0 ? cmp : this.Index.CompareTo(other.Index);
+        }
+    }
+
+    private sealed class StableComparer : IComparer<SortEntry>
+    {
+        private readonly IComparer<T> comparer;
+
+        public StableComparer(IComparer<T> comparer) => this.comparer = comparer;
+
+        public int Compare(SortEntry x, SortEntry y)
+        {
+            var cmp = this.comparer.Compare(x.Value, y.Value);
+            return cmp != 0 ? cmp : x.Index.CompareTo(y.Index);
+        }
+    }
+
     #region Interface reimplementation
 
     // UnorderedList<T> implements IList<T> with non-virtual members, so the 'new' members above
@@ -344,8 +500,9 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ComparableCompare(IComparable<T> value) => this.value = value;
 
+        // Comparer<T>.Default never passes null to CompareTo; a null element sorts first.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int CompareValueTo(T element) => this.value.CompareTo(element);
+        public int CompareValueTo(T element) => element is null ? 1 : this.value.CompareTo(element);
     }
 
     private readonly struct ComparerCompare : IValueCompare
@@ -491,20 +648,20 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         return LowerBound(this.items, 0, this.size, new ComparerCompare(this.Comparer, value));
     }
 
-    /// <summary>Returns the index of the first element greater than the specified value, searching [start, size), or size.</summary>
+    /// <summary>Returns the index of the first element greater than the specified value, searching [start, end), or end.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int UpperBoundExclusiveCore(T value, int start)
+    private int UpperBoundExclusiveCore(T value, int start, int end)
     {
-        if ((uint)start >= (uint)this.size)
+        if ((uint)start >= (uint)end)
         {
-            return this.size;
+            return end;
         }
 
         var hotMethod = this.HotMethod;
         if (hotMethod is not null)
         {
             return start + hotMethod.UpperBoundExclusive(
-                new ReadOnlySpan<T>(this.items, start, this.size - start),
+                new ReadOnlySpan<T>(this.items, start, end - start),
                 value);
         }
 
@@ -512,16 +669,16 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         {
             if (typeof(T).IsValueType)
             {
-                return UpperBound(this.items, start, this.size, new DefaultCompare(value));
+                return UpperBound(this.items, start, end, new DefaultCompare(value));
             }
 
             if (value is IComparable<T> comparable)
             {
-                return UpperBound(this.items, start, this.size, new ComparableCompare(comparable));
+                return UpperBound(this.items, start, end, new ComparableCompare(comparable));
             }
         }
 
-        return UpperBound(this.items, start, this.size, new ComparerCompare(this.Comparer, value));
+        return UpperBound(this.items, start, end, new ComparerCompare(this.Comparer, value));
     }
 
     [DoesNotReturn]

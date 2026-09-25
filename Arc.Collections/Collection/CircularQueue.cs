@@ -90,6 +90,7 @@ public sealed class CircularQueue<T>
     {
         var array = this.slotArray;
         var currentHead = Volatile.Read(ref this.headAndTail.Head);
+        SpinWait spinner = default;
         while (true)
         {
             var slotsIndex = currentHead & this.slotsMask;
@@ -123,6 +124,10 @@ public sealed class CircularQueue<T>
                     item = default;
                     return false;
                 }
+
+                // An enqueuer has claimed the slot but not published it yet: back off instead of
+                // busy-spinning, which starves a preempted enqueuer (as ConcurrentQueue does).
+                spinner.SpinOnce(sleep1Threshold: -1);
             }
 
             currentHead = Volatile.Read(ref this.headAndTail.Head);

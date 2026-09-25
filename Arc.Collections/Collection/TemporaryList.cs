@@ -10,7 +10,7 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="T">The type of the objects.</typeparam>
 /// <remarks>
-/// Additional elements use a heap-allocated list.
+/// Additional elements use a heap-allocated list, which copies of this struct share; do not copy it.
 /// </remarks>
 public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
 {
@@ -105,7 +105,8 @@ public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struc
 
         if (count > StackObjectCount)
         {
-            this.list!.CopyTo(array, StackObjectCount);
+            // Copy only this instance's elements: a copy of the struct shares the overflow list.
+            this.list!.CopyTo(0, array, StackObjectCount, count - StackObjectCount);
         }
 
         return array;

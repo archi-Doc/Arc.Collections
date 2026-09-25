@@ -51,15 +51,10 @@ public class UInt64Hashtable<TValue>
     /// Initializes a new instance of the <see cref="UInt64Hashtable{TValue}"/> class.
     /// </summary>
     /// <param name="capacity">The initial capacity.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^29 (536,870,912).</exception>
     public UInt64Hashtable(int capacity = 4)
     {
-        if (capacity < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(capacity));
-        }
-
-        var size = HashtableHelper.CalculateCapacity(capacity);
-        this.table = new Item?[size];
+        this.table = new Item?[HashtableHelper.CalculateCapacity(capacity)];
     }
 
     /// <summary>
@@ -100,7 +95,7 @@ public class UInt64Hashtable<TValue>
     /// otherwise, <see langword="false"/> if the key already exists.
     /// </returns>
     public bool TryAdd(ulong key, TValue value)
-        => this.AddInternal(key, value, false, out _);
+        => this.AddInternal(key, value, false);
 
     /// <summary>
     /// Adds or updates a key-value pair.
@@ -108,7 +103,7 @@ public class UInt64Hashtable<TValue>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
     public void AddOrUpdate(ulong key, TValue value)
-        => this.AddInternal(key, value, true, out _);
+        => this.AddInternal(key, value, true);
 
     /// <summary>
     /// Gets the existing value or adds a newly created value.
@@ -117,7 +112,8 @@ public class UInt64Hashtable<TValue>
     /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
     /// <returns>The existing value, or the newly created value.</returns>
     /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
-    /// it must not call back into this hashtable.</remarks>
+    /// it must not modify this hashtable. A modification that would invalidate the insertion
+    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.</remarks>
     public TValue GetOrAdd(ulong key, Func<ulong, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -235,7 +231,7 @@ public class UInt64Hashtable<TValue>
         }
     }
 
-    private bool AddInternal(ulong key, TValue value, bool updateValue, out TValue resultingValue)
+    private bool AddInternal(ulong key, TValue value, bool updateValue)
     {
         using (this.lockObject.EnterScope())
         {
@@ -253,7 +249,6 @@ public class UInt64Hashtable<TValue>
 
                 if (!updateValue)
                 {
-                    resultingValue = item.Value;
                     return false;
                 }
 
@@ -261,7 +256,6 @@ public class UInt64Hashtable<TValue>
 
                 Volatile.Write(ref table[bucketIndex], newHead);
 
-                resultingValue = value;
                 return false;
             }
 
@@ -280,7 +274,6 @@ public class UInt64Hashtable<TValue>
             Volatile.Write(ref table[bucketIndex], newItem);
             Volatile.Write(ref this.count, this.count + 1);
 
-            resultingValue = value;
             return true;
         }
     }
@@ -293,7 +286,8 @@ public class UInt64Hashtable<TValue>
             var table = this.table;
             var hash = GetHashCode(key);
             var bucketIndex = hash & (table.Length - 1);
-            var item = table[bucketIndex];
+            var head = table[bucketIndex];
+            var item = head;
 
             while (item is not null)
             {
@@ -306,6 +300,11 @@ public class UInt64Hashtable<TValue>
             }
 
             var value = valueFactory(key);
+
+            if (!ReferenceEquals(table, this.table) || !ReferenceEquals(head, table[bucketIndex]))
+            {// The lock is reentrant, so a factory calling back into this hashtable is not blocked.
+                HashtableHelper.ThrowFactoryModifiedTable();
+            }
 
             if (this.count >= (table.Length >> 1))
             {

@@ -26,6 +26,7 @@ public class BytePool
     /// </summary>
     public const int SingleCount = int.MaxValue;
     private const int DefaultMaxArrayLength = 1024 * 1024 * 16; // 16 MB
+    private const int MaxPooledArrayLength = 1 << 30; // The largest power of two that fits in an int.
     private const int DefaultPoolLimit = 256;
     private const int StandardArrayLength = 1024 * 32; // 32 KB (TinyhandSerializer.InitialBufferSize, ByteSequence.DefaultVaultSize)
     private const int StandardPoolLimit = 1024;
@@ -788,7 +789,7 @@ public class BytePool
     /// Bucket limits are rounded up to powers of two, with a minimum of two arrays.
     /// </summary>
     /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
-    /// Nonpositive values use the default maximum.</param>
+    /// Nonpositive values use the default maximum; values above 2^30 are clamped to 2^30.</param>
     /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateExponential(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
@@ -797,6 +798,10 @@ public class BytePool
         if (maxArrayLength <= 0)
         {
             maxArrayLength = DefaultMaxArrayLength;
+        }
+        else if (maxArrayLength > MaxPooledArrayLength)
+        {
+            maxArrayLength = MaxPooledArrayLength;
         }
 
         var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
@@ -823,7 +828,7 @@ public class BytePool
     /// Each bucket uses the requested array count, rounded up to a power of two with a minimum of two.
     /// </summary>
     /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
-    /// Nonpositive values use the default maximum.</param>
+    /// Nonpositive values use the default maximum; values above 2^30 are clamped to 2^30.</param>
     /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateFlat(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
@@ -832,6 +837,10 @@ public class BytePool
         if (maxArrayLength <= 0)
         {
             maxArrayLength = DefaultMaxArrayLength;
+        }
+        else if (maxArrayLength > MaxPooledArrayLength)
+        {
+            maxArrayLength = MaxPooledArrayLength;
         }
 
         var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
@@ -860,13 +869,13 @@ public class BytePool
     /// Sets the pool limit of the bucket that serves the specified array length,
     /// creating the bucket if it does not exist yet.
     /// </summary>
-    /// <param name="arrayLength">The array length identifying the bucket. Values below 1 are ignored.</param>
+    /// <param name="arrayLength">The array length identifying the bucket. Values below 1 or above 2^30 are ignored.</param>
     /// <param name="poolLimit">The requested retained array count, rounded up to a power of two with a minimum of two.</param>
     /// <remarks>Any arrays already pooled in the bucket are discarded. This is not thread-safe;
     /// call it during setup, before the pool is shared.</remarks>
     public void SetPoolLimit(int arrayLength, int poolLimit)
     {
-        if (arrayLength < 1)
+        if (arrayLength < 1 || arrayLength > MaxPooledArrayLength)
         {
             return;
         }

@@ -23,7 +23,8 @@ namespace Arc.Collections;
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 /// <remarks>
-/// Null keys are supported. The indexer getter returns the first matching value;
+/// Null keys are supported: the default comparer orders null first, and a custom comparer
+/// receives null keys and defines their order. The indexer getter returns the first matching value;
 /// the setter adds another entry. Duplicate groups use circular linked lists.
 /// </remarks>
 public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
@@ -570,8 +571,37 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         var value = node.Value;
+        if (!node.IsSingleNode)
+        {
+            // Removing a node from a duplicate group keeps the tree shape (the next duplicate takes the
+            // place of a removed tree node), so the new position is searched before anything changes
+            // and a throwing comparer leaves the map untouched.
+            var (position, parent) = this.SearchFirstNode(this.root, key);
+            var successor = node.ListNext;
+            this.RemoveNode(node);
+            if (ReferenceEquals(parent, node))
+            {
+                parent = successor;
+            }
+
+            this.Link(position, parent, key, value, node);
+            return true;
+        }
+
+        var originalKey = node.Key;
         this.RemoveNode(node);
-        this.Probe(key, value, node);
+        try
+        {
+            this.Probe(key, value, node);
+        }
+        catch
+        {
+            // Probe only compares keys before it modifies the tree, so a throwing comparer
+            // leaves the node detached: put it back under its original (unique) key.
+            this.Probe(originalKey, value, node);
+            throw;
+        }
+
         return true;
     }
 
@@ -838,25 +868,29 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
         if (!this.IsReversed)
         {
-            // Handle null before HotMethod because HotMethod is intended for non-null value keys.
+            // Comparer<TKey>.Default orders null before every other key; a custom comparer
+            // defines its own null order, so null keys go through it (last loop below).
+            // This also runs before HotMethod, which is only defined for non-null value keys.
             if (key is null)
             {
-                while (node is not null)
+                if (ReferenceEquals(comparer, Comparer<TKey>.Default))
                 {
-                    if (node.Key is null)
+                    while (node is not null)
                     {
-                        return (0, node);
+                        if (node.Key is null)
+                        {
+                            return (0, node);
+                        }
+
+                        parent = node;
+                        cmp = -1;
+                        node = node.Left;
                     }
 
-                    parent = node;
-                    cmp = -1;
-                    node = node.Left;
+                    return (cmp, parent);
                 }
-
-                return (cmp, parent);
             }
-
-            if (hotMethod is not null)
+            else if (hotMethod is not null)
             {
                 return hotMethod.SearchNode(node, key);
             }
@@ -893,7 +927,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 while (node is not null)
                 {
-                    cmp = comparable.CompareTo(node.Key);
+                    // Comparer<TKey>.Default never passes null to CompareTo; a null key sorts first.
+                    cmp = node.Key is null ? 1 : comparable.CompareTo(node.Key);
                     parent = node;
                     if (cmp < 0)
                     {
@@ -932,24 +967,27 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
         else
         {
+            // See the forward direction for the null handling.
             if (key is null)
             {
-                while (node is not null)
+                if (ReferenceEquals(comparer, Comparer<TKey>.Default))
                 {
-                    if (node.Key is null)
+                    while (node is not null)
                     {
-                        return (0, node);
+                        if (node.Key is null)
+                        {
+                            return (0, node);
+                        }
+
+                        parent = node;
+                        cmp = 1;
+                        node = node.Right;
                     }
 
-                    parent = node;
-                    cmp = 1;
-                    node = node.Right;
+                    return (cmp, parent);
                 }
-
-                return (cmp, parent);
             }
-
-            if (hotMethod is not null)
+            else if (hotMethod is not null)
             {
                 return hotMethod.SearchNodeReverse(node, key);
             }
@@ -986,7 +1024,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
                 while (node is not null)
                 {
-                    var c = comparable.CompareTo(node.Key);
+                    var c = node.Key is null ? 1 : comparable.CompareTo(node.Key);
                     parent = node;
                     if (c > 0)
                     {
@@ -1219,23 +1257,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                 get => this.current!;
             }
 
-            object IEnumerator.Current
-            {
-                get
-                {
-                    if (this.version != this.map.version)
-                    {
-                        ThrowVersionMismatch();
-                    }
-
-                    if (this.current is null)
-                    {
-                        ThrowInvalidEnumeratorState();
-                    }
-
-                    return this.current;
-                }
-            }
+            object IEnumerator.Current => this.GetValidatedCurrent();
 
             /// <summary>
             /// Advances the enumerator to the next element.
@@ -1276,7 +1298,26 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             {
             }
 
-            void IEnumerator.Reset()
+            void IEnumerator.Reset() => this.ResetCore();
+
+            // Non-interface members, so that a wrapping enumerator can use them on its field
+            // without boxing a copy (which would reset or read the copy instead).
+            internal readonly Node GetValidatedCurrent()
+            {
+                if (this.version != this.map.version)
+                {
+                    ThrowVersionMismatch();
+                }
+
+                if (this.current is null)
+                {
+                    ThrowInvalidEnumeratorState();
+                }
+
+                return this.current;
+            }
+
+            internal void ResetCore()
             {
                 if (this.version != this.map.version)
                 {
@@ -1339,9 +1380,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
 
             object? IEnumerator.Current
-                => ((IEnumerator)this.enumerator).Current is Node node
-                    ? node.Value
-                    : default;
+                => this.enumerator.GetValidatedCurrent().Value;
 
             /// <summary>
             /// Advances the enumerator to the next element.
@@ -1359,7 +1398,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
 
             void IEnumerator.Reset()
-                => ((IEnumerator)this.enumerator).Reset();
+                => this.enumerator.ResetCore();
         }
     }
 
@@ -1729,6 +1768,15 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
     {
         var (cmp, parent) = this.SearchFirstNode(this.root, key);
+        return this.Link(cmp, parent, key, value, reuse);
+    }
+
+    /// <summary>
+    /// Inserts a node at the position found by <see cref="SearchFirstNode"/>, without comparing keys.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private (Node Node, bool NewlyAdded) Link(int cmp, Node? parent, TKey key, TValue value, Node? reuse)
+    {
         Node node;
         if (reuse is not null && reuse.IsUnused)
         {
@@ -2070,20 +2118,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     private int CompareInTreeOrder(TKey? x, TKey? y)
     {
-        int cmp;
-        if (x is null)
-        {
-            cmp = y is null ? 0 : -1;
-        }
-        else if (y is null)
-        {
-            cmp = 1;
-        }
-        else
-        {
-            cmp = this.comparer.Compare(x, y);
-        }
-
+        // Comparer<TKey>.Default orders null first; a custom comparer defines its own null order.
+        var cmp = this.comparer.Compare(x, y);
         if (!this.IsReversed)
         {
             return cmp;

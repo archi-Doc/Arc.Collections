@@ -1407,7 +1407,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         public int Count => this.list.size;
 
         /// <summary>
-        /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+        /// Gets a value indicating whether the collection is read-only. Always <see langword="true"/>.
         /// </summary>
         public bool IsReadOnly => true;
 
@@ -1539,7 +1539,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         public int Count => this.list.size;
 
         /// <summary>
-        /// Gets a value indicating whether the collection is read-only. Always <see langword="false"/>.
+        /// Gets a value indicating whether the collection is read-only. Always <see langword="true"/>.
         /// </summary>
         public bool IsReadOnly => true;
 
