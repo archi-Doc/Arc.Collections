@@ -276,7 +276,7 @@ public static class BaseHelper
     /// <param name="span">The span of characters to search for a separator or whitespace character.</param>
     /// <returns>
     /// The zero-based index of the first separator or whitespace character in the span, or -1 if none is found.
-    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// Uses the separator rules of <see cref="IsSeparator(char)"/>.
     /// </returns>
     public static int IndexOfSeparator(this ReadOnlySpan<char> span)
     {
@@ -316,7 +316,8 @@ public static class BaseHelper
     /// <param name="value">The character to evaluate.</param>
     /// <returns>
     /// <c>true</c> if the character is a separator or whitespace character; otherwise, <c>false</c>.
-    /// Separators and whitespace include: U+0009 to U+000D, U+0020, ',', ';', U+00A0, U+2000 to U+200A, U+2028, U+2029, U+3000.
+    /// Separators are U+0009 through U+000D, U+0020, ',', ';', U+0085, U+00A0,
+    /// U+2000 through U+200A, U+2028, U+2029, and U+3000. Other Unicode whitespace is not included.
     /// </returns>
     public static bool IsSeparator(char value)
     {
@@ -342,7 +343,7 @@ public static class BaseHelper
     /// Overlapping occurrences are not counted.
     /// </summary>
     /// <param name="text">The source text to search.</param>
-    /// <param name="value">The substring to look for. Must not be empty.</param>
+    /// <param name="value">The substring to look for. An empty span produces a count of zero.</param>
     /// <returns>
     /// The number of non-overlapping occurrences of <paramref name="value"/> in <paramref name="text"/>.
     /// Returns 0 if <paramref name="value"/> is empty or not found.
@@ -724,8 +725,7 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Finds the index of the first line feed character (LfChar) or carriage return (CrChar) in the specified text span,
-    /// accommodating both Lf (LfChar) and CrLf ('\r\n') line endings.
+    /// Finds the first LF or CRLF line ending. Standalone carriage returns are ignored.
     /// </summary>
     /// <param name="text">The span of characters to search for line feed or carriage return characters.</param>
     /// <param name="newLineLength">When this method returns, contains the length of the detected line ending:
@@ -753,7 +753,7 @@ public static class BaseHelper
 
     /// <summary>
     /// Converts all line feed (LfChar) characters in the input string to carriage return and line feed ("\r\n") pairs,
-    /// except where the line feed is already preceded by a carriage return. This ensures all line endings are in CRLF format.
+    /// except where the line feed is already preceded by a carriage return. Standalone carriage returns are unchanged.
     /// </summary>
     /// <param name="text">The input string to convert line endings for.</param>
     /// <returns>
@@ -1040,7 +1040,7 @@ public static class BaseHelper
     /// Parses the value from the provided environment variable and assigns it to the <paramref name="result"/> parameter.
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
-    /// <param name="environmentVariableName">The name of the environment variable to check if the source value is empty.</param>
+    /// <param name="environmentVariableName">The name of the environment variable to parse.</param>
     /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
@@ -1064,7 +1064,7 @@ public static class BaseHelper
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
-    /// <returns>The string representation of the object.</returns>
+    /// <returns>The formatted string, or an empty string if no buffer length is available or formatting fails.</returns>
     [SkipLocalsInit]
     public static string ConvertToString<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
@@ -1092,7 +1092,7 @@ public static class BaseHelper
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
-    /// <returns>The UTF-8 byte array representation of the object.</returns>
+    /// <returns>The UTF-8 bytes, or an empty array if no buffer length is available or formatting fails.</returns>
     [SkipLocalsInit]
     public static byte[] ConvertToUtf8<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
@@ -1115,7 +1115,7 @@ public static class BaseHelper
         }
 
         var result = owner.Span.Slice(0, written);
-        var array = new byte[Encoding.UTF8.GetByteCount(result)];
+        var array = GC.AllocateUninitializedArray<byte>(Encoding.UTF8.GetByteCount(result));
         length = Encoding.UTF8.GetBytes(result, array);
         Debug.Assert(length == array.Length, string.Empty);
         return array;

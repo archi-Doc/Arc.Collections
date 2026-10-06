@@ -141,6 +141,8 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="dictionary">The dictionary to copy.</param>
     /// <param name="comparer">The comparer to use for comparing keys.</param>
+    /// <remarks>Copying another <see cref="OrderedKeyValueList{TKey, TValue}"/> with the same comparer preserves
+    /// duplicate order and does not sort the entries again.</remarks>
     public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary, IComparer<TKey>? comparer)
         : this(dictionary is null ? 0 : dictionary.Count, comparer)
     {
@@ -149,10 +151,22 @@ public class OrderedKeyValueList<TKey, TValue> :
         var count = dictionary.Count;
         if (count != 0)
         {
+            var source = dictionary as OrderedKeyValueList<TKey, TValue>;
+
             // Bulk copy is considerably faster than enumerating pairs one by one.
-            dictionary.Keys.CopyTo(this.keys, 0);
-            dictionary.Values.CopyTo(this.values, 0);
-            if (count > 1)
+            if (source is not null)
+            {
+                Array.Copy(source.keys, this.keys, count);
+                Array.Copy(source.values, this.values, count);
+            }
+            else
+            {
+                dictionary.Keys.CopyTo(this.keys, 0);
+                dictionary.Values.CopyTo(this.values, 0);
+            }
+
+            if (count > 1 &&
+                (source is null || !ReferenceEquals(source.Comparer, this.Comparer)))
             {
                 Array.Sort(this.keys, this.values, 0, count, this.Comparer);
             }
@@ -1230,7 +1244,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
 
         /// <summary>
-        /// Releases the resources used by the enumerator. This is a no-op.
+        /// Clears the current element and resets the enumerator to its initial position.
         /// </summary>
         public void Dispose()
         {

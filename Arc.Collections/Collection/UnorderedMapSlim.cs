@@ -21,7 +21,7 @@ namespace Arc.Collections;
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
 /// <remarks>
-/// Adding an existing key replaces its value. All access requires external synchronization
+/// TryAdd preserves existing values; AddOrUpdate and indexer assignment replace them. All access requires external synchronization
 /// when a writer is present. Enumeration does not detect modifications.
 /// </remarks>
 public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
@@ -125,8 +125,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
-    /// Only nodes with <see cref="Node.IsInUse"/> are active; the array may be replaced
-    /// when the map is resized.
+    /// Inspect only indexes below the returned slot count, and use <see cref="Node.IsInUse"/> to skip removed nodes.
+    /// The array may be replaced when the map is resized.
     /// </summary>
     /// <returns>The internal node array and the number of node slots in use.</returns>
     public (Node[] Nodes, int SlotCount) UnsafeGetNodes()
@@ -226,8 +226,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <param name="key">The key to look up or add.</param>
     /// <param name="exists"><see langword="true"/> if the key already existed.</param>
     /// <returns>
-    /// A reference to the value slot. The reference is invalidated by any subsequent
-    /// addition to or removal from the map; do not hold it across mutations.
+    /// A reference to the value slot. Do not add or remove entries, or clear the map,
+    /// while using the reference; these operations can invalidate it.
     /// </returns>
     public ref TValue GetValueRefOrAddDefault(TKey key, out bool exists)
     {

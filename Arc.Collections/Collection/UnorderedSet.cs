@@ -170,9 +170,14 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Copies the elements to a new array.
     /// </summary>
-    /// <returns>A new array containing the elements.</returns>
+    /// <returns>A new array containing the elements, or the shared empty array when the set is empty.</returns>
     public T[] ToArray()
     {
+        if (this.Count == 0)
+        {
+            return Array.Empty<T>();
+        }
+
         var array = new T[this.Count];
         this.CopyTo(array, 0);
         return array;

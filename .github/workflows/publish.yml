@@ -16,7 +16,7 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-build
 
     - name: Package
       run: dotnet pack -c Release -o bin Arc.Collections/Arc.Collections.csproj

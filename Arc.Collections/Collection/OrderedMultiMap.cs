@@ -26,6 +26,7 @@ namespace Arc.Collections;
 /// Null keys are supported: the default comparer orders null first, and a custom comparer
 /// receives null keys and defines their order. The indexer getter returns the first matching value;
 /// the setter adds another entry. Duplicate groups use circular linked lists.
+/// Active nodes passed to node operations must belong to this map; ownership is not checked.
 /// </remarks>
 public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {

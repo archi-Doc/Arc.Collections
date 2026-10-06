@@ -18,7 +18,7 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
 /// <remarks>
-/// Writes are serialized and lookups are lock-free. Adding an existing key replaces its value.
+/// Writes are serialized and lookups are lock-free. TryAdd preserves existing values; AddOrUpdate replaces them.
 /// </remarks>
 public class Int64Hashtable<TValue>
 {
@@ -60,11 +60,16 @@ public class Int64Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all values.
     /// </summary>
-    /// <returns>A new array containing the elements.</returns>
+    /// <returns>A snapshot of the current values, or an empty array when the hashtable is empty.</returns>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return Array.Empty<TValue>();
+            }
+
             var count = this.count;
             var values = new TValue[count];
             var table = this.table;
@@ -124,7 +129,7 @@ public class Int64Hashtable<TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the associated value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(long key, [MaybeNullWhen(false)] out TValue value)
@@ -169,7 +174,7 @@ public class Int64Hashtable<TValue>
     /// Attempts to remove the value with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the removed value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(long key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -320,16 +325,37 @@ public class Int64Hashtable<TValue>
         }
 
         var nextTable = new Item?[table.Length << 1];
+        var mask = nextTable.Length - 1;
 
         for (var i = 0; i < table.Length; i++)
         {
-            var item = table[i];
-
-            while (item is not null)
+            var head = table[i];
+            if (head is null)
             {
-                var bucketIndex = GetHashCode(item.Key) & (nextTable.Length - 1);
+                continue;
+            }
+
+            // The final run that stays in one bucket can be shared with readers of the old table.
+            var item = head;
+            var lastRun = item;
+            var lastBucketIndex = GetHashCode(item.Key) & mask;
+            for (var next = item.Next; next is not null; next = next.Next)
+            {
+                var bucketIndex = GetHashCode(next.Key) & mask;
+                if (bucketIndex != lastBucketIndex)
+                {
+                    lastBucketIndex = bucketIndex;
+                    lastRun = next;
+                }
+            }
+
+            nextTable[lastBucketIndex] = lastRun;
+
+            // Only the prefix whose links change needs new immutable nodes.
+            for (; !ReferenceEquals(item, lastRun); item = item.Next!)
+            {
+                var bucketIndex = GetHashCode(item.Key) & mask;
                 nextTable[bucketIndex] = new Item(item.Key, item.Value, nextTable[bucketIndex]);
-                item = item.Next;
             }
         }
 
