@@ -20,8 +20,9 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
 /// <remarks>
-/// Adding an existing key replaces its value. Keys are compared without text validation or normalization.
-/// Stored byte arrays must not be modified. All access requires external synchronization when a writer is present.
+/// TryAdd preserves existing values; AddOrUpdate replaces them. Keys are compared without text validation or normalization.
+/// Array keys are retained; span keys are copied only on insertion. Stored arrays, including enumerated keys, must not be modified.
+/// All access requires external synchronization when a writer is present.
 /// Enumeration does not detect modifications.
 /// </remarks>
 public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>>
@@ -76,6 +77,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// Initializes a new instance of the <see cref="Utf8UnorderedMap{TValue}"/> class.
     /// </summary>
     /// <param name="minimumCapacity">The minimum required capacity.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumCapacity"/> is greater than 2^30 (1,073,741,824).</exception>
     public Utf8UnorderedMap(uint minimumCapacity = 0)
     {
         if (minimumCapacity > MaximumCapacity)
@@ -283,7 +285,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the associated value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(byte[] key, [MaybeNullWhen(false)] out TValue value)
@@ -319,7 +321,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the associated value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
@@ -358,8 +360,8 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// <param name="key">The key.</param>
     /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
     /// <returns>
-    /// A reference to the value slot. The reference is invalidated by any subsequent
-    /// addition to or removal from the map; do not hold it across mutations.
+    /// A reference to the value slot. Do not add or remove entries, or clear the map,
+    /// while using the reference; these operations can invalidate it.
     /// </returns>
     public ref TValue GetValueRefOrAddDefault(byte[] key, out bool exists)
     {
@@ -410,7 +412,7 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
-    /// <returns>A reference to the value slot. It is invalidated by any subsequent addition or removal.</returns>
+    /// <returns>A reference to the value slot. Do not add or remove entries, or clear the map, while using it.</returns>
     public ref TValue GetValueRefOrAddDefault(ReadOnlySpan<byte> key, out bool exists)
     {
         var nodes = this._nodes;
@@ -590,11 +592,6 @@ public class Utf8UnorderedMap<TValue> : IEnumerable<KeyValuePair<byte[], TValue>
         }
 
         var newSize = oldSize << 1;
-        if (newSize <= 0 || newSize > MaximumCapacity)
-        {
-            newSize = MaximumCapacity;
-        }
-
         var nodes = new Node[newSize];
         Array.Copy(this._nodes, nodes, this._count);
 

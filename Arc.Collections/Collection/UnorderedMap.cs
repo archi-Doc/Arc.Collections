@@ -213,8 +213,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
-    /// Only nodes with <see cref="Node.IsInUse"/> are active, and the array may be
-    /// replaced when the map is resized; do not hold it across mutations.
+    /// Inspect only indexes below the returned slot count, and use <see cref="Node.IsInUse"/> to skip removed nodes.
+    /// The array may be replaced when the map is resized; do not hold it across mutations.
     /// </summary>
     /// <returns>The internal node array and the number of node slots in use.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -721,7 +721,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// </summary>
     /// <param name="nodeIndex">The node index.</param>
     /// <param name="value">The value.</param>
-    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the node is active and the value was assigned; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeValue(int nodeIndex, TValue value)
     {

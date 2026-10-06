@@ -19,7 +19,7 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TValue">The type of value.</typeparam>
 /// <remarks>
-/// Writes are serialized and lookups are lock-free. Adding an existing key replaces its value.
+/// Writes are serialized and lookups are lock-free. TryAdd preserves existing values; AddOrUpdate replaces them.
 /// </remarks>
 public class Int32Hashtable<TValue>
 {
@@ -61,11 +61,16 @@ public class Int32Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all values.
     /// </summary>
-    /// <returns>A new array with the values currently in the hashtable.</returns>
+    /// <returns>A snapshot of the current values, or an empty array when the hashtable is empty.</returns>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return Array.Empty<TValue>();
+            }
+
             var values = new TValue[this.count];
             var table = this.table;
             var n = 0;
@@ -310,16 +315,37 @@ public class Int32Hashtable<TValue>
         }
 
         var nextTable = new Item?[table.Length << 1];
+        var mask = nextTable.Length - 1;
 
         for (var i = 0; i < table.Length; i++)
         {
-            var item = table[i];
-
-            while (item is not null)
+            var head = table[i];
+            if (head is null)
             {
-                var bucketIndex = item.Key & (nextTable.Length - 1);
+                continue;
+            }
+
+            // The final run that stays in one bucket can be shared with readers of the old table.
+            var item = head;
+            var lastRun = item;
+            var lastBucketIndex = item.Key & mask;
+            for (var next = item.Next; next is not null; next = next.Next)
+            {
+                var bucketIndex = next.Key & mask;
+                if (bucketIndex != lastBucketIndex)
+                {
+                    lastBucketIndex = bucketIndex;
+                    lastRun = next;
+                }
+            }
+
+            nextTable[lastBucketIndex] = lastRun;
+
+            // Only the prefix whose links change needs new immutable nodes.
+            for (; !ReferenceEquals(item, lastRun); item = item.Next!)
+            {
+                var bucketIndex = item.Key & mask;
                 nextTable[bucketIndex] = new Item(item.Key, item.Value, nextTable[bucketIndex]);
-                item = item.Next;
             }
         }
 

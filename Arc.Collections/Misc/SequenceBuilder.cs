@@ -58,7 +58,7 @@ public ref struct SequenceBuilder<T>
     /// Initializes a new instance of the <see cref="SequenceBuilder{T}"/> struct.
     /// </summary>
     /// <param name="initialCapacity">
-    /// Initial chunk size to rent from <see cref="ArrayPool{T}"/>. Must be greater than 0
+    /// Minimum initial chunk size to rent from <see cref="ArrayPool{T}"/>. Must be greater than 0
     /// and less than or equal to <see cref="MaxChunkCapacity"/>.
     /// </param>
     /// <param name="clearArrayOnReturn">
@@ -147,6 +147,7 @@ public ref struct SequenceBuilder<T>
     /// Appends a contiguous range of values to the sequence under construction.
     /// </summary>
     /// <param name="values">The values to append.</param>
+    /// <remarks>Large ranges use larger chunks, up to <see cref="MaxChunkCapacity"/>, to reduce pool traffic.</remarks>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the builder has already been finalized.
     /// </exception>
@@ -162,7 +163,7 @@ public ref struct SequenceBuilder<T>
             var array = this.currentArray;
             if (array is null)
             {
-                array = this.RentChunk();
+                array = this.RentChunk(values.Length);
                 this.currentArray = array;
             }
 
@@ -293,12 +294,17 @@ public ref struct SequenceBuilder<T>
         => throw new InvalidOperationException("The sequence has already been finalized.");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private T[] RentChunk()
+    private T[] RentChunk(int minimumCapacity = 0)
     {
         var capacity = this.nextChunkCapacity;
         if (capacity <= 0)
         {
             capacity = DefaultInitialCapacity;
+        }
+
+        if (minimumCapacity > capacity)
+        {
+            capacity = Math.Min(minimumCapacity, MaxChunkCapacity);
         }
 
         var array = ArrayPool<T>.Shared.Rent(capacity);

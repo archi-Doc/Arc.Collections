@@ -6,12 +6,12 @@ using System.Collections.Generic;
 namespace Arc.Collections.HotMethod;
 
 /// <summary>
-/// Default composited resolver.
+/// Resolves specialized comparison implementations for supported primitive types.
 /// </summary>
 internal sealed class PrimitiveResolver : IHotMethodResolver
 {
     /// <summary>
-    /// The singleton instance that can be used.
+    /// The shared resolver instance.
     /// </summary>
     public static readonly PrimitiveResolver Instance = new PrimitiveResolver();
 

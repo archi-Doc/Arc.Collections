@@ -414,11 +414,17 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Removes all elements from the <see cref="SlidingList{T}"/>.
     /// </summary>
-    /// <remarks>Positions are not reset: the empty window starts at the former <see cref="EndPosition"/>, so positions
-    /// handed out before the call are never reused.</remarks>
+    /// <remarks>The empty window starts at the former <see cref="EndPosition"/>. Earlier positions become invalid
+    /// and are not reused until the 31-bit position counter wraps around.</remarks>
     public void Clear()
     {
-        Array.Clear(this.items, 0, this.items.Length);
+        var first = Math.Min(this.consumed, this.items.Length - this.headIndex);
+        Array.Clear(this.items, this.headIndex, first);
+        if (first < this.consumed)
+        {
+            Array.Clear(this.items, 0, this.consumed - first);
+        }
+
         this.startPosition = PositionMask & (this.startPosition + this.consumed);
         this.headIndex = 0;
         this.consumed = 0;

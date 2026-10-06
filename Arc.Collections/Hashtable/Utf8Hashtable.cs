@@ -20,7 +20,8 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of value.</typeparam>
 /// <remarks>
 /// Writes are serialized and lookups are lock-free. Keys are compared without text validation or normalization.
-/// Stored byte arrays must not be modified. Adding an existing key replaces its value.
+/// TryAdd preserves existing values; AddOrUpdate replaces them.
+/// Array keys are retained; span keys are copied only on insertion. Stored arrays must not be modified, including inside a value factory.
 /// </remarks>
 public class Utf8Hashtable<TValue>
 {
@@ -64,11 +65,16 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all values.
     /// </summary>
-    /// <returns>A new array containing the elements.</returns>
+    /// <returns>A snapshot of the current values, or an empty array when the hashtable is empty.</returns>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return Array.Empty<TValue>();
+            }
+
             var table = this.table;
             var values = new TValue[this.count];
             var n = 0;
@@ -88,11 +94,17 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Gets an array containing all key-value pairs.
     /// </summary>
-    /// <returns>A new array containing the key-value pairs.</returns>
+    /// <returns>A snapshot of the current key-value pairs, or an empty array when the hashtable is empty.</returns>
+    /// <remarks>The key arrays are shared with the hashtable and must not be modified.</remarks>
     public KeyValuePair<byte[], TValue>[] ToKeyValuePairs()
     {
         using (this.lockObject.EnterScope())
         {
+            if (this.count == 0)
+            {
+                return Array.Empty<KeyValuePair<byte[], TValue>>();
+            }
+
             var table = this.table;
             var pairs = new KeyValuePair<byte[], TValue>[this.count];
             var n = 0;
@@ -196,7 +208,7 @@ public class Utf8Hashtable<TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the associated value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(byte[] key, [MaybeNullWhen(false)] out TValue value)
@@ -226,7 +238,7 @@ public class Utf8Hashtable<TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the associated value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
@@ -283,7 +295,7 @@ public class Utf8Hashtable<TValue>
     /// Attempts to remove the value with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the removed value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(byte[] key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -303,7 +315,7 @@ public class Utf8Hashtable<TValue>
     /// Attempts to remove the value with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the removed value if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found and removed.</returns>
     public bool TryRemove(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -554,16 +566,33 @@ public class Utf8Hashtable<TValue>
 
         for (var i = 0; i < table.Length; i++)
         {
-            var item = table[i];
+            var head = table[i];
+            if (head is null)
+            {
+                continue;
+            }
 
-            while (item is not null)
+            // The final run that stays in one bucket can be shared with readers of the old table.
+            var item = head;
+            var lastRun = item;
+            var lastBucketIndex = item.Hash & mask;
+            for (var next = item.Next; next is not null; next = next.Next)
+            {
+                var bucketIndex = next.Hash & mask;
+                if (bucketIndex != lastBucketIndex)
+                {
+                    lastBucketIndex = bucketIndex;
+                    lastRun = next;
+                }
+            }
+
+            nextTable[lastBucketIndex] = lastRun;
+
+            // Only the prefix whose links change needs new immutable nodes.
+            for (; !ReferenceEquals(item, lastRun); item = item.Next!)
             {
                 var bucketIndex = item.Hash & mask;
-
-                nextTable[bucketIndex] =
-                    new Item(item.Key, item.Value, item.Hash, nextTable[bucketIndex]);
-
-                item = item.Next;
+                nextTable[bucketIndex] = new Item(item.Key, item.Value, item.Hash, nextTable[bucketIndex]);
             }
         }
 

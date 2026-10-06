@@ -37,6 +37,7 @@ internal enum NodeColor : byte
 /// Lookup, insertion, and removal take O(log n) time. Null keys are supported: the default comparer
 /// orders null first, and a custom comparer receives null keys and defines their order.
 /// Adding an existing key preserves its value; the indexer setter replaces it.
+/// Active nodes passed to node operations must belong to this map; ownership is not checked.
 /// </remarks>
 public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
@@ -1160,7 +1161,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         }
 
         /// <summary>
-        /// Releases the resources used by the enumerator. This is a no-op.
+        /// Clears the current node and ends enumeration.
         /// </summary>
         public void Dispose()
         {
@@ -1286,7 +1287,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             }
 
             /// <summary>
-            /// Releases the resources used by the enumerator. This is a no-op.
+            /// Clears the current node and ends enumeration.
             /// </summary>
             public void Dispose()
             {
@@ -1410,7 +1411,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             }
 
             /// <summary>
-            /// Releases the resources used by the enumerator. This is a no-op.
+            /// Clears the current node and ends enumeration.
             /// </summary>
             public void Dispose()
             {

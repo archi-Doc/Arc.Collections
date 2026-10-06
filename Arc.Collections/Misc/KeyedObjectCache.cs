@@ -25,6 +25,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <remarks>
     /// Return or dispose a lease once. This readonly struct retains its fields after returning;
     /// copies refer to the same object and must not be returned independently.
+    /// A default lease and the empty lease returned by <see cref="Return"/> are safe to dispose.
     /// </remarks>
     public readonly struct Lease : IDisposable
     {
@@ -43,29 +44,32 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         /// </summary>
         public readonly TObject? Object;
 
-        internal Lease(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj)
+        private readonly bool hasObject;
+
+        internal Lease(KeyedObjectCache<TKey, TObject> objectCache, TKey key, TObject? obj, bool hasObject = true)
         {
             this.Cache = objectCache;
             this.Key = key;
             this.Object = obj;
+            this.hasObject = hasObject && obj is not null;
         }
 
         /// <summary>
         /// Returns the object to the cache (<see cref="Return"/> and <see cref="Dispose"/> are the same).<br/>
-        /// If the object cannot be cached because its key already exists or the cache is disposed,
+        /// If the object cannot be cached,
         /// it is disposed when it implements <see cref="IDisposable"/>.
         /// </summary>
         /// <returns>A <see cref="Lease"/> with the object set to its default value.</returns>
         public Lease Return()
         {
-            if (this.Object is not null &&
-                !this.Cache.TryAdd(this.Key, this.Object) &&
+            if (this.hasObject &&
+                !this.Cache.TryAdd(this.Key, this.Object!) &&
                 this.Object is IDisposable disposable)
             {// Not cached and therefore no longer owned by anyone.
                 disposable.Dispose();
             }
 
-            return new(this.Cache, this.Key, default);
+            return new(this.Cache, this.Key, default, false);
         }
 
         /// <summary>
@@ -140,7 +144,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <param name="key">The key of the object to cache.</param>
     /// <param name="obj">The object to cache.</param>
     /// <returns><see langword="true"/>; The object is successfully cached.<br/>
-    /// <see langword="false"/>; An object with the same key already exists, or the cache has been disposed.
+    /// <see langword="false"/>; The key already exists, the cache is disposed, or an eviction callback refills it.
     /// The caller retains ownership when this method returns <see langword="false"/>.</returns>
     public bool TryAdd(TKey key, TObject obj)
     {
@@ -151,14 +155,15 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
                 return false;
             }
 
-            while (this.linkedList.Count >= this.CacheSize)
+            if (this.linkedList.Count >= this.CacheSize && this.linkedList.First is { } first)
             {
-                if (this.linkedList.First is not { } first)
-                {// Nothing left to evict.
-                    break;
-                }
-
                 this.DisposeItem(first.Value);
+
+                // Disposal can reenter this cache and change its state.
+                if (this.disposed || this.linkedList.Count >= this.CacheSize || this.map.ContainsKey(key))
+                {
+                    return false;
+                }
             }
 
             var item = new Item(obj);
@@ -176,7 +181,16 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <summary>
     /// Gets the number of objects currently held in the cache.
     /// </summary>
-    public int Count => this.linkedList.Count;
+    public int Count
+    {
+        get
+        {
+            using (this.lockObject.EnterScope())
+            {
+                return this.linkedList.Count;
+            }
+        }
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveFromCollection(Item item)
@@ -216,7 +230,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <summary>
     /// Disposes all cached objects that implement <see cref="IDisposable"/> and empties the cache.
     /// </summary>
-    /// <remarks>The cache holds no unmanaged resources, so calling this is optional.</remarks>
+    /// <remarks>Call this to release disposable objects still owned by the cache.</remarks>
     public void Dispose()
     {
         using (this.lockObject.EnterScope())

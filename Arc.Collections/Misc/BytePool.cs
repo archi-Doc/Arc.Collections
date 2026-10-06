@@ -71,6 +71,8 @@ public class BytePool
         /// <param name="array">A byte array (allocated with 'new').</param>
         internal RentedArray(byte[] array)
         {
+            ArgumentNullException.ThrowIfNull(array);
+
             this.bucket = null;
             this.byteArray = array;
             this.ResetCount();
@@ -897,9 +899,12 @@ public class BytePool
     /// <param name="minimumLength">The minimum length of the byte array.</param>
     /// <returns>A rented <see cref="RentedArray"/>. When no bucket serves the requested length,
     /// a plain byte array is allocated and is not returned to the pool.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumLength"/> is negative.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RentedArray Rent(int minimumLength)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
+
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
         {// Since the bucket is empty, allocate and return the byte array using the conventional method.

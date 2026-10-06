@@ -88,6 +88,9 @@ list spans or map value references across mutations that can move or replace the
 Node handles belong to their collection. Remove a node before reusing it, and do not use
 a removed node or hash-map node index as a live handle. Hash-map indexes may be recycled.
 
+Copying an `OrderedKeyValueList<TKey, TValue>` with the same comparer preserves duplicate
+order and avoids sorting again. Pass the source's `Comparer` explicitly when it is custom.
+
 ### Windows, queues, and temporary storage
 
 | Type | Use and behavior |
@@ -116,6 +119,8 @@ may retry or wait, and `Count` is an estimate during concurrent access.
 | `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>` | UTF-keyed maps with span lookup, enumeration, and direct value-reference access. Require external synchronization for writes. |
 
 All these types update existing values with `AddOrUpdate`; `TryAdd` leaves existing values unchanged.
+Hashtable snapshot methods (`ToArray` and UTF `ToKeyValuePairs`) take the write lock.
+Snapshots copy values and key references, so referenced objects and UTF-8 key arrays remain shared.
 The hashtables also provide `GetOrAdd`. Its factory runs under the write lock and must not
 modify the same table; `GetOrAdd` throws `InvalidOperationException` when such a modification
 would invalidate its insertion.
@@ -153,7 +158,10 @@ distinct instances. Return outstanding objects before disposing the pool; `Rent`
 cached object when full. A failed `TryAdd` call leaves ownership with the caller.
 `CreateLease` creates a `Lease` that returns an object on disposal, or disposes it if
 caching fails. This readonly lease retains its fields after return: return or dispose it
-once, including across copies.
+once, including across copies. Assign `lease = lease.Return()` to retain an empty lease;
+default and returned empty leases are safe to dispose, including for value-type objects.
+An eviction callback that disposes or refills the cache can cause `TryAdd` to fail; the
+caller still owns the rejected object.
 
 ### Byte ownership
 
@@ -184,8 +192,9 @@ array-backed memory, or return an empty view if the underlying array cannot be o
 ### Temporary buffers and builders
 
 Do not copy a `SpanOwner<T>`, `SequenceBuilder<T>`, or `PooledStringBuilder` while it owns
-pooled resources. Copies of a `TemporaryList<T>` share its heap-allocated overflow list. Dispose the owner after use and do not retain pooled spans or sequences
+pooled resources. Dispose the owner after use and do not retain pooled spans or sequences
 past disposal. `SpanOwner<T>` clears reference-containing arrays on return.
+`TemporaryList<T>` needs no disposal; copies share its heap-allocated overflow list.
 
 ```csharp
 using System;
@@ -203,6 +212,8 @@ Console.WriteLine(sequence.Length); // 3; consume before builder disposal.
 
 `PooledStringBuilder` uses invariant formatting by default and LF for `AppendLine`.
 `Clear()` retains its current character buffer for reuse.
+`SequenceBuilder<T>.AddRange` sizes new chunks for the remaining input, up to
+`MaxChunkCapacity`, to reduce array rents and sequence segments for large batches.
 
 ## Helpers
 
@@ -223,6 +234,8 @@ Conversion interfaces require all members to be implemented. At least one of the
 members (`GetStringLength()`/`MaxStringLength` for UTF-16, `GetUtf8Length()`/`MaxUtf8Length` for UTF-8)
 must provide a nonnegative length; the other may return -1. Lengths and written counts use UTF-16 characters or UTF-8 bytes respectively.
 Formatting options may require additional destination space.
+`BaseHelper.ConvertToString` and `ConvertToUtf8` return an empty result when no length
+is available or formatting fails; they do not retry with a larger buffer.
 
 ## Thread safety
 
@@ -248,10 +261,28 @@ From the repository root with the .NET 10 SDK installed:
 ```sh
 dotnet restore Arc.Collections.slnx
 dotnet build Arc.Collections.slnx -c Release --no-restore
-dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-restore
+dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-build
 ```
 
-The test command uses the repository's Microsoft.Testing.Platform configuration.
+The tests use Microsoft.Testing.Platform, including direct execution through
+`dotnet run --project xUnitTest/xUnitTest.csproj -c Release --no-build -- --help`.
+
+### Coverage
+
+Collect line and branch coverage for the library in Cobertura format:
+
+```sh
+dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-build --coverage --coverage-settings xUnitTest/coverage.config --coverage-output-format cobertura --coverage-output coverage.cobertura.xml --results-directory TestResults
+```
+
+The coverage configuration selects `Arc.Collections.dll`; test and dependency assemblies
+are excluded. Tests include boundary values, duplicate ordering, interface contracts,
+buffer ownership, reentrant callbacks, and concurrent hashtable growth. Hardware-specific
+hashing and sum paths depend on the CPU. To exercise scalar fallbacks, run the tests in a
+new process with `DOTNET_EnableHWIntrinsic=0`.
+
+### Benchmarks
+
 `Benchmark` contains BenchmarkDotNet workloads; run a selected group with:
 
 ```sh
@@ -263,6 +294,11 @@ dotnet run --project Benchmark/Benchmark.csproj -c Release -- --filter "*Ordered
 Choose using the operations and data sizes your application needs, then benchmark that workload.
 Node reuse can avoid node allocation, and spans or direct value references can avoid repeated
 lookup or enumeration overhead.
+
+Hashtable growth reuses immutable chain suffixes, and empty snapshots reuse empty arrays.
+`SlidingList<T>.Clear` clears only its occupied window. To measure these paths and bulk
+sequence construction, filter benchmarks by `*HashtableGrowthBenchmark*`,
+`*SlidingListClearBenchmark*`, or `*SequenceBuilderRangeBenchmark*`.
 
 The following retained BenchmarkDotNet results compare `OrderedSet<T>` with
 `System.Collections.Generic.SortedSet<T>`. They are historical measurements; their runtime
