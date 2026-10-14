@@ -683,6 +683,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         this.RemoveTreeNode(node);
     }
 
+    [Leash.Exempt("Keep node replacement, rotations, and recoloring together in the deletion hot path to avoid additional helper calls and state passing.")]
     private void RemoveTreeNode(Node node)
     {
         var originalColor = node.Color;
@@ -859,6 +860,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     #region Search
 
+    [Leash.Exempt("Keep null, primitive, value-type, and comparable search fast paths together for both sort directions to preserve JIT optimization opportunities.")]
     private (int Comparison, Node? Node) SearchFirstNode(Node? target, TKey? key)
     {
         var node = target;
@@ -1776,6 +1778,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Inserts a node at the position found by <see cref="SearchFirstNode"/>, without comparing keys.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("Keep node reuse, duplicate-group linking, and red-black balancing in the insertion hot path to avoid additional helper calls and state passing.")]
     private (Node Node, bool NewlyAdded) Link(int cmp, Node? parent, TKey key, TValue value, Node? reuse)
     {
         Node node;

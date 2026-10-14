@@ -64,6 +64,7 @@ public static class BaseHelper
     /// A 256-entry lookup table indicating whether a character in the range U+0000 to U+00FF
     /// is a separator or whitespace character. See <see cref="IsSeparator(char)"/>.
     /// </summary>
+    [Leash.Exempt("Explicit 256-entry lookup data enables direct indexed separator checks without computing character categories during initialization.")]
     public static readonly bool[] SeparatorCharFlags = [
         false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, // 0x00-0x0F
         false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, // 0x10-0x1F
@@ -136,6 +137,7 @@ public static class BaseHelper
     /// An array of strings where each element represents a line from the source.
     /// Returns an empty array if the source contains no non-empty lines when <paramref name="includeEmptyLines"/> is <c>false</c>.
     /// </returns>
+    [Leash.Exempt("Separate span-scanning paths allocate the result array once and avoid intermediate collections and per-line helper calls.")]
     public static string[] SplitLines(ReadOnlySpan<char> source, bool includeEmptyLines = false)
     {
         if (includeEmptyLines)

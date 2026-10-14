@@ -25,6 +25,7 @@ public interface IUtf8Convertible<T>
     /// <param name="bytesRead">The number of bytes read from the source span.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
+    [Leash.Exempt("The public parsing contract returns both the parsed value and consumed byte count through out parameters; preserve compatibility and direct result passing.")]
     static abstract bool TryParse(ReadOnlySpan<byte> source, [MaybeNullWhen(false)] out T? result, out int bytesRead, IConversionOptions? conversionOptions = default);
 
     /// <summary>

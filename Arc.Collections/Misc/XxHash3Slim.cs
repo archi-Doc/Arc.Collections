@@ -452,6 +452,7 @@ public static unsafe class XxHash3Slim
 
     /// <summary>Optimized version of looping over <see cref="Accumulate512"/>.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [Leash.Exempt("Keep SIMD accumulators in local variables across stripe and block loops, alongside the scalar fallback, to preserve register reuse and avoid additional calls in the hashing hot path.")]
     private static void Accumulate(ulong* accumulators, byte* source, byte* secret, int stripesToProcess, bool scramble = false, int blockCount = 1)
     {
         byte* secretForAccumulate = secret;

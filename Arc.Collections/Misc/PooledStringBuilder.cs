@@ -329,6 +329,7 @@ public ref struct PooledStringBuilder
     /// </param>
     /// <param name="last">The last character, or <c>'\0'</c> if none exists.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("The public API writes the two trailing characters directly to caller-provided outputs; preserve its signature and allocation-free access across pooled segments.")]
     public readonly void GetLastTwoChars(out char previous, out char last)
     {
         var array = this.currentArray;

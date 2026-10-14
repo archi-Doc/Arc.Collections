@@ -608,6 +608,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// Removes the specified node.
     /// </summary>
     /// <param name="node">The node.</param>
+    [Leash.Exempt("Keep node replacement, rotations, and recoloring together in the deletion hot path to avoid additional helper calls and state passing.")]
     public void RemoveNode(Node node)
     {
         if (node.IsUnused)
@@ -867,6 +868,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         return (lowerNode, upperNode);
     }
 
+    [Leash.Exempt("Keep null, primitive, value-type, and comparable search fast paths together for both sort directions to preserve JIT optimization opportunities.")]
     private (int Comparison, Node? Node) SearchNode(Node? target, TKey? key)
     {
         var node = target;
@@ -1449,6 +1451,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 
     #region Insert
 
+    [Leash.Exempt("Keep node reuse, insertion, and red-black balancing in one insertion hot path to avoid additional helper calls and state passing.")]
     private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
     {
         var (cmp, parent) = this.SearchNode(this.root, key);

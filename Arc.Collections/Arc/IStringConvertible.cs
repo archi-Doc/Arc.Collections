@@ -25,6 +25,7 @@ public interface IStringConvertible<T>
     /// <param name="charsRead">The number of chars read from the source span.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
+    [Leash.Exempt("The public parsing contract returns both the parsed value and consumed character count through out parameters; preserve compatibility and direct result passing.")]
     static abstract bool TryParse(ReadOnlySpan<char> source, [MaybeNullWhen(false)] out T? result, out int charsRead, IConversionOptions? conversionOptions = default);
 
     /// <summary>
