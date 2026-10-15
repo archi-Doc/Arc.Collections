@@ -382,6 +382,7 @@ public static class BaseHelper
     /// <paramref name="value1"/> is greater when <c>value1 - value2</c> (with wrap-around) is between 1 and 2^63 - 1.
     /// A difference of exactly 2^63 falls back to ordinary numeric comparison, so the result stays antisymmetric.
     /// </summary>
+    /// <remarks>Use within a window narrower than half the integer range. Circular ordering is not transitive over the full range and is unsuitable for unrestricted sorting.</remarks>
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
     /// <returns>-1 if <paramref name="value1"/> is less than <paramref name="value2"/>; 0 if they are equal; 1 if <paramref name="value1"/> is greater than <paramref name="value2"/>.</returns>
@@ -412,6 +413,7 @@ public static class BaseHelper
     /// <paramref name="value1"/> is greater when <c>value1 - value2</c> (with wrap-around) is between 1 and 2^31 - 1.
     /// A difference of exactly 2^31 falls back to ordinary numeric comparison, so the result stays antisymmetric.
     /// </summary>
+    /// <remarks>Use within a window narrower than half the integer range. Circular ordering is not transitive over the full range and is unsuitable for unrestricted sorting.</remarks>
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
     /// <returns>-1 if <paramref name="value1"/> is less than <paramref name="value2"/>; 0 if they are equal; 1 if <paramref name="value1"/> is greater than <paramref name="value2"/>.</returns>
@@ -1003,7 +1005,8 @@ public static class BaseHelper
     /// Trims a UTF-8 string at its first null byte.
     /// </summary>
     /// <param name="utf8">The input byte array.</param>
-    /// <returns>A new array containing the bytes before the first null byte, or <paramref name="utf8"/> itself if it contains no null byte.</returns>
+    /// <returns>A copy of the bytes before the first null byte, an empty array if it starts with null,
+    /// or <paramref name="utf8"/> itself if it contains no null byte.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="utf8"/> is <see langword="null"/>.</exception>
     public static byte[] TrimAtFirstNull(byte[] utf8)
     {
@@ -1014,9 +1017,7 @@ public static class BaseHelper
         }
         else
         {
-            var trimmed = new byte[firstNull];
-            Array.Copy(utf8, trimmed, firstNull);
-            return trimmed;
+            return utf8.AsSpan(0, firstNull).ToArray();
         }
     }
 
@@ -1083,10 +1084,11 @@ public static class BaseHelper
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
-    /// <returns>The formatted string, or an empty string if no buffer length is available or formatting fails.</returns>
+    /// <returns>The formatted string, or an empty string if no buffer length is available or <c>TryFormat</c> returns <see langword="false"/>.</returns>
     /// <remarks>
     /// The buffer length is <see cref="IStringConvertible{T}.GetStringLength"/>, or <see cref="IStringConvertible{T}.MaxStringLength"/> when that is negative.
     /// The buffer is not enlarged if <paramref name="conversionOptions"/> require more space.
+    /// Exceptions from length calculation or formatting propagate to the caller.
     /// </remarks>
     [SkipLocalsInit]
     public static string ConvertToString<T>(this T obj, IConversionOptions? conversionOptions = default)
@@ -1115,10 +1117,11 @@ public static class BaseHelper
     /// <typeparam name="T">The type of the object.</typeparam>
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
-    /// <returns>The UTF-8 bytes, or an empty array if no buffer length is available or formatting fails.</returns>
+    /// <returns>The UTF-8 bytes, or an empty array if no buffer length is available or <c>TryFormat</c> returns <see langword="false"/>.</returns>
     /// <remarks>
     /// Formats UTF-16 text with <see cref="IStringConvertible{T}.TryFormat"/> and encodes it as UTF-8;
     /// buffer sizing follows <see cref="ConvertToString{T}(T, IConversionOptions?)"/>.
+    /// Exceptions from length calculation or formatting propagate to the caller.
     /// </remarks>
     [SkipLocalsInit]
     public static byte[] ConvertToUtf8<T>(this T obj, IConversionOptions? conversionOptions = default)

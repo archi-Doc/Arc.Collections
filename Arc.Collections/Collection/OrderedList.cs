@@ -44,6 +44,9 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     // Cached so hot paths can select a comparison strategy without a ReferenceEquals per call.
     private readonly bool comparerIsDefault;
 
+    // Span.Sort(IComparer<T>) creates a comparison delegate on every call; cache that delegate directly.
+    private Comparison<SortEntry>? stableComparison;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
     /// </summary>
@@ -488,8 +491,8 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
                 buffer.Sort();
             }
             else
-            {// A class comparer: calls on a struct shared by reference types would go through instantiating stubs.
-                buffer.Sort(new StableComparer(this.Comparer));
+            {// Reuse the comparison delegate for reference types and custom comparers.
+                buffer.Sort(this.stableComparison ??= this.CompareStable);
             }
         }
         catch (InvalidOperationException e) when (e.InnerException is not null)
@@ -544,17 +547,10 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         return Comparer<T>.Default.Compare(x, y);
     }
 
-    private sealed class StableComparer : IComparer<SortEntry>
+    private int CompareStable(SortEntry x, SortEntry y)
     {
-        private readonly IComparer<T> comparer;
-
-        public StableComparer(IComparer<T> comparer) => this.comparer = comparer;
-
-        public int Compare(SortEntry x, SortEntry y)
-        {
-            var cmp = this.comparer.Compare(x.Value, y.Value);
-            return cmp != 0 ? cmp : x.Index.CompareTo(y.Index);
-        }
+        var cmp = this.Comparer.Compare(x.Value, y.Value);
+        return cmp != 0 ? cmp : x.Index.CompareTo(y.Index);
     }
 
     #region Interface reimplementation

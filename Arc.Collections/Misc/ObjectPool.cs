@@ -1,7 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
-using System.Buffers;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
@@ -95,6 +95,7 @@ public sealed class ObjectPool<T> : IDisposable
     /// Disposes every pooled object that implements <see cref="IDisposable"/> and empties the pool.
     /// </summary>
     /// <remarks>Must not be called concurrently with <see cref="Rent"/> or <see cref="Return"/>.</remarks>
+    /// <exception cref="AggregateException">One or more objects failed to dispose. All pooled objects have been removed and disposal attempted.</exception>
     public void Dispose()
     {
         if (this.disposed)
@@ -104,12 +105,25 @@ public sealed class ObjectPool<T> : IDisposable
 
         this.disposed = true;
 
+        List<Exception>? exceptions = null;
         while (this.queue.TryDequeue(out var item))
         {
             if (item is IDisposable disposable)
             {
-                disposable.Dispose();
+                try
+                {
+                    disposable.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    (exceptions ??= new()).Add(exception);
+                }
             }
+        }
+
+        if (exceptions is not null)
+        {
+            throw new AggregateException(exceptions);
         }
     }
 

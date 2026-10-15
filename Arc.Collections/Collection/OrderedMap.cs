@@ -515,6 +515,7 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     /// <returns><see langword="true"/> if the key was changed; <see langword="false"/> if the node is unused,
     /// <paramref name="key"/> compares equal to the current key (the stored key is kept),
     /// or another node already has <paramref name="key"/>.</returns>
+    /// <remarks>If the comparer throws, the map is unchanged.</remarks>
     public bool SetNodeKey(Node node, TKey key)
     {
         if (node.IsUnused)
@@ -575,28 +576,27 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             }
         }
 
-        // Check before removing the current node to avoid losing the entry
-        // when the target key already exists.
-        var existing = this.FindNode(key);
-        if (existing is not null &&
-            !ReferenceEquals(existing, node))
+        // Finish all comparisons before removing the node: even a comparer that keeps
+        // throwing must not prevent the original entry from being preserved.
+        var (position, parent) = this.SearchNode(this.root, key);
+        if (position == 0 && parent is not null)
         {
             return false;
         }
 
-        var originalKey = node.Key;
+        var successor = position < 0 ? parent : parent?.Next;
         var value = node.Value;
         this.RemoveNode(node);
-        try
+
+        // Rotations may change the insertion parent, but not the next key in sort order.
+        // The gap is its empty left child, or the right child of its predecessor.
+        if (successor is not null && successor.Left is null)
         {
-            this.Probe(key, value, node);
+            this.Link(-1, successor, key, value, node);
         }
-        catch
+        else
         {
-            // Probe only compares keys before it modifies the tree, so a throwing comparer
-            // leaves the node detached: put it back under its original key.
-            this.Probe(originalKey, value, node);
-            throw;
+            this.Link(1, GetLast(successor is null ? this.root : successor.Left), key, value, node);
         }
 
         return true;
@@ -1466,7 +1466,6 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 
     #region Insert
 
-    [Leash.Exempt("Keep node reuse, insertion, and red-black balancing in one insertion hot path to avoid additional helper calls and state passing.")]
     private (Node Node, bool NewlyAdded) Probe(TKey key, TValue value, Node? reuse)
     {
         var (cmp, parent) = this.SearchNode(this.root, key);
@@ -1475,6 +1474,16 @@ public class OrderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
             return (parent, false);
         }
 
+        return this.Link(cmp, parent, key, value, reuse);
+    }
+
+    /// <summary>
+    /// Inserts a node at a known empty child position without comparing keys.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("Keep node reuse, insertion, and red-black balancing in one insertion hot path to avoid additional helper calls and state passing.")]
+    private (Node Node, bool NewlyAdded) Link(int cmp, Node? parent, TKey key, TValue value, Node? reuse)
+    {
         Node node;
         if (reuse is not null && reuse.IsUnused)
         {

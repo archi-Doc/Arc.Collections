@@ -551,6 +551,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <param name="key">The new key.</param>
     /// <returns><see langword="true"/> if the key was changed; <see langword="false"/> if the node is unused
     /// or <paramref name="key"/> compares equal to its current key.</returns>
+    /// <remarks>If the comparer throws, the map is unchanged.</remarks>
     public bool SetNodeKey(Node node, TKey key)
     {
         if (node.IsUnused)
@@ -592,13 +593,14 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
         }
 
+        // Resolve the destination before changing the map; no comparer is called after removal.
+        var (position, parent) = this.SearchFirstNode(this.root, key);
         var value = node.Value;
         if (!node.IsSingleNode)
         {
             // Removing a node from a duplicate group keeps the tree shape (the next duplicate takes the
             // place of a removed tree node), so the new position is searched before anything changes
             // and a throwing comparer leaves the map untouched.
-            var (position, parent) = this.SearchFirstNode(this.root, key);
             var successor = node.ListNext;
             this.RemoveNode(node);
             if (ReferenceEquals(parent, node))
@@ -610,18 +612,21 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             return true;
         }
 
-        var originalKey = node.Key;
+        var nextTreeNode = position < 0 ? parent : parent is null ? null : GetNextTreeNode(parent);
         this.RemoveNode(node);
-        try
+        if (position == 0)
         {
-            this.Probe(key, value, node);
+            // An existing duplicate group survives removal of this unique key.
+            this.Link(0, parent, key, value, node);
         }
-        catch
+        else if (nextTreeNode is not null && nextTreeNode.Left is null)
         {
-            // Probe only compares keys before it modifies the tree, so a throwing comparer
-            // leaves the node detached: put it back under its original (unique) key.
-            this.Probe(originalKey, value, node);
-            throw;
+            this.Link(-1, nextTreeNode, key, value, node);
+        }
+        else
+        {
+            // Deletion may rotate the tree, so recover the insertion gap from its successor.
+            this.Link(1, GetLastTreeNode(nextTreeNode is null ? this.root : nextTreeNode.Left), key, value, node);
         }
 
         return true;

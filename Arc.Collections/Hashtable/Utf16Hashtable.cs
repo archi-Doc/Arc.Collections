@@ -183,18 +183,19 @@ public class Utf16Hashtable<TValue>
     /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
     /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
     /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
-    /// If <paramref name="valueFactory"/> throws or the insertion fails, <paramref name="key"/> is not added and any created value is discarded.</remarks>
+    /// If the factory throws or insertion fails, this call does not publish its value. Factory side effects are not rolled back,
+    /// and any created value is not disposed.</remarks>
     public TValue GetOrAdd(string key, Func<string, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(valueFactory);
 
-        if (this.TryGetValue(key, out var value))
+        if (this.TryGetValue(key, out var value, out var hash))
         {
             return value;
         }
 
-        return this.GetOrAddSlow(key, valueFactory);
+        return this.GetOrAddSlow(key, hash, valueFactory);
     }
 
     /// <summary>
@@ -210,17 +211,18 @@ public class Utf16Hashtable<TValue>
     /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
     /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
     /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
-    /// If <paramref name="valueFactory"/> throws or the insertion fails, <paramref name="key"/> is not added and any created value is discarded.</remarks>
+    /// If the factory throws or insertion fails, this call does not publish its value. Factory side effects are not rolled back,
+    /// and any created value is not disposed.</remarks>
     public TValue GetOrAdd(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
 
-        if (this.TryGetValue(key, out var value))
+        if (this.TryGetValue(key, out var value, out var hash))
         {
             return value;
         }
 
-        return this.GetOrAddSlow(key, valueFactory);
+        return this.GetOrAddSlow(key, hash, valueFactory);
     }
 
     /// <summary>
@@ -233,27 +235,7 @@ public class Utf16Hashtable<TValue>
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
-
-        var table = Volatile.Read(ref this.table);
-        var hash = GetHashCode(key.AsSpan());
-        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
-
-        while (item is not null)
-        {
-            // string.Equals short-circuits on reference equality, which the span-based
-            // comparison cannot do; callers that hold the stored string instance
-            // (or interned literals) skip the character comparison entirely.
-            if (item.Hash == hash && string.Equals(key, item.Key))
-            {
-                value = item.Value;
-                return true;
-            }
-
-            item = item.Next;
-        }
-
-        value = default;
-        return false;
+        return this.TryGetValue(key, out value, out _);
     }
 
     /// <summary>
@@ -264,25 +246,7 @@ public class Utf16Hashtable<TValue>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out TValue value)
-    {
-        var table = Volatile.Read(ref this.table);
-        var hash = GetHashCode(key);
-        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
-
-        while (item is not null)
-        {
-            if (item.Hash == hash && key.SequenceEqual(item.Key))
-            {
-                value = item.Value;
-                return true;
-            }
-
-            item = item.Next;
-        }
-
-        value = default;
-        return false;
-    }
+        => this.TryGetValue(key, out value, out _);
 
     /// <summary>
     /// Determines whether the hashtable contains the specified key.
@@ -488,10 +452,58 @@ public class Utf16Hashtable<TValue>
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private TValue GetOrAddSlow(string key, Func<string, TValue> valueFactory)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("Return the value and computed hash together so GetOrAdd reuses the lock-free lookup hash without a second key scan or allocation.")]
+    private bool TryGetValue(string key, [MaybeNullWhen(false)] out TValue value, out int hash)
     {
-        var hash = GetHashCode(key.AsSpan());
+        var table = Volatile.Read(ref this.table);
+        hash = GetHashCode(key.AsSpan());
+        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
+
+        while (item is not null)
+        {
+            // string.Equals short-circuits on reference equality, which the span-based
+            // comparison cannot do; callers that hold the stored string instance
+            // (or interned literals) skip the character comparison entirely.
+            if (item.Hash == hash && string.Equals(key, item.Key))
+            {
+                value = item.Value;
+                return true;
+            }
+
+            item = item.Next;
+        }
+
+        value = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("Return the value and computed hash together so GetOrAdd reuses the lock-free lookup hash without a second key scan or allocation.")]
+    private bool TryGetValue(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out TValue value, out int hash)
+    {
+        var table = Volatile.Read(ref this.table);
+        hash = GetHashCode(key);
+        var item = Volatile.Read(ref table[hash & (table.Length - 1)]);
+
+        while (item is not null)
+        {
+            if (item.Hash == hash && key.SequenceEqual(item.Key))
+            {
+                value = item.Value;
+                return true;
+            }
+
+            item = item.Next;
+        }
+
+        value = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private TValue GetOrAddSlow(string key, int hash, Func<string, TValue> valueFactory)
+    {
         using (this.lockObject.EnterScope())
         {
             var table = this.table;
@@ -531,9 +543,8 @@ public class Utf16Hashtable<TValue>
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private TValue GetOrAddSlow(ReadOnlySpan<char> key, Func<string, TValue> valueFactory)
+    private TValue GetOrAddSlow(ReadOnlySpan<char> key, int hash, Func<string, TValue> valueFactory)
     {
-        var hash = GetHashCode(key);
         using (this.lockObject.EnterScope())
         {
             var table = this.table;

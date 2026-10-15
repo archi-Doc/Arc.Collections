@@ -24,6 +24,7 @@ public class Program
             typeof(OrderedPublicTest),
             typeof(OrderedMultiMapTest),
             typeof(UtfHashtableBenchmark),
+            typeof(UtfHashtableGetOrAddBenchmark),
             typeof(UnorderedMapSlimTest),
             typeof(Utf16UnorderedMapBenchmark),
             typeof(Utf16HashtableBenchmark2),

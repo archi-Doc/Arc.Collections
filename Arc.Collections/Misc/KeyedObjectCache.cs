@@ -1,6 +1,7 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -280,8 +281,10 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     /// <remarks>Call this to release disposable objects still owned by the cache.
     /// Later <see cref="TryAdd"/> calls fail, so leases returned afterward dispose their objects.</remarks>
+    /// <exception cref="AggregateException">One or more objects failed to dispose. All remaining cached objects have been removed and disposal attempted.</exception>
     public void Dispose()
     {
+        List<Exception>? exceptions = null;
         using (this.lockObject.EnterScope())
         {
             if (this.disposed)
@@ -293,8 +296,21 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
 
             while (this.oldest >= 0)
             {
-                DisposeObject(this.RemoveEntry(this.oldest));
+                var obj = this.RemoveEntry(this.oldest);
+                try
+                {
+                    DisposeObject(obj);
+                }
+                catch (Exception exception)
+                {
+                    (exceptions ??= new()).Add(exception);
+                }
             }
+        }
+
+        if (exceptions is not null)
+        {
+            throw new AggregateException(exceptions);
         }
     }
     #endregion

@@ -855,7 +855,8 @@ public class BytePool
     /// <param name="minimumLength">The minimum length of the byte array.</param>
     /// <returns>A <see cref="RentedArray"/> with one owned reference. A pooled array has the bucket's
     /// power-of-two length and is not cleared. When no bucket serves the requested length (including 0),
-    /// an array of exactly that length is allocated and is not returned to the pool.</returns>
+    /// an unpooled array of exactly that length is used. Zero-length rentals share <see cref="Array.Empty{T}"/>
+    /// but have independent ownership handles.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumLength"/> is negative.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RentedArray Rent(int minimumLength)
@@ -865,7 +866,7 @@ public class BytePool
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
         {// Since the bucket is empty, allocate and return the byte array using the conventional method.
-            return new RentedArray(new byte[minimumLength]);
+            return new RentedArray(minimumLength == 0 ? Array.Empty<byte>() : new byte[minimumLength]);
         }
 
         if (!bucket.Queue.TryDequeue(out var array))

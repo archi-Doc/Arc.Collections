@@ -92,6 +92,7 @@ Console.WriteLine(string.Join(", ", map.Keys)); // 1, 3
 ### Nodes and node indexes
 
 - A tree node is valid while it is in its collection. Trees do not check ownership: passing an active node from another tree to `RemoveNode` or `SetNodeKey` corrupts both trees.
+- `SetNodeKey` preserves the node object and value while restoring sort order. If the comparer throws, the tree remains unchanged.
 - `RemoveNode` and `Clear` make nodes unused (`OrderedMap<TKey, TValue>.Node.IsUnused` reports this).
   An unused node's `Previous` and `Next` return null, and `RemoveNode` ignores it.
 - Pass an unused node as the `reuse` argument of `Add` (`AddNode` for `OrderedSet<T>`) to avoid an allocation.
@@ -127,6 +128,8 @@ Console.WriteLine(string.Join(", ", map.Keys)); // 1, 3
 ### Lists
 
 - `UnorderedList<T>.AsSpan()` exposes the backing array. The span is invalid after the list adds or removes elements or changes capacity.
+- `UnorderedList<T>`, `OrderedList<T>`, and `OrderedKeyValueList<TKey, TValue>` support `EnsureCapacity` to reserve space before a batch of additions.
+  `Clear` keeps that capacity; `TrimExcess` can release unused capacity after a workload shrinks.
 - `OrderedList<T>` derives from `UnorderedList<T>`. Its `Insert` and indexer setter throw `InvalidOperationException`.
   Writes through an `UnorderedList<T>` reference or `AsSpan()` bypass the sort order, and the base `Contains`, `IndexOf`, and `Remove` search linearly with `EqualityComparer<T>.Default`.
 - `OrderedKeyValueList<TKey, TValue>.Keys` and `Values` are live, read-only `IList<T>` views.
@@ -141,7 +144,8 @@ Console.WriteLine(string.Join(", ", map.Keys)); // 1, 3
 
 ### Hash maps
 
-- `UnorderedMap<TKey, TValue>` never passes null keys to its comparer, and `Clear` keeps the capacity.
+- `UnorderedMap<TKey, TValue>` never passes null keys to its comparer.
+- Hash maps and sets keep their capacity on `Clear`. Specify the expected capacity in their constructors to reduce resizing during initial population.
 - `GetValueRefOrAddDefault` (`UnorderedMapSlim<TKey, TValue>` and the UTF-keyed maps) returns a reference to the value slot with one lookup;
   the reference is invalid after an add, a removal, or `Clear`.
 
@@ -222,17 +226,20 @@ Console.WriteLine(ids.TryGetValue("alice"u8, out var id) ? id : -1); // 2
 ### ObjectPool\<T\> and KeyedObjectCache\<TKey, TObject\>
 
 - `ObjectPool<T>.PoolSize` is rounded up to a power of two (default 32). The factory must be thread-safe and return a new instance each time.
+- The pool does not reset objects. Restore any state that the next renter must not inherit before calling `Return`.
 - `Return` disposes an `IDisposable` object when the pool is full, and `Dispose` disposes the pooled objects.
   Return each object only once (a second return is not detected) and before disposing the pool; afterward, `Rent` and `Return` throw `ObjectDisposedException`.
 - `KeyedObjectCache<TKey, TObject>.TakeOrDefault(key)` transfers ownership of the cached object to the caller. `TryAdd(key, obj)` transfers ownership to the cache only when it returns `true`.
 - The cache disposes evicted objects under its lock. Their `Dispose` must not wait for another thread that uses the cache.
 - `CreateLease(key, obj)` returns a `Lease` that offers the object to the cache when disposed, and disposes the object if the cache rejects it.
   Dispose a lease only once; copies count as the same lease. `lease = lease.Return()` leaves an empty lease that is safe to dispose.
+- Disposing either pool or cache attempts to dispose every stored object. If any disposal fails, it throws an `AggregateException` after draining the remaining objects.
 
 ### BytePool
 
 - `Rent(length)` returns a `RentedArray` with one owned reference. `RentedMemory` and `RentedReadOnlyMemory` are views of a range.
 - A pooled array has its bucket's power-of-two length and is **not cleared**. A request of 0 or above the largest bucket gets an unpooled array.
+- `Rent(0)` uses shared empty storage but returns a separate ownership handle that must be returned once.
 - `BytePool.Default` pools arrays up to 16 MiB and retains up to about 200 MiB in total. `CreateExponential` and `CreateFlat` set other limits.
 - Copying a handle and creating views (`AsMemory`, `AsReadOnlyMemory`, `ReadOnly`, `Slice`) do **not** add an owner.
   `IncrementAndShare` does. Return or dispose each owned reference exactly once.
@@ -260,8 +267,13 @@ shared.Return(); // The final return: all handles and views are now invalid.
 - `SpanOwner<T>`, `SequenceBuilder<T>`, and `PooledStringBuilder` are `ref struct` types that own pooled arrays.
   Do not copy them while they own resources, dispose them once, and do not use their spans or sequences afterward.
 - `SpanOwner<T>` does not clear a rented array before use. `BaseHelper.StackallocThreshold` (1024) is the suggested size limit for a `stackalloc` scratch span.
-- `SequenceBuilder<T>.ToReadOnlySequence()` finalizes the builder; later `Add` calls throw `InvalidOperationException`.
+- `SequenceBuilder<T>.AddRange` copies a span into pooled chunks without requiring one contiguous array.
+  `ToReadOnlySequence()` finalizes the builder; later `Add` and `AddRange` calls throw `InvalidOperationException`.
+  Consume the returned sequence before disposing the builder. Reference-containing arrays are cleared on return by default;
+  the constructor's `clearArrayOnReturn` argument overrides this behavior.
 - `PooledStringBuilder` formats with the invariant culture unless you pass a provider; a null provider uses the current culture for numbers and dates. `AppendLine` appends `\n`.
+- `PooledStringBuilder.Clear()` retains its current character array for reuse; `Dispose()` returns every array and resets the builder for reuse.
+  `ToString()` creates an independent string that remains valid after either operation.
 
 ```csharp
 using System;
@@ -281,7 +293,7 @@ Console.WriteLine(text.ToString()); // Total: 1234.5
 
 | Type or namespace | Purpose |
 | --- | --- |
-| `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing; `Hash64(ReadOnlySpan<byte>, seed)` returns the same values as `System.IO.Hashing.XxHash3.HashToUInt64`. `Hash64(string)` hashes UTF-16 code units, not UTF-8. |
+| `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing; `Hash64(ReadOnlySpan<byte>, seed)` returns the same values as `System.IO.Hashing.XxHash3.HashToUInt64`. The string and character-span overloads hash UTF-16 bytes in native byte order with seed 0. `Combine` and `CombineRotateMultiply` mix two hashes in argument order. |
 | `CollectionHelper` | Power-of-two capacity rounding and a prime table for sizing hash tables. |
 | `TagObject` | One cached object per tag from 0 to 255, for storing a small tag in an `object` field without boxing. |
 | `Arc.BaseHelper` | Line, text-scanning, number, UTF-8, conversion, and embedded-resource helpers. |
@@ -293,8 +305,13 @@ Console.WriteLine(text.ToString()); // Total: 1234.5
 
 - `BaseHelper.GetCompleteUtf8Length` excludes an incomplete trailing sequence but does not validate the text.
   `TryLoadResource(null, name)` loads from the Arc.Collections assembly, not from the caller's.
-- `BaseHelper.ConvertToString` and `ConvertToUtf8` return an empty result when no length is available or formatting fails. They do not retry with a larger buffer.
+- `BaseHelper.ConvertToString` and `ConvertToUtf8` use `IStringConvertible<T>`; `ConvertToUtf8` formats UTF-16 text first, then encodes it as UTF-8.
+  They return an empty result when no length is available or formatting returns `false`, and do not retry with a larger buffer. Exceptions from the formatter propagate.
 - In each conversion interface, at least one length member (`GetStringLength()` or `MaxStringLength`; `GetUtf8Length()` or `MaxUtf8Length`) must return a nonnegative length; the other may return -1.
+- `BaseHelper.TryParseFromSourceOrEnvironmentVariable` and `TryParseFromEnvironmentVariable` accept a successfully parsed prefix.
+  Call the conversion interface's `TryParse` directly and check the consumed length when the entire input must be valid.
+- `BaseHelper.CircularCompareTo`, `CircularMin`, and `CircularMax` compare wrapping counters. This order is not transitive over the entire integer range;
+  use it only when all compared values fit within a window narrower than half the integer range.
 - The sorted collections use the `HotMethod` searches automatically with the default comparer. The library never calls a custom `IHotMethodResolver`.
 
 ## Thread safety

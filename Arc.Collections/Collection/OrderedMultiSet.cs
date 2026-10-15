@@ -177,6 +177,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// <param name="key">The new element.</param>
     /// <returns><see langword="true"/> if the element was changed; <see langword="false"/> if the node is unused
     /// or <paramref name="key"/> compares equal to the current element.</returns>
+    /// <remarks>If the comparer throws, the set is unchanged.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeKey(OrderedMultiMap<T, byte>.Node node, T key)
         => this.map.SetNodeKey(node, key);

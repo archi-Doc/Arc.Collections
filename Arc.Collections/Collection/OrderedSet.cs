@@ -186,6 +186,7 @@ public class OrderedSet<T> : IEnumerable<T>
     /// <returns><see langword="true"/> if the element was changed; <see langword="false"/> if the node is unused,
     /// <paramref name="key"/> compares equal to the current element (the stored element is kept),
     /// or another node already holds <paramref name="key"/>.</returns>
+    /// <remarks>If the comparer throws, the set is unchanged.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeKey(OrderedMap<T, byte>.Node node, T key)
         => this.map.SetNodeKey(node, key);

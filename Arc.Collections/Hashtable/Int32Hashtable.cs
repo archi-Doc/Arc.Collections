@@ -125,7 +125,8 @@ public class Int32Hashtable<TValue>
     /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
     /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
     /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
-    /// If <paramref name="valueFactory"/> throws or the insertion fails, <paramref name="key"/> is not added and any created value is discarded.</remarks>
+    /// If the factory throws or insertion fails, this call does not publish its value. Factory side effects are not rolled back,
+    /// and any created value is not disposed.</remarks>
     public TValue GetOrAdd(int key, Func<int, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
