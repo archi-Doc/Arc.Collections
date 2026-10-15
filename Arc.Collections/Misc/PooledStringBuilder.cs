@@ -18,6 +18,9 @@ namespace Arc.Collections;
 /// <remarks>
 /// Dispose the builder to return its resources, and do not copy it while it owns resources.
 /// <see cref="ToString" /> returns an independent string that remains valid after disposal.
+/// Overloads without a format provider format values with the invariant culture,
+/// and <c>AppendLine</c> appends a line feed (<c>'\n'</c>) only.
+/// If formatting a value throws, the exception propagates and the builder keeps its previous contents.
 /// </remarks>
 public ref struct PooledStringBuilder
 {
@@ -27,7 +30,8 @@ public ref struct PooledStringBuilder
     public const int DefaultInitialCapacity = 512;
 
     /// <summary>
-    /// The maximum requested size, in characters, of a rented chunk.
+    /// The maximum requested size, in characters, of a rented chunk.<br/>
+    /// A formatted value that does not fit in a chunk of this size is appended through its string representation.
     /// </summary>
     public const int MaxChunkCapacity = 32 * 1024;
 
@@ -84,7 +88,7 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Appends the formatted representation of a value.
+    /// Appends the formatted representation of a value using the invariant culture.
     /// </summary>
     /// <typeparam name="T">The type of value to append.</typeparam>
     /// <param name="value">The value to format and append.</param>
@@ -101,7 +105,11 @@ public ref struct PooledStringBuilder
     /// <typeparam name="T">The type of value to append.</typeparam>
     /// <param name="value">The value to format and append.</param>
     /// <param name="format">The optional format string to apply during formatting.</param>
-    /// <param name="formatProvider">The format provider that supplies culture-specific formatting information.</param>
+    /// <param name="formatProvider">
+    /// The format provider that supplies culture-specific formatting information,
+    /// or <see langword="null"/> to use the default of <typeparamref name="T"/>
+    /// (the current culture for built-in numeric and date and time types).
+    /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider)
         where T : ISpanFormattable
@@ -183,8 +191,8 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Appends the formatted representation of a value followed by a line feed
-    /// character.
+    /// Appends the formatted representation of a value using the invariant culture,
+    /// followed by a line feed character.
     /// </summary>
     /// <typeparam name="T">The type of value to append.</typeparam>
     /// <param name="value">The value to format and append.</param>
@@ -204,7 +212,9 @@ public ref struct PooledStringBuilder
     /// <param name="value">The value to format and append.</param>
     /// <param name="format">The optional format string to apply during formatting.</param>
     /// <param name="formatProvider">
-    /// The format provider that supplies culture-specific formatting information.
+    /// The format provider that supplies culture-specific formatting information,
+    /// or <see langword="null"/> to use the default of <typeparamref name="T"/>
+    /// (the current culture for built-in numeric and date and time types).
     /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AppendLine<T>(T value, ReadOnlySpan<char> format, IFormatProvider? formatProvider)
@@ -218,7 +228,7 @@ public ref struct PooledStringBuilder
     /// Creates a string containing all characters written to this builder.
     /// </summary>
     /// <returns>
-    /// A newly allocated string containing the builder's current contents.
+    /// A string containing the builder's current contents, or <see cref="string.Empty"/> if the builder is empty.
     /// </returns>
     public override readonly string ToString()
     {
@@ -279,8 +289,9 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Returns all rented character arrays and segments to their pools.
+    /// Returns all rented character arrays and segments to their pools and resets the builder.
     /// </summary>
+    /// <remarks>The builder can be reused after disposal, and calling this method more than once is safe.</remarks>
     public void Dispose()
     {
         if (this.currentArray is not null)
@@ -329,6 +340,7 @@ public ref struct PooledStringBuilder
     /// </param>
     /// <param name="last">The last character, or <c>'\0'</c> if none exists.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("The public API writes the two trailing characters directly to caller-provided outputs; preserve its signature and allocation-free access across pooled segments.")]
     public readonly void GetLastTwoChars(out char previous, out char last)
     {
         var array = this.currentArray;
@@ -562,7 +574,7 @@ public ref struct PooledStringBuilder
     }
 
     /// <summary>
-    /// Rents a chunk large enough for the expected write while preserving geometric growth for small writes.
+    /// Rents a chunk for the expected write, up to <see cref="MaxChunkCapacity"/>, while preserving geometric growth for small writes.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private char[] RentChunk(int minimumCapacity)

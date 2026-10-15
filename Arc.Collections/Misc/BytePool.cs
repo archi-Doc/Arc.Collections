@@ -32,7 +32,9 @@ public class BytePool
     private const int StandardPoolLimit = 1024;
 
     /// <summary>
-    /// The shared default pool.
+    /// The shared default pool: buckets up to 16 MiB, where smaller buckets retain more arrays
+    /// (2 each for 16 MiB and 8 MiB, doubling up to 256 for 64 KiB and smaller),
+    /// except that the 32 KiB bucket retains up to 1024 arrays.
     /// </summary>
     public static readonly BytePool Default;
 
@@ -53,22 +55,23 @@ public class BytePool
     public class RentedArray : IDisposable
     {
         /// <summary>
-        /// Creates a new <see cref="RentedArray"/> instance with the specified byte array.<br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Creates a single-owner <see cref="RentedArray"/> that tracks the specified byte array.<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
         /// <param name="array">The byte array.</param>
-        /// <returns>A new <see cref="RentedArray"/> instance.</returns>
+        /// <returns>A new <see cref="RentedArray"/> instance with one owned reference.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
         public static RentedArray CreateFrom(byte[] array)
         {
             return new(array);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RentedArray"/> class from a byte array.<br/>
-        /// This is a feature for compatibility with conventional memory management (e.g new byte[]), <br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Initializes a new instance of the <see cref="RentedArray"/> class that tracks an unpooled byte array,
+        /// for compatibility with conventional allocation (e.g., <c>new byte[]</c>).<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
-        /// <param name="array">A byte array (allocated with 'new').</param>
+        /// <param name="array">A byte array that does not belong to a pool.</param>
         internal RentedArray(byte[] array)
         {
             ArgumentNullException.ThrowIfNull(array);
@@ -102,12 +105,12 @@ public class BytePool
         public bool IsRented => Volatile.Read(ref this.count) > 0;
 
         /// <summary>
-        /// Gets a value indicating whether the owner (byte array) has been returned.
+        /// Gets a value indicating whether every owned reference has been returned.
         /// </summary>
         public bool IsReturned => Volatile.Read(ref this.count) <= 0;
 
         /// <summary>
-        /// Gets the reference count of the owner.
+        /// Gets the number of owned references: 1 for a single owner, and 0 after the final return.
         /// </summary>
         public int ReferenceCount
         {
@@ -128,9 +131,11 @@ public class BytePool
         #endregion
 
         /// <summary>
-        /// Increments the reference count and returns the current <see cref="RentedArray"/> instance.
+        /// Acquires another owned reference and returns the current <see cref="RentedArray"/> instance.
         /// </summary>
-        /// <returns>The current <see cref="RentedArray"/> instance.</returns>
+        /// <returns>The current <see cref="RentedArray"/> instance; return its owned reference separately.</returns>
+        /// <exception cref="InvalidOperationException">Every owned reference has been returned,
+        /// or the reference count is at the maximum.</exception>
         public RentedArray IncrementAndShare()
         {
             if (!this.TryIncrement())
@@ -142,9 +147,10 @@ public class BytePool
         }
 
         /// <summary>
-        /// Increments the reference count and attempts to share the byte array.
+        /// Attempts to acquire another owned reference.
         /// </summary>
-        /// <returns><see langword="true"/> if the increment and sharing were successful; otherwise, <see langword="false"/>.</returns>
+        /// <returns><see langword="true"/> if acquired; <see langword="false"/> if every owned reference has been returned.</returns>
+        /// <exception cref="InvalidOperationException">The reference count is at the maximum.</exception>
         public bool TryIncrement()
         {
             int currentCount;
@@ -179,7 +185,8 @@ public class BytePool
         /// <summary>
         /// Releases one owned reference. On the final release, a pooled array is offered back to its bucket.
         /// </summary>
-        /// <returns><see langword="null"/>.</returns>
+        /// <returns><see langword="null"/>, so that <c>owner = owner.Return();</c> clears the variable.</returns>
+        /// <exception cref="InvalidOperationException">Every owned reference has already been returned.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RentedArray? Return()
         {
@@ -217,6 +224,7 @@ public class BytePool
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
         /// <returns>A view of the same bytes, without an additional owned reference.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is negative or greater than the array length.</exception>
         public RentedMemory AsMemory(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
@@ -226,6 +234,7 @@ public class BytePool
         /// <param name="start">The start index of the slice.</param>
         /// <param name="length">The length of the slice.</param>
         /// <returns>A view of the same bytes, without an additional owned reference.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside the array.</exception>
         public RentedMemory AsMemory(int start, int length)
             => new(this, this.byteArray, start, length);
 
@@ -241,6 +250,7 @@ public class BytePool
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
         /// <returns>A view of the same bytes, without an additional owned reference.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is negative or greater than the array length.</exception>
         public RentedReadOnlyMemory AsReadOnlyMemory(int start)
             => new(this, this.byteArray, start, this.byteArray.Length - start);
 
@@ -250,6 +260,7 @@ public class BytePool
         /// <param name="start">The start index of the slice.</param>
         /// <param name="length">The length of the slice.</param>
         /// <returns>A view of the same bytes, without an additional owned reference.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside the array.</exception>
         public RentedReadOnlyMemory AsReadOnlyMemory(int start, int length)
             => new(this, this.byteArray, start, length);
 
@@ -265,6 +276,7 @@ public class BytePool
         /// </summary>
         /// <param name="start">The start index of the slice.</param>
         /// <returns>A <see cref="Span{T}"/> object.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is negative or greater than the array length.</exception>
         public Span<byte> AsSpan(int start)
             => new(this.byteArray, start, this.byteArray.Length - start);
 
@@ -274,6 +286,7 @@ public class BytePool
         /// <param name="start">The start index of the slice.</param>
         /// <param name="length">The length of the slice.</param>
         /// <returns>A <see cref="Span{T}"/> object.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside the array.</exception>
         public Span<byte> AsSpan(int start, int length)
             => new(this.byteArray, start, length);
 
@@ -284,6 +297,7 @@ public class BytePool
         /// <summary>
         /// Releases one owned reference, as <see cref="Return"/> does.
         /// </summary>
+        /// <exception cref="InvalidOperationException">Every owned reference has already been returned.</exception>
         public void Dispose()
             => this.Return();
     }
@@ -304,24 +318,27 @@ public class BytePool
         public static readonly RentedMemory Empty = default;
 
         /// <summary>
-        /// Creates a new <see cref="RentedMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Creates a view of the specified byte array, tracked by a new single-owner <see cref="RentedArray"/>.<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
         /// <param name="source">The source byte array.</param>
-        /// <returns>A new <see cref="RentedMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentedMemory"/> instance with one owned reference.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is <see langword="null"/>.</exception>
         public static RentedMemory CreateFrom(byte[] source)
         {
             return new RentedArray(source).AsMemory();
         }
 
         /// <summary>
-        /// Creates a new <see cref="RentedMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Creates a view of a range of the specified byte array, tracked by a new single-owner <see cref="RentedArray"/>.<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
         /// <param name="source">The source byte array.</param>
         /// <param name="start">The index at which to begin the memory.</param>
         /// <param name="length">The number of items in the memory.</param>
-        /// <returns>A new <see cref="RentedMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentedMemory"/> instance with one owned reference.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside <paramref name="source"/>.</exception>
         public static RentedMemory CreateFrom(byte[] source, int start, int length)
         {
             return new RentedArray(source).AsMemory(start, length);
@@ -337,29 +354,10 @@ public class BytePool
             if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
                 segment.Array is not null)
             {
-                return new(segment.Array, segment.Offset, segment.Count);
+                return new(null, segment.Array, segment.Offset, segment.Count);
             }
 
             return default;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RentedMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be added to a pool when <see cref="Return"/> is called.
-        /// </summary>
-        /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
-        /// <param name="start">The index at which to begin the memory.</param>
-        /// <param name="length">The number of items in the memory.</param>
-        internal RentedMemory(byte[] byteArray, int start, int length)
-        {
-            if ((ulong)(uint)start + (ulong)(uint)length > (ulong)(uint)byteArray.Length)
-            {
-                throw new ArgumentOutOfRangeException();
-            }
-
-            this.byteArray = byteArray;
-            this.start = start;
-            this.length = length;
         }
 
         internal RentedMemory(RentedArray array)
@@ -419,12 +417,12 @@ public class BytePool
         public RentedArray? Owner => this.array;
 
         /// <summary>
-        /// Gets a <see cref="Span{T}"/> from <see cref="RentedMemory"/>.
+        /// Gets a <see cref="Span{T}"/> over the memory.
         /// </summary>
         public Span<byte> Span => new(this.byteArray, this.start, this.length);
 
         /// <summary>
-        /// Gets a <see cref="Memory{T}"/> from <see cref="RentedMemory"/>.
+        /// Gets a <see cref="Memory{T}"/> over the memory.
         /// </summary>
         public Memory<byte> Memory => new(this.byteArray, this.start, this.length);
 
@@ -439,42 +437,26 @@ public class BytePool
         /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
         /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
+        /// <exception cref="InvalidOperationException">The tracked owner has been returned,
+        /// or its reference count is at the maximum.</exception>
         public RentedMemory IncrementAndShare()
         {
-            if (this.array == null)
-            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
-                if (this.byteArray is null)
-                {
-                    return default;
-                }
-                else
-                {
-                    return new(this.byteArray, this.start, this.length);
-                }
-            }
-
-            return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
+            // An untracked view wraps an ordinary byte array, so no reference is counted.
+            this.array?.IncrementAndShare();
+            return this;
         }
 
         /// <summary>
         /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
-        /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
+        /// <returns>A read-only view sharing the same bytes; return its owned reference separately.</returns>
+        /// <exception cref="InvalidOperationException">The tracked owner has been returned,
+        /// or its reference count is at the maximum.</exception>
         public RentedReadOnlyMemory IncrementAndShareReadOnly()
         {
-            if (this.array == null)
-            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
-                if (this.byteArray is null)
-                {
-                    return default;
-                }
-                else
-                {
-                    return new(this.byteArray, this.start, this.length);
-                }
-            }
-
-            return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
+            // An untracked view wraps an ordinary byte array, so no reference is counted.
+            this.array?.IncrementAndShare();
+            return this.ReadOnly;
         }
 
         /// <summary>
@@ -482,6 +464,7 @@ public class BytePool
         /// </summary>
         /// <returns><see langword="true"/> if acquired or no owner is tracked;
         /// <see langword="false"/> if the tracked owner has been returned.</returns>
+        /// <exception cref="InvalidOperationException">The reference count is at the maximum.</exception>
         public bool TryIncrement()
         {
             if (this.array == null)
@@ -496,7 +479,8 @@ public class BytePool
         /// Creates a slice from the specified offset without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
-        /// <returns><see cref="RentedMemory"/>.</returns>
+        /// <returns>A view of the bytes from <paramref name="start"/> to the end of this view.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is negative or greater than <see cref="Length"/>.</exception>
         public RentedMemory Slice(int start)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
@@ -508,7 +492,8 @@ public class BytePool
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <param name="length">The number of elements to include in the slice.</param>
-        /// <returns><see cref="RentedMemory"/>.</returns>
+        /// <returns>A view of the specified range.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside this view.</exception>
         public RentedMemory Slice(int start, int length)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
@@ -521,6 +506,7 @@ public class BytePool
         /// A pooled array is offered back to its bucket on the final release.
         /// </summary>
         /// <returns>An empty view. The current struct and its copies are unchanged.</returns>
+        /// <exception cref="InvalidOperationException">The tracked owner has already been returned.</exception>
         public RentedMemory Return()
         {
             this.array?.Return();
@@ -528,8 +514,9 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrements the reference count (the same as <see cref="Return"/>).
+        /// Releases one owned reference, as <see cref="Return"/> does.
         /// </summary>
+        /// <exception cref="InvalidOperationException">The tracked owner has already been returned.</exception>
         public void Dispose()
             => this.Return();
     }
@@ -550,24 +537,27 @@ public class BytePool
         public static readonly RentedReadOnlyMemory Empty = default;
 
         /// <summary>
-        /// Creates a new <see cref="RentedReadOnlyMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Creates a view of the specified byte array, tracked by a new single-owner <see cref="RentedArray"/>.<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
         /// <param name="source">The source byte array.</param>
-        /// <returns>A new <see cref="RentedReadOnlyMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentedReadOnlyMemory"/> instance with one owned reference.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is <see langword="null"/>.</exception>
         public static RentedReadOnlyMemory CreateFrom(byte[] source)
         {
             return new RentedArray(source).AsReadOnlyMemory();
         }
 
         /// <summary>
-        /// Creates a new <see cref="RentedReadOnlyMemory"/> instance from the specified byte array.<br/>
-        /// The byte array will not be added to a pool when <see cref="Return"/> is called.
+        /// Creates a view of a range of the specified byte array, tracked by a new single-owner <see cref="RentedArray"/>.<br/>
+        /// The byte array is not added to a pool after the final return.
         /// </summary>
         /// <param name="source">The source byte array.</param>
         /// <param name="start">The index at which to begin the memory.</param>
         /// <param name="length">The number of items in the memory.</param>
-        /// <returns>A new <see cref="RentedReadOnlyMemory"/> instance.</returns>
+        /// <returns>A new <see cref="RentedReadOnlyMemory"/> instance with one owned reference.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside <paramref name="source"/>.</exception>
         public static RentedReadOnlyMemory CreateFrom(byte[] source, int start, int length)
         {
             return new RentedArray(source).AsReadOnlyMemory(start, length);
@@ -583,29 +573,10 @@ public class BytePool
             if (MemoryMarshal.TryGetArray<byte>(source, out var segment) &&
                 segment.Array is not null)
             {
-                return new(segment.Array, segment.Offset, segment.Count);
+                return new(null, segment.Array, segment.Offset, segment.Count);
             }
 
             return default;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RentedReadOnlyMemory"/> struct from a byte array.<br/>
-        /// This is a feature for compatibility with <see cref="BytePool"/>, and the byte array will not be added to a pool when <see cref="Return"/> is called.
-        /// </summary>
-        /// <param name="byteArray">A byte array (other than <see cref="BytePool"/>).</param>
-        /// <param name="start">The index at which to begin the memory.</param>
-        /// <param name="length">The number of items in the memory.</param>
-        internal RentedReadOnlyMemory(byte[] byteArray, int start, int length)
-        {
-            if ((ulong)(uint)start + (ulong)(uint)length > (ulong)(uint)byteArray.Length)
-            {
-                throw new ArgumentOutOfRangeException();
-            }
-
-            this.byteArray = byteArray;
-            this.start = start;
-            this.length = length;
         }
 
         internal RentedReadOnlyMemory(RentedArray array)
@@ -686,21 +657,13 @@ public class BytePool
         /// Acquires another owned reference, if this view has a tracked owner.
         /// </summary>
         /// <returns>A view sharing the same bytes; return its owned reference separately.</returns>
+        /// <exception cref="InvalidOperationException">The tracked owner has been returned,
+        /// or its reference count is at the maximum.</exception>
         public RentedReadOnlyMemory IncrementAndShare()
         {
-            if (this.array == null)
-            {// Since the data is an ordinary byte array, Increment/Return operations will not be performed.
-                if (this.byteArray is null)
-                {
-                    return default;
-                }
-                else
-                {
-                    return new(this.byteArray, this.start, this.length);
-                }
-            }
-
-            return new(this.array.IncrementAndShare(), this.byteArray, this.start, this.length);
+            // An untracked view wraps an ordinary byte array, so no reference is counted.
+            this.array?.IncrementAndShare();
+            return this;
         }
 
         /// <summary>
@@ -708,6 +671,7 @@ public class BytePool
         /// </summary>
         /// <returns><see langword="true"/> if acquired or no owner is tracked;
         /// <see langword="false"/> if the tracked owner has been returned.</returns>
+        /// <exception cref="InvalidOperationException">The reference count is at the maximum.</exception>
         public bool TryIncrement()
         {
             if (this.array == null)
@@ -722,7 +686,8 @@ public class BytePool
         /// Creates a slice from the specified offset without acquiring another owned reference.
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
-        /// <returns><see cref="RentedReadOnlyMemory"/>.</returns>
+        /// <returns>A view of the bytes from <paramref name="start"/> to the end of this view.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is negative or greater than <see cref="Length"/>.</exception>
         public RentedReadOnlyMemory Slice(int start)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
@@ -734,7 +699,8 @@ public class BytePool
         /// </summary>
         /// <param name="start">The index at which to begin the slice.</param>
         /// <param name="length">The number of elements to include in the slice.</param>
-        /// <returns><see cref="RentedReadOnlyMemory"/>.</returns>
+        /// <returns>A view of the specified range.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The range is outside this view.</exception>
         public RentedReadOnlyMemory Slice(int start, int length)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)start, (uint)this.length, nameof(start));
@@ -747,6 +713,7 @@ public class BytePool
         /// A pooled array is offered back to its bucket on the final release.
         /// </summary>
         /// <returns>An empty view. The current struct and its copies are unchanged.</returns>
+        /// <exception cref="InvalidOperationException">The tracked owner has already been returned.</exception>
         public RentedReadOnlyMemory Return()
         {
             this.array?.Return();
@@ -754,8 +721,9 @@ public class BytePool
         }
 
         /// <summary>
-        /// Decrements the reference count (the same as <see cref="Return"/>).
+        /// Releases one owned reference, as <see cref="Return"/> does.
         /// </summary>
+        /// <exception cref="InvalidOperationException">The tracked owner has already been returned.</exception>
         public void Dispose()
             => this.Return();
     }
@@ -791,7 +759,7 @@ public class BytePool
     /// Bucket limits are rounded up to powers of two, with a minimum of two arrays.
     /// </summary>
     /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
-    /// Nonpositive values use the default maximum; values above 2^30 are clamped to 2^30.</param>
+    /// Nonpositive values use the default maximum (16 MiB); values above 2^30 are clamped to 2^30.</param>
     /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateExponential(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
@@ -806,20 +774,14 @@ public class BytePool
             maxArrayLength = MaxPooledArrayLength;
         }
 
+        // Buckets above the rounded-up maximum array length stay null.
         var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
         var limit = 1;
-        for (var i = 0; i <= 32; i++)
+        for (var i = leadingZero; i <= 32; i++)
         {
-            if (i < leadingZero)
-            {
-                bytePool.buckets[i] = null;
-            }
-            else
-            {
-                bytePool.buckets[i] = new(1 << (32 - i), limit);
-                limit <<= 1;
-                limit = limit > poolLimit ? poolLimit : limit;
-            }
+            bytePool.buckets[i] = new(1 << (32 - i), limit);
+            limit <<= 1;
+            limit = limit > poolLimit ? poolLimit : limit;
         }
 
         return bytePool;
@@ -830,7 +792,7 @@ public class BytePool
     /// Each bucket uses the requested array count, rounded up to a power of two with a minimum of two.
     /// </summary>
     /// <param name="maxArrayLength">The largest pooled array length, rounded up to a power of two.
-    /// Nonpositive values use the default maximum; values above 2^30 are clamped to 2^30.</param>
+    /// Nonpositive values use the default maximum (16 MiB); values above 2^30 are clamped to 2^30.</param>
     /// <param name="poolLimit">The requested retention limit per bucket, before capacity rounding.</param>
     /// <returns>A new instance of the <see cref="BytePool"/> class.</returns>
     public static BytePool CreateFlat(int maxArrayLength = DefaultMaxArrayLength, int poolLimit = DefaultPoolLimit)
@@ -845,17 +807,11 @@ public class BytePool
             maxArrayLength = MaxPooledArrayLength;
         }
 
+        // Buckets above the rounded-up maximum array length stay null.
         var leadingZero = BitOperations.LeadingZeroCount((uint)maxArrayLength - 1);
-        for (var i = 0; i <= 32; i++)
+        for (var i = leadingZero; i <= 32; i++)
         {
-            if (i < leadingZero)
-            {
-                bytePool.buckets[i] = null;
-            }
-            else
-            {
-                bytePool.buckets[i] = new(1 << (32 - i), poolLimit);
-            }
+            bytePool.buckets[i] = new(1 << (32 - i), poolLimit);
         }
 
         return bytePool;
@@ -897,8 +853,10 @@ public class BytePool
     /// Rents an array of at least the requested length, allocating one if necessary.
     /// </summary>
     /// <param name="minimumLength">The minimum length of the byte array.</param>
-    /// <returns>A rented <see cref="RentedArray"/>. When no bucket serves the requested length,
-    /// a plain byte array is allocated and is not returned to the pool.</returns>
+    /// <returns>A <see cref="RentedArray"/> with one owned reference. A pooled array has the bucket's
+    /// power-of-two length and is not cleared. When no bucket serves the requested length (including 0),
+    /// an unpooled array of exactly that length is used. Zero-length rentals share <see cref="Array.Empty{T}"/>
+    /// but have independent ownership handles.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumLength"/> is negative.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RentedArray Rent(int minimumLength)
@@ -908,7 +866,7 @@ public class BytePool
         var bucket = this.buckets[BitOperations.LeadingZeroCount((uint)minimumLength - 1)];
         if (bucket == null)
         {// Since the bucket is empty, allocate and return the byte array using the conventional method.
-            return new RentedArray(new byte[minimumLength]);
+            return new RentedArray(minimumLength == 0 ? Array.Empty<byte>() : new byte[minimumLength]);
         }
 
         if (!bucket.Queue.TryDequeue(out var array))

@@ -23,10 +23,18 @@ namespace Arc.Collections;
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
 /// <remarks>
-/// Null keys are supported: the default comparer orders null first, and a custom comparer
-/// receives null keys and defines their order. The indexer getter returns the first matching value;
-/// the setter adds another entry. Duplicate groups use circular linked lists.
+/// Key lookup, insertion, and removal take O(log n) time; operations that match a value
+/// (<see cref="FindNode(TKey, TValue)"/> and <see cref="Remove(TKey, TValue)"/>) also scan the key's duplicate group.
+/// Null keys are supported: the default comparer orders null first (last when the map is reversed),
+/// and a custom comparer receives null keys and defines their order.
+/// With the default comparer, a non-null key whose runtime type implements <see cref="IComparable{T}"/>
+/// of <typeparamref name="TKey"/> is compared through that interface, so keys typed as an interface or base class work.
+/// Map order is key order (descending when the map is reversed), with entries of equal keys in insertion order.
+/// The indexer getter returns the first matching value; the setter adds another entry.
+/// Duplicate groups use circular linked lists.
 /// Active nodes passed to node operations must belong to this map; ownership is not checked.
+/// Advancing an enumerator after the map is modified throws <see cref="InvalidOperationException"/>;
+/// <see cref="SetNodeValue(Node, TValue)"/> and <see cref="Node.UnsafeChangeValue(TValue)"/> do not count as modifications.
 /// </remarks>
 public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
@@ -67,7 +75,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         internal NodeColor Color { get; set; }
 
         /// <summary>
-        /// Gets the previous node in map order.
+        /// Gets the previous node in map order, or <see langword="null"/> for the first node or an unused node.
         /// </summary>
         public Node? Previous
         {
@@ -104,7 +112,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         /// <summary>
-        /// Gets the next node in map order.
+        /// Gets the next node in map order, or <see langword="null"/> for the last node or an unused node.
         /// </summary>
         public Node? Next
         {
@@ -154,7 +162,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         /// <summary>
-        /// Changes the value without validation or version tracking, so outstanding enumerators stay valid.
+        /// Changes the value without checking whether the node is in use. Outstanding enumerators stay valid.
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -238,11 +246,16 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <summary>
     /// Gets the comparer used to order the keys.
     /// </summary>
+    /// <remarks>
+    /// With the default comparer, a key whose runtime type implements <c>IComparable&lt;TKey&gt;</c> is compared through
+    /// that interface even when <typeparamref name="TKey"/> itself does not implement it (for example, <see cref="object"/>
+    /// or an interface); calling this comparer directly on such keys may order them differently or throw.
+    /// </remarks>
     public IComparer<TKey> Comparer => this.comparer;
 
     /// <summary>
-    /// Gets the specialized tree-search implementation for <typeparamref name="TKey"/>,
-    /// or <see langword="null"/> when none is available.
+    /// Gets the specialized tree-search implementation for <typeparamref name="TKey"/>, or <see langword="null"/>
+    /// when none is available. One is resolved only when <see cref="Comparer"/> is <see cref="Comparer{T}.Default"/>.
     /// </summary>
     public IHotTreeMethod<TKey, TValue>? HotTreeMethod => this.hotTreeMethod;
 
@@ -290,6 +303,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// </summary>
     /// <param name="dictionary">The dictionary whose entries are copied.</param>
     /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="dictionary"/> is <see langword="null"/>.</exception>
     public OrderedMultiMap(IDictionary<TKey, TValue> dictionary, bool reverse = false)
         : this(dictionary, Comparer<TKey>.Default, reverse)
     {
@@ -301,6 +315,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// <param name="dictionary">The dictionary whose entries are copied.</param>
     /// <param name="comparer">The comparer to use for the keys, or <see langword="null"/> for <see cref="Comparer{T}.Default"/>.</param>
     /// <param name="reverse"><see langword="true"/> to sort the keys in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="dictionary"/> is <see langword="null"/>.</exception>
     public OrderedMultiMap(IDictionary<TKey, TValue> dictionary, IComparer<TKey>? comparer, bool reverse = false)
         : this(comparer, reverse)
     {
@@ -312,7 +327,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Gets the first node in map order.
+    /// Gets the first node in map order, or <see langword="null"/> if the map is empty.
     /// </summary>
     public Node? First
     {
@@ -321,7 +336,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Gets the last node in map order.
+    /// Gets the last node in map order, or <see langword="null"/> if the map is empty.
     /// </summary>
     public Node? Last
     {
@@ -335,7 +350,8 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Gets or sets the value associated with the specified key.
+    /// Gets the value of the first node with the specified key.
+    /// Setting a value always adds a new entry, like <see cref="Add(TKey, TValue)"/>; it never replaces an existing value.
     /// </summary>
     /// <param name="key">The key of the value.</param>
     /// <returns>The value of the first node with <paramref name="key"/>.</returns>
@@ -367,7 +383,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         => this.FindFirstNode(key) is not null;
 
     /// <summary>
-    /// Determines whether the collection contains the specified value.
+    /// Determines whether the collection contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
     /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
@@ -425,7 +441,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Removes all nodes and invalidates existing node objects.
+    /// Removes all elements. Their nodes become unused and can be reused with <see cref="Add(TKey, TValue, Node)"/>.
     /// </summary>
     public void Clear()
     {
@@ -445,6 +461,9 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// </summary>
     /// <param name="array">The destination array.</param>
     /// <param name="index">The zero-based destination index.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative or greater than the array length.</exception>
+    /// <exception cref="ArgumentException">The array is too small to hold the elements starting at <paramref name="index"/>.</exception>
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -490,7 +509,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Removes the first node with the specified key and value.
     /// </summary>
     /// <param name="key">The key to remove.</param>
-    /// <param name="value">The value to match.</param>
+    /// <param name="value">The value to match, using <see cref="EqualityComparer{T}.Default"/>.</param>
     /// <returns><see langword="true"/> if a node was removed; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key, TValue value)
@@ -506,11 +525,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Adds a new value. Duplicate keys are allowed.
+    /// Adds a new value. Duplicate keys are allowed; a duplicate is placed after the existing entries with that key.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
+    /// <returns>The node holding the element, and a flag that is always <see langword="true"/>.</returns>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value)
         => this.Probe(key, value, null);
 
@@ -519,17 +538,20 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    /// <param name="reuse">An unused node to reuse when possible.</param>
-    /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
+    /// <param name="reuse">A node to hold the new element if it is unused; otherwise, a new node is allocated.</param>
+    /// <returns>The node holding the element, and a flag that is always <see langword="true"/>.</returns>
     public (Node Node, bool NewlyAdded) Add(TKey key, TValue value, Node reuse)
         => this.Probe(key, value, reuse);
 
     /// <summary>
-    /// Changes the key while preserving the node object.
+    /// Changes the key of an active node, keeping the same node object and value.
+    /// The node is placed after the existing entries with the new key.
     /// </summary>
     /// <param name="node">The node.</param>
-    /// <param name="key">The key.</param>
-    /// <returns><see langword="true"/> if the key was changed; otherwise, <see langword="false"/>.</returns>
+    /// <param name="key">The new key.</param>
+    /// <returns><see langword="true"/> if the key was changed; <see langword="false"/> if the node is unused
+    /// or <paramref name="key"/> compares equal to its current key.</returns>
+    /// <remarks>If the comparer throws, the map is unchanged.</remarks>
     public bool SetNodeKey(Node node, TKey key)
     {
         if (node.IsUnused)
@@ -571,13 +593,14 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
         }
 
+        // Resolve the destination before changing the map; no comparer is called after removal.
+        var (position, parent) = this.SearchFirstNode(this.root, key);
         var value = node.Value;
         if (!node.IsSingleNode)
         {
             // Removing a node from a duplicate group keeps the tree shape (the next duplicate takes the
             // place of a removed tree node), so the new position is searched before anything changes
             // and a throwing comparer leaves the map untouched.
-            var (position, parent) = this.SearchFirstNode(this.root, key);
             var successor = node.ListNext;
             this.RemoveNode(node);
             if (ReferenceEquals(parent, node))
@@ -589,25 +612,28 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             return true;
         }
 
-        var originalKey = node.Key;
+        var nextTreeNode = position < 0 ? parent : parent is null ? null : GetNextTreeNode(parent);
         this.RemoveNode(node);
-        try
+        if (position == 0)
         {
-            this.Probe(key, value, node);
+            // An existing duplicate group survives removal of this unique key.
+            this.Link(0, parent, key, value, node);
         }
-        catch
+        else if (nextTreeNode is not null && nextTreeNode.Left is null)
         {
-            // Probe only compares keys before it modifies the tree, so a throwing comparer
-            // leaves the node detached: put it back under its original (unique) key.
-            this.Probe(originalKey, value, node);
-            throw;
+            this.Link(-1, nextTreeNode, key, value, node);
+        }
+        else
+        {
+            // Deletion may rotate the tree, so recover the insertion gap from its successor.
+            this.Link(1, GetLastTreeNode(nextTreeNode is null ? this.root : nextTreeNode.Left), key, value, node);
         }
 
         return true;
     }
 
     /// <summary>
-    /// Changes the value of an active node without invalidating enumerators.
+    /// Changes the value of an active node without invalidating enumerators. Unused nodes are ignored.
     /// </summary>
     /// <param name="node">The node.</param>
     /// <param name="value">The value.</param>
@@ -621,9 +647,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Removes the specified node.
+    /// Removes the specified node. An unused node is ignored.
     /// </summary>
     /// <param name="node">The node.</param>
+    /// <remarks>The removed node becomes unused and can be reused with <see cref="Add(TKey, TValue, Node)"/>.</remarks>
     public void RemoveNode(Node node)
     {
         if (node.IsUnused)
@@ -683,6 +710,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         this.RemoveTreeNode(node);
     }
 
+    [Leash.Exempt("Keep node replacement, rotations, and recoloring together in the deletion hot path to avoid additional helper calls and state passing.")]
     private void RemoveTreeNode(Node node)
     {
         var originalColor = node.Color;
@@ -734,51 +762,53 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             successor.Color = node.Color;
         }
 
+        // The root stays black without a final recolor: a red node is never the root, the node that
+        // takes the removed node's place is either recolored black or inherits its color, the fixup loop
+        // below blackens the root when it reaches it, and any node the loop rotates into the root's place is black.
         if (originalColor == NodeColor.Red)
         {
             node.Clear();
-            this.root?.ColorBlack();
             return;
         }
 
-        // A non-null replacement of a removed black node is red.
+        // A non-null replacement of a removed black node is red in a valid red-black tree;
+        // recoloring it black restores the black height.
         if (replacement is not null)
         {
             replacement.ColorBlack();
             node.Clear();
-            this.root?.ColorBlack();
             return;
         }
 
         if (fixParent is null)
         {
+            // The removed node was the only node, so the tree is now empty.
             node.Clear();
-            this.root?.ColorBlack();
             return;
         }
 
         var parent = fixParent;
         while (true)
         {
-            Node? sibling;
+            // The sibling is never null: its subtree's black height exceeds the deficit side's by one,
+            // so it is at least one. After the red-sibling rotation, the new sibling is a former child
+            // of the red sibling and has the same black height.
+            Node sibling;
             if (direction < 0)
             {
-                sibling = parent.Right;
-                if (Node.IsNonNullRed(sibling))
+                sibling = parent.Right!;
+                if (sibling.IsRed)
                 {
-                    sibling!.ColorBlack();
+                    sibling.ColorBlack();
                     parent.ColorRed();
                     this.RotateLeft(parent);
-                    sibling = parent.Right;
+                    sibling = parent.Right!;
                 }
 
-                if (sibling is null)
+                if (Node.IsNullOrBlack(sibling.Left) &&
+                    Node.IsNullOrBlack(sibling.Right))
                 {
                     // Propagate the black-height deficit.
-                }
-                else if (Node.IsNullOrBlack(sibling.Left) &&
-                         Node.IsNullOrBlack(sibling.Right))
-                {
                     sibling.ColorRed();
                 }
                 else
@@ -790,10 +820,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                         sibling.Left!.ColorBlack();
                         sibling.ColorRed();
                         this.RotateRight(sibling);
-                        sibling = parent.Right;
+                        sibling = parent.Right!;
                     }
 
-                    sibling!.Color = parent.Color;
+                    sibling.Color = parent.Color;
                     parent.ColorBlack();
                     sibling.Right!.ColorBlack();
                     this.RotateLeft(parent);
@@ -802,22 +832,19 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             }
             else
             {
-                sibling = parent.Left;
-                if (Node.IsNonNullRed(sibling))
+                sibling = parent.Left!;
+                if (sibling.IsRed)
                 {
-                    sibling!.ColorBlack();
+                    sibling.ColorBlack();
                     parent.ColorRed();
                     this.RotateRight(parent);
-                    sibling = parent.Left;
+                    sibling = parent.Left!;
                 }
 
-                if (sibling is null)
+                if (Node.IsNullOrBlack(sibling.Left) &&
+                    Node.IsNullOrBlack(sibling.Right))
                 {
                     // Propagate the black-height deficit.
-                }
-                else if (Node.IsNullOrBlack(sibling.Left) &&
-                         Node.IsNullOrBlack(sibling.Right))
-                {
                     sibling.ColorRed();
                 }
                 else
@@ -829,10 +856,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
                         sibling.Right!.ColorBlack();
                         sibling.ColorRed();
                         this.RotateLeft(sibling);
-                        sibling = parent.Left;
+                        sibling = parent.Left!;
                     }
 
-                    sibling!.Color = parent.Color;
+                    sibling.Color = parent.Color;
                     parent.ColorBlack();
                     sibling.Left!.ColorBlack();
                     this.RotateRight(parent);
@@ -854,11 +881,11 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         }
 
         node.Clear();
-        this.root?.ColorBlack();
     }
 
     #region Search
 
+    [Leash.Exempt("Keep null, primitive, value-type, and comparable search fast paths together for both sort directions to preserve JIT optimization opportunities.")]
     private (int Comparison, Node? Node) SearchFirstNode(Node? target, TKey? key)
     {
         var node = target;
@@ -1083,10 +1110,10 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Finds a node with the specified key and value.
+    /// Finds the first node with the specified key and value.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">The value to match, using <see cref="EqualityComparer{T}.Default"/>.</param>
     /// <returns>The matching node, or <see langword="null"/> if not found.</returns>
     public Node? FindNode(TKey? key, TValue value)
     {
@@ -1123,7 +1150,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Gets the first node equal to or after the specified key in map order.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <returns>The first node at or after the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The first node at or after <paramref name="key"/> in map order, or <see langword="null"/> if none exists.</returns>
     public Node? GetLowerBound(TKey? key)
     {
         var (cmp, node) = this.SearchFirstNode(this.root, key);
@@ -1139,7 +1166,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Gets the last node equal to or before the specified key in map order.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <returns>The last node at or before the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The last node at or before <paramref name="key"/> in map order, or <see langword="null"/> if none exists.</returns>
     public Node? GetUpperBound(TKey? key)
     {
         var (cmp, node) = this.SearchFirstNode(this.root, key);
@@ -1159,12 +1186,12 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Gets the nodes delimiting the inclusive range between two keys.
+    /// Gets the nodes delimiting the inclusive range between two keys in map order.
     /// </summary>
-    /// <param name="lower">The lower key.</param>
-    /// <param name="upper">The upper key.</param>
+    /// <param name="lower">The bound that comes first in map order (the larger key when the map is reversed).</param>
+    /// <param name="upper">The bound that comes last in map order (the smaller key when the map is reversed).</param>
     /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before
-    /// <paramref name="upper"/>, or <c>(null, null)</c> if the range is empty.</returns>
+    /// <paramref name="upper"/> in map order, or <c>(null, null)</c> if the range is empty.</returns>
     public (Node? Lower, Node? Upper) GetRange(TKey? lower, TKey? upper)
     {
         var lowerNode = this.GetLowerBound(lower);
@@ -1184,7 +1211,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Enumerates nodes with the specified key without allocation.
+    /// Enumerates nodes with the specified key in insertion order, without allocation.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching nodes.</returns>
@@ -1193,7 +1220,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         => new(this, key);
 
     /// <summary>
-    /// Enumerates values with the specified key without allocation.
+    /// Enumerates values with the specified key in insertion order, without allocation.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <returns>An allocation-free enumerable over the matching values.</returns>
@@ -1423,7 +1450,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
         => new Enumerator(this);
 
     /// <summary>
-    /// Enumerates the elements of a <see cref="OrderedMultiMap{TKey, TValue}"/>.
+    /// Enumerates the key/value pairs of an <see cref="OrderedMultiMap{TKey, TValue}"/> in map order.
     /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
@@ -1519,7 +1546,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Provides a struct enumerable over the keys in sort order.
+    /// Provides a struct enumerable over the keys in map order.
     /// </summary>
     /// <remarks>
     /// Direct iteration avoids boxing; enumeration through an interface may allocate.
@@ -1548,7 +1575,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates keys in sort order.
+        /// Enumerates keys in map order.
         /// </summary>
         public struct Enumerator : IEnumerator<TKey>
         {
@@ -1641,7 +1668,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     }
 
     /// <summary>
-    /// Provides a struct enumerable over the values in sort order.
+    /// Provides a struct enumerable over the values in map order.
     /// </summary>
     /// <remarks>
     /// Direct iteration avoids boxing; enumeration through an interface may allocate.
@@ -1670,7 +1697,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
             => new Enumerator(this.map);
 
         /// <summary>
-        /// Enumerates values in sort order.
+        /// Enumerates values in map order.
         /// </summary>
         public struct Enumerator : IEnumerator<TValue>
         {
@@ -1776,6 +1803,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     /// Inserts a node at the position found by <see cref="SearchFirstNode"/>, without comparing keys.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [Leash.Exempt("Keep node reuse, duplicate-group linking, and red-black balancing in the insertion hot path to avoid additional helper calls and state passing.")]
     private (Node Node, bool NewlyAdded) Link(int cmp, Node? parent, TKey key, TValue value, Node? reuse)
     {
         Node node;
@@ -1895,7 +1923,7 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
     #region Validation
 
     /// <summary>
-    /// Validates the Red-Black Tree and the duplicate-group linked lists.
+    /// Checks the red-black tree invariants, node links, key order, duplicate-group lists, and count. O(n); intended for diagnostics.
     /// </summary>
     /// <returns><see langword="true"/> if the internal structure is valid; otherwise, <see langword="false"/>.</returns>
     public bool Validate()
@@ -2119,8 +2147,21 @@ public class OrderedMultiMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVal
 
     private int CompareInTreeOrder(TKey? x, TKey? y)
     {
-        // Comparer<TKey>.Default orders null first; a custom comparer defines its own null order.
-        var cmp = this.comparer.Compare(x, y);
+        int cmp;
+        if (!typeof(TKey).IsValueType &&
+            ReferenceEquals(this.comparer, Comparer<TKey>.Default) &&
+            x is IComparable<TKey> comparable)
+        {
+            // Compare like SearchFirstNode: Comparer<TKey>.Default does not use the runtime
+            // IComparable<TKey> of keys typed as an interface or base class.
+            cmp = y is null ? 1 : comparable.CompareTo(y);
+        }
+        else
+        {
+            // Comparer<TKey>.Default orders null first; a custom comparer defines its own null order.
+            cmp = this.comparer.Compare(x, y);
+        }
+
         if (!this.IsReversed)
         {
             return cmp;

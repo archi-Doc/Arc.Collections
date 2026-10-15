@@ -1,5 +1,6 @@
 ﻿// Copyright (c) All contributors. All rights reserved. Licensed under the MIT license.
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Arc.Collections;
@@ -37,8 +38,9 @@ public sealed class TagObject
     /// <summary>
     /// Gets the cached <see cref="TagObject"/> instance for the specified tag.
     /// </summary>
-    /// <param name="tag">The tag value to resolve.</param>
+    /// <param name="tag">The tag value to resolve, from <c>0</c> to <c>255</c>.</param>
     /// <returns>The cached object associated with <paramref name="tag"/>.</returns>
+    /// <exception cref="IndexOutOfRangeException"><paramref name="tag"/> is negative or not less than <see cref="TagCount"/>.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TagObject FromTag(int tag)
         => TagObjects[tag];
@@ -49,7 +51,7 @@ public sealed class TagObject
     /// <param name="obj">The object to inspect.</param>
     /// <returns>
     /// The embedded tag value when <paramref name="obj"/> is a <see cref="TagObject"/>;
-    /// otherwise, <c>-1</c>.
+    /// otherwise, <see cref="InvalidTag"/>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ToTag(object? obj)

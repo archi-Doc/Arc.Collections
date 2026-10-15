@@ -4,19 +4,17 @@
 
 日本語ドキュメントは[こちら](doc/README.jp.md)
 
-Arc.Collections is a C# collection library with node-based access, sorted and duplicate-key
-collections, specialized hash tables, and pooling, buffer, and hashing utilities.
+Arc.Collections is a C# collection library for **.NET 10**.
+It provides sorted and duplicate-key collections with reusable nodes, hash maps with stable node indexes,
+thread-safe hashtables with lock-free lookups, and pooling, buffer, and hashing utilities.
+It is published on [NuGet](https://www.nuget.org/packages/Arc.Collections).
 
-The current source targets **.NET 10**. Most types are in `Arc.Collections`; general helpers are
-in `Arc`, and specialized comparison contracts are in `Arc.Collections.HotMethod`.
-Interfaces and mutation semantics vary by collection; these are not universally drop-in
-replacements for `System.Collections.Generic`.
+I know it's reinventing the wheel, but these classes are necessary for implementing [CrossLink](https://github.com/archi-Doc/CrossLink). And reinventing the wheel is kind of fun for me :)
 
-I know it's reinventing the wheels, but these classes are necessary for implementing [CrossLink](https://github.com/archi-Doc/CrossLink). And reinventing the wheels is a kind of fun for me :)
+Most types are in the `Arc.Collections` namespace. General helpers are in `Arc`, and specialized search contracts are in `Arc.Collections.HotMethod`.
+The collections are not drop-in replacements for `System.Collections.Generic`: their interfaces, duplicate handling, and mutation rules differ.
 
 ## Quick start
-
-Install the package in your application:
 
 ```sh
 dotnet add package Arc.Collections
@@ -26,233 +24,308 @@ dotnet add package Arc.Collections
 using System;
 using Arc.Collections;
 
-var values = new OrderedSet<int>(new[] { 2, 1, 3 });
-values.Add(4);
-values.Add(0);
-Console.WriteLine(string.Join(", ", values)); // 0, 1, 2, 3, 4
+var set = new OrderedSet<int>(new[] { 2, 1, 3 });
+set.Add(0);
+Console.WriteLine(string.Join(", ", set)); // 0, 1, 2, 3
 
 var map = new OrderedMap<int, string>();
-var (node, added) = map.Add(2, "two");
+var (node, added) = map.Add(2, "two"); // Returns the node and whether it was added.
 map.Add(1, "one");
 Console.WriteLine(node.Previous!.Value); // one
-map.RemoveNode(node);
+
+map.RemoveNode(node); // The node is now unused.
+map.Add(3, "three", node); // Reuses the node instead of allocating one.
+Console.WriteLine(string.Join(", ", map.Keys)); // 1, 3
 ```
 
-## Collections
+## Choosing a collection
 
-### Lists, trees, and hash maps
+| Type | Structure | Order | Duplicates | Nulls | Access by | Similar to |
+| --- | --- | --- | --- | --- | --- | --- |
+| `UnorderedList<T>` | Resizable array | Insertion | Yes | Yes | Index | `List<T>` |
+| `OrderedList<T>` | Sorted array | Comparer | Yes | Yes | Index | |
+| `OrderedKeyValueList<TKey, TValue>` | Sorted parallel arrays | Key comparer | Yes | No | Index | `SortedList<TKey, TValue>` |
+| `OrderedMap<TKey, TValue>` | Red-black tree | Key comparer, optionally reversed | No | Yes | Node | `SortedDictionary<TKey, TValue>` |
+| `OrderedSet<T>` | `OrderedMap<T, byte>` | Comparer, optionally reversed | No | Yes | Node | `SortedSet<T>` |
+| `OrderedMultiMap<TKey, TValue>` | Red-black tree with duplicate lists | Key comparer, optionally reversed | Yes | Yes | Node | |
+| `OrderedMultiSet<T>` | `OrderedMultiMap<T, byte>` | Comparer, optionally reversed | Yes | Yes | Node | |
+| `UnorderedMap<TKey, TValue>` | Hash table | Unspecified | Optional | Yes | Node index | `Dictionary<TKey, TValue>` |
+| `UnorderedSet<T>` | `UnorderedMap<T, byte>` | Unspecified | Optional | Yes | | `HashSet<T>` |
+| `UnorderedMapSlim<TKey, TValue>` | Compact hash table | Unspecified | No | No | `ref` to value | `Dictionary<TKey, TValue>` |
+| `UnorderedLinkedList<T>` | Doubly linked list | Insertion or explicit | Yes | Yes | Node | `LinkedList<T>` |
+| `SlidingList<T>` | Ring buffer of references | Position | Yes | No | Position | |
+| `CircularQueue<T>` | Bounded ring buffer | FIFO | Yes | Yes | | `ConcurrentQueue<T>` (bounded) |
+| `TemporaryList<T>` | `ref struct` with four inline slots | Insertion | Yes | Yes | | |
 
-| Type | Use and behavior |
-| --- | --- |
-| `UnorderedList<T>` | Resizable array with indexed access and writable `AsSpan()`. Preserves insertion order; elements are not sorted. |
-| `UnorderedLinkedList<T>` | Doubly linked list with node navigation, insertion, removal, and reuse. |
-| `OrderedList<T>` | Sorted array with indexed access and binary-search bounds. Equal elements retain insertion order. |
-| `OrderedKeyValueList<TKey, TValue>` | Sorted key/value arrays with indexed key/value views. Allows duplicate keys; rejects null keys. |
-| `OrderedMap<TKey, TValue>` | Red-black tree with unique keys, node navigation, range endpoints, and node reuse. Supports null keys. |
-| `OrderedSet<T>` | Sorted unique elements, backed by `OrderedMap<T, byte>`. |
-| `OrderedMultiMap<TKey, TValue>` | Sorted tree with insertion-ordered duplicate groups and matching-node/value enumeration. Supports null keys. |
-| `OrderedMultiSet<T>` | Sorted elements with insertion-ordered duplicates, backed by `OrderedMultiMap<T, byte>`. |
-| `UnorderedMap<TKey, TValue>` | Hash map with node indexes, null keys, and optional duplicates. Enumeration order is unspecified. |
-| `UnorderedSet<T>` | Hash-based elements with null support and optional duplicates, backed by `UnorderedMap<T, byte>`. |
-| `UnorderedMapSlim<TKey, TValue>` | Compact hash map for non-null keys, with direct value-reference access and no enumeration version checks. |
+- Where nulls are not supported, storing a null key or element throws `ArgumentNullException`.
+- Only `OrderedKeyValueList<TKey, TValue>` implements `IDictionary<TKey, TValue>`. `UnorderedList<T>`, `OrderedList<T>`, and `SlidingList<T>` implement `IList<T>`,
+  and `UnorderedLinkedList<T>` implements `ICollection<T>`. The other maps and sets implement only `IEnumerable<T>`.
+- For thread-safe or UTF-keyed lookups, see [Hashtables and UTF-keyed maps](#hashtables-and-utf-keyed-maps).
 
-Ordered collections use a supplied comparer or `Comparer<T>.Default`. Tree collections also
-support reverse ordering. With the default comparer null keys sort first; a custom comparer
-receives null keys and decides where they belong. Hash collections use their supported equality comparer; equal keys
-must have equal hash codes. Keep keys' comparison and hash behavior unchanged while stored.
+## Behavior
 
-For sorted arrays, lookup is O(log n), but insertion and removal may shift O(n) elements.
-Tree lookup, insertion, and removal are O(log n). Hash lookup is O(1) on average and O(n) in
-the worst case. Appending to `UnorderedList<T>` is amortized O(1); linked-list insertion and
-removal are O(1) when the node is already known. Full enumeration visits all live elements;
-array-backed hash maps may also scan vacant slots.
+### Ordering and comparers
 
-### Duplicate keys and assignment
+- Sorted collections use the supplied `IComparer<T>` or `Comparer<T>.Default`, and treat keys as equal when it returns 0 (`Equals` is not used).
+- The tree collections (`OrderedMap<TKey, TValue>`, `OrderedSet<T>`, `OrderedMultiMap<TKey, TValue>`, `OrderedMultiSet<T>`) accept `reverse: true` for descending order. The sorted lists do not.
+- With the default comparer, null sorts first, or last in a reversed tree. A custom comparer receives null keys and decides their order.
+- With the default comparer, a key whose declared type `T` is an interface or base class is still compared through its runtime `IComparable<T>` implementation. The `Comparer` property (`Comparer<T>.Default`) ignores that implementation and may throw or order such keys differently.
+- `GetLowerBound(key)` returns the first element at or after the key in collection order, and `GetUpperBound(key)` the last element at or before it.
+  The sorted lists return an index (-1 if none), and the trees return a node (null if none).
+- Among the hash-based types, only `UnorderedMap<TKey, TValue>` and `UnorderedSet<T>` accept an `IEqualityComparer<T>`.
+- Do not change a stored key in a way that changes its comparison result or hash code.
 
-| Type | `Add` with an existing key | Indexer assignment |
+### Duplicates and assignment
+
+| Type | Adding an existing key | Indexer setter with an existing key |
 | --- | --- | --- |
-| `OrderedMap<TKey, TValue>` | Returns the existing node with `NewlyAdded == false`; keeps the value. | Replaces the value. |
-| `OrderedMultiMap<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
-| `OrderedKeyValueList<TKey, TValue>` | Adds a duplicate. | Adds a duplicate; lookup returns the first matching value. |
-| `UnorderedMap<TKey, TValue>` | Keeps the existing value unless `allowDuplicates: true`. | Updates one matching entry or adds a new entry. |
-| `UnorderedMapSlim<TKey, TValue>` and UTF unordered maps (`AddOrUpdate`) | Replaces the value. | Replaces the value. |
+| `OrderedMap<TKey, TValue>`, `UnorderedMap<TKey, TValue>` | `Add` returns the existing node (or node index) with `NewlyAdded == false` and keeps the value. | Replaces the value. |
+| `UnorderedMap<TKey, TValue>` with `allowDuplicates: true` | `Add` adds an entry. | Replaces the value of one matching entry. |
+| `OrderedMultiMap<TKey, TValue>`, `OrderedKeyValueList<TKey, TValue>` | `Add` adds an entry after the existing entries with that key. | Adds an entry; never replaces. |
+| `UnorderedMapSlim<TKey, TValue>`, UTF-keyed maps, hashtables | No `Add`. `TryAdd` returns `false` and keeps the value; `AddOrUpdate` replaces it. | Replaces the value (maps only). |
 
-`OrderedSet<T>` ignores duplicates; `OrderedMultiSet<T>` retains them.
-`UnorderedMap<TKey, TValue>` and `UnorderedSet<T>` enable duplicates with
-`allowDuplicates: true`; null support does not require that option.
+- Indexer setters add a missing key. `OrderedSet<T>.Add` returns `false` for an existing element, as does `UnorderedSet<T>.Add` unless duplicates are allowed.
+  `OrderedMultiSet<T>` and `OrderedList<T>` insert after the existing equal elements.
+- When a key has duplicates, single-entry operations (`TryGetValue`, `FindFirstNode`, `IndexOf`, `IndexOfKey`, `Remove`, the indexer getter)
+  use the first match in collection order for sorted collections, and an unspecified match for `UnorderedMap<TKey, TValue>`.
 
-`OrderedList<T>` rejects positional insertion and indexer assignment. Mutating it through
-an `UnorderedList<T>` reference or its writable span can break sorting. Do not retain
-list spans or map value references across mutations that can move or replace their storage.
+### Nodes and node indexes
 
-Node handles belong to their collection. Remove a node before reusing it, and do not use
-a removed node or hash-map node index as a live handle. Hash-map indexes may be recycled.
+- A tree node is valid while it is in its collection. Trees do not check ownership: passing an active node from another tree to `RemoveNode` or `SetNodeKey` corrupts both trees.
+- `SetNodeKey` preserves the node object and value while restoring sort order. If the comparer throws, the tree remains unchanged.
+- `RemoveNode` and `Clear` make nodes unused (`OrderedMap<TKey, TValue>.Node.IsUnused` reports this).
+  An unused node's `Previous` and `Next` return null, and `RemoveNode` ignores it.
+- Pass an unused node as the `reuse` argument of `Add` (`AddNode` for `OrderedSet<T>`) to avoid an allocation.
+  A node that is still in use is not reused. If `OrderedMap<TKey, TValue>` or `OrderedSet<T>` already has the key, `reuse` is left untouched.
+- `UnorderedMap<TKey, TValue>` node indexes stay valid across resizing. A removed index can be reused by a later entry, and `Clear` invalidates every index.
+- `UnorderedLinkedList<T>` rejects nodes from other lists. `Remove(node)` and `Clear` detach nodes, which can be added again without allocating.
 
-Copying an `OrderedKeyValueList<TKey, TValue>` with the same comparer preserves duplicate
-order and avoids sorting again. Pass the source's `Comparer` explicitly when it is custom.
+### Enumeration
 
-### Windows, queues, and temporary storage
+- Modifying a collection makes its enumerators throw `InvalidOperationException`, with these exceptions:
+  - Writes through a node's `UnsafeChangeValue` or `ValueRef`, `UnorderedMap<TKey, TValue>.UnsafeChangeValue`, `OrderedMultiMap<TKey, TValue>.SetNodeValue`,
+    `UnorderedList<T>.AsSpan()`, or the array returned by `UnorderedMap<TKey, TValue>.UnsafeGetNodes()` are not detected.
+  - `UnorderedMapSlim<TKey, TValue>`, the UTF-keyed maps, and `TemporaryList<T>` never detect modification; do not modify them while enumerating.
+- `GetEnumerator` returns a struct. So do `Keys` and `Values` (except on `OrderedKeyValueList<TKey, TValue>`), `EnumerateNodes`, and `EnumerateValues`.
+  `foreach` over the concrete type does not allocate; enumerating through an interface boxes the enumerator.
 
-| Type | Use and behavior |
-| --- | --- |
-| `SlidingList<T>` | Bounded, explicitly resizable ring buffer for non-null reference values. Uses stable positions instead of zero-based indexes. |
-| `CircularQueue<T>` | Thread-safe bounded FIFO queue for multiple producers and consumers. |
-| `TemporaryList<T>` | `ref struct` list with four inline elements; additional elements use a heap-allocated list. |
+### Complexity
 
-`SlidingList<T>.Add` returns a position, or -1 when no slot is available. Positions wrap
-modulo 2³¹. Its `IList<T>` operations also use positions. Middle removals leave holes:
-`UsedSlotCount` includes those holes, while `ICollection<T>.Count` and enumeration count only
-live elements. `Slide()` advances past empty leading slots; `Resize()` changes capacity
-when the current window fits.
+| Type | Lookup | Insertion | Removal |
+| --- | --- | --- | --- |
+| `UnorderedList<T>` | O(1) by index; O(n) search | O(1) amortized append; O(n) insert | O(n) |
+| `OrderedList<T>`, `OrderedKeyValueList<TKey, TValue>` | O(log n) | O(log n) comparisons, O(n) moves | O(n) |
+| Tree collections | O(log n) | O(log n) | O(log n) |
+| Hash maps and sets, hashtables | O(1) average, O(n) worst case | O(1) amortized | O(1) average |
+| `UnorderedLinkedList<T>` | O(n) search | O(1) next to a known node | O(1) given the node |
+| `SlidingList<T>` | O(1) by position; O(n) search | O(1) | O(1); removing the head also skips any holes |
 
-`CircularQueue<T>` rounds capacity up to a power of two and clamps it between 2 and 2³⁰.
-`TryEnqueue` can fail when full; `TryDequeue` can fail when empty. Concurrent operations
-may retry or wait, and `Count` is an estimate during concurrent access.
+- Operations that scan a key's d duplicates cost O(log n + d), for example `OrderedMultiMap<TKey, TValue>.FindNode(key, value)` and `OrderedMultiSet<T>.GetCount`.
+- `OrderedList<T>.AddRange` with an `ICollection<T>`, array, or span sorts and merges the batch: O(m log m + m log n) comparisons and O(n + m) moves. Other sequences are added one element at a time.
 
-## Specialized keyed lookup
+## Collection notes
 
-| Type | Keys and concurrency |
-| --- | --- |
-| `Int32Hashtable<TValue>`, `UInt32Hashtable<TValue>` | Signed or unsigned 32-bit keys. Serialized writes and lock-free lookups. |
-| `Int64Hashtable<TValue>`, `UInt64Hashtable<TValue>` | Signed or unsigned 64-bit keys. Serialized writes and lock-free lookups. |
-| `Utf8Hashtable<TValue>`, `Utf16Hashtable<TValue>` | UTF-8 byte or UTF-16 character keys, with span-based lookup. Serialized writes and lock-free lookups. |
-| `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>` | UTF-keyed maps with span lookup, enumeration, and direct value-reference access. Require external synchronization for writes. |
+### Lists
 
-All these types update existing values with `AddOrUpdate`; `TryAdd` leaves existing values unchanged.
-Hashtable snapshot methods (`ToArray` and UTF `ToKeyValuePairs`) take the write lock.
-Snapshots copy values and key references, so referenced objects and UTF-8 key arrays remain shared.
-The hashtables also provide `GetOrAdd`. Its factory runs under the write lock and must not
-modify the same table; `GetOrAdd` throws `InvalidOperationException` when such a modification
-would invalidate its insertion.
+- `UnorderedList<T>.AsSpan()` exposes the backing array. The span is invalid after the list adds or removes elements or changes capacity.
+- `UnorderedList<T>`, `OrderedList<T>`, and `OrderedKeyValueList<TKey, TValue>` support `EnsureCapacity` to reserve space before a batch of additions.
+  `Clear` keeps that capacity; `TrimExcess` can release unused capacity after a workload shrinks.
+- `OrderedList<T>` derives from `UnorderedList<T>`. Its `Insert` and indexer setter throw `InvalidOperationException`.
+  Writes through an `UnorderedList<T>` reference or `AsSpan()` bypass the sort order, and the base `Contains`, `IndexOf`, and `Remove` search linearly with `EqualityComparer<T>.Default`.
+- `OrderedKeyValueList<TKey, TValue>.Keys` and `Values` are live, read-only `IList<T>` views.
+- Copying an `OrderedKeyValueList<TKey, TValue>` with the same comparer instance keeps the duplicate order; otherwise duplicate order is unspecified.
+  The single-argument copy constructor uses `Comparer<TKey>.Default`, so pass the source's `Comparer` when it is custom.
 
-UTF keys are compared by ordinal content without validation, normalization, or case folding.
-Span-based insertion materializes a key only for a new entry. Array/string overloads retain
-the supplied key; **do not modify stored UTF-8 byte arrays**.
+### Trees
+
+- `GetRange(lower, upper)` returns the first and last nodes in the range. In a reversed tree, `lower` is the larger key.
+- `OrderedMultiMap<TKey, TValue>.EnumerateValues(key)` and `EnumerateNodes(key)` visit a key's entries in insertion order.
+  `FindNode(key, value)` and `Remove(key, value)` match values with `EqualityComparer<TValue>.Default`.
+
+### Hash maps
+
+- `UnorderedMap<TKey, TValue>` never passes null keys to its comparer.
+- Hash maps and sets keep their capacity on `Clear`. Specify the expected capacity in their constructors to reduce resizing during initial population.
+- `GetValueRefOrAddDefault` (`UnorderedMapSlim<TKey, TValue>` and the UTF-keyed maps) returns a reference to the value slot with one lookup;
+  the reference is invalid after an add, a removal, or `Clear`.
+
+### SlidingList\<T\>
+
+`SlidingList<T>` is a ring buffer whose elements are addressed by **position**, not by zero-based index.
+
+- `Add` returns the new element's position, or -1 when the list is full.
+- Positions wrap to 0 after `int.MaxValue`. Valid positions are `[StartPosition, StartPosition + Capacity)`, modulo 2^31.
+- Removing a middle element leaves a hole that still uses a slot: `UsedSlotCount` counts it, `Count` does not.
+  Removing the head, `Slide()`, and `GetFirstOrDefault()` move the window past holes, so `GetFirstOrDefault()` is a write: it can invalidate enumerators.
+- The `IList<T>` members take positions. `Insert` overwrites a slot, and `ICollection<T>.Add` drops the element when the list is full.
+  Index-based LINQ operators such as `ElementAt` return wrong results unless `StartPosition` is 0 and there are no holes.
+- `Clear()` starts the new window at the former `EndPosition`. `Resize(capacity)` keeps positions; it returns `false` and changes nothing when `capacity` is less than `UsedSlotCount`.
 
 ```csharp
 using System;
 using Arc.Collections;
 
-var names = new Utf8UnorderedMap<int>();
-names.AddOrUpdate("alice"u8, 1);
-names.AddOrUpdate("alice"u8, 2); // Updates the existing entry.
-Console.WriteLine(names.TryGetValue("alice"u8, out var id) ? id : -1); // 2
+var window = new SlidingList<string>(3);
+var a = window.Add("a"); // a == 0
+var b = window.Add("b"); // b == 1
+window.Add("c"); // Position 2.
+Console.WriteLine(window.Add("d")); // -1 (full)
+
+window.TryRemoveAt(b); // Leaves a hole at position 1.
+Console.WriteLine(window.CanAdd); // False: the hole still uses a slot.
+window.TryRemoveAt(a); // Removes the head and slides past the hole.
+Console.WriteLine(window.StartPosition); // 2
+Console.WriteLine(window.Add("d")); // 3
+Console.WriteLine(window[3]); // d (the argument is a position)
+```
+
+### Other collections
+
+- `CircularQueue<T>` has a fixed capacity, rounded up to a power of two between 2 and 2^30. Under concurrent access, `Count` is an estimate.
+  `TryEnqueue` returns `false` when the queue is full, or briefly while a concurrent dequeue finishes; `TryDequeue` returns `false` when it is empty.
+- `TemporaryList<T>` stores elements after the fourth in a heap-allocated `List<T>`. It needs no disposal, but do not copy it: copies share that list.
+
+## Hashtables and UTF-keyed maps
+
+| Type | Keys | Notes |
+| --- | --- | --- |
+| `Int32Hashtable<TValue>`, `UInt32Hashtable<TValue>`, `Int64Hashtable<TValue>`, `UInt64Hashtable<TValue>` | `int`, `uint`, `long`, `ulong` | Thread-safe. No indexer or enumerator. |
+| `Utf8Hashtable<TValue>`, `Utf16Hashtable<TValue>` | UTF-8: `byte[]` or `ReadOnlySpan<byte>`. UTF-16: `string` or `ReadOnlySpan<char>`. | Thread-safe. No indexer or enumerator. |
+| `Utf8UnorderedMap<TValue>`, `Utf16UnorderedMap<TValue>` | Same as the UTF hashtables | Not thread-safe. Has an indexer, an enumerator, and `GetValueRefOrAddDefault`. |
+
+- Hashtable writes and the `ToArray` and `ToKeyValuePairs` snapshots take the write lock.
+  Lookups are lock-free and see each key as it was before or after a concurrent write; `Count` may briefly lag behind them.
+- The `GetOrAdd` factory runs under the write lock and must not modify the same table. A change that invalidates the pending insertion (same bucket, growth, or `Clear`) throws `InvalidOperationException`; other changes are not detected.
+- Numeric keys are bucketed by their low-order bits (64-bit keys first XOR their two halves), so regular patterns such as multiples of a large power of two can share a bucket.
+- UTF keys are compared by ordinal content, without validation, normalization, or case folding.
+- A span key is copied only when a new entry is added. A `byte[]` or `string` key is stored by reference, not copied:
+  **do not modify a stored `byte[]` key**, including arrays returned by enumeration or `ToKeyValuePairs`.
+
+```csharp
+using System;
+using Arc.Collections;
+
+var ids = new Utf8UnorderedMap<int>();
+ids.AddOrUpdate("alice"u8, 1); // Copies the span into a new key array.
+ids.AddOrUpdate("alice"u8, 2); // Updates the existing entry.
+Console.WriteLine(ids.TryAdd("alice"u8, 3)); // False
+Console.WriteLine(ids.TryGetValue("alice"u8, out var id) ? id : -1); // 2
 ```
 
 ## Pools and buffers
 
-| Type | Purpose and lifetime |
+| Type | Purpose |
 | --- | --- |
-| `ObjectPool<T>` | Reuses objects from a caller-supplied factory. Rejected or still-pooled `IDisposable` objects are disposed. |
-| `KeyedObjectCache<TKey, TObject>` | Caches reusable objects by key. Retrieval (`TakeOrDefault`) removes the object and transfers ownership to the caller. |
-| `BytePool` | Pools byte arrays with reference-counted `RentedArray`, `RentedMemory`, and `RentedReadOnlyMemory` handles. |
-| `SpanOwner<T>` | Uses a supplied scratch span when it fits, otherwise rents from `ArrayPool<T>.Shared`. Dispose to return a rented array. |
-| `SequenceBuilder<T>` | Builds a pooled `ReadOnlySequence<T>`. Finalization prevents further additions; the sequence is valid until builder disposal. |
-| `PooledStringBuilder` | Builds strings from pooled character chunks. `ToString()` creates an independent string; dispose to return pooled resources. |
+| `ObjectPool<T>` | Reuses objects created by a caller-supplied factory. |
+| `KeyedObjectCache<TKey, TObject>` | Holds at most one object per key and evicts the oldest object when full. |
+| `BytePool` | Pools byte arrays in power-of-two buckets and tracks ownership with reference-counted handles. |
+| `SpanOwner<T>` | Uses a caller-supplied scratch span when it is large enough, and otherwise rents from `ArrayPool<T>.Shared`. |
+| `SequenceBuilder<T>` | Builds a `ReadOnlySequence<T>` from pooled chunks. |
+| `PooledStringBuilder` | Builds a string from pooled character chunks. |
 
-Return each rented object once. An `ObjectPool<T>` factory must be thread-safe and create
-distinct instances. Return outstanding objects before disposing the pool; `Rent` and
-`Return` throw after disposal.
+### ObjectPool\<T\> and KeyedObjectCache\<TKey, TObject\>
 
-`KeyedObjectCache<TKey, TObject>` retains at most one object per key and evicts the oldest
-cached object when full. A failed `TryAdd` call leaves ownership with the caller.
-`CreateLease` creates a `Lease` that returns an object on disposal, or disposes it if
-caching fails. This readonly lease retains its fields after return: return or dispose it
-once, including across copies. Assign `lease = lease.Return()` to retain an empty lease;
-default and returned empty leases are safe to dispose, including for value-type objects.
-An eviction callback that disposes or refills the cache can cause `TryAdd` to fail; the
-caller still owns the rejected object.
+- `ObjectPool<T>.PoolSize` is rounded up to a power of two (default 32). The factory must be thread-safe and return a new instance each time.
+- The pool does not reset objects. Restore any state that the next renter must not inherit before calling `Return`.
+- `Return` disposes an `IDisposable` object when the pool is full, and `Dispose` disposes the pooled objects.
+  Return each object only once (a second return is not detected) and before disposing the pool; afterward, `Rent` and `Return` throw `ObjectDisposedException`.
+- `KeyedObjectCache<TKey, TObject>.TakeOrDefault(key)` transfers ownership of the cached object to the caller. `TryAdd(key, obj)` transfers ownership to the cache only when it returns `true`.
+- The cache disposes evicted objects under its lock. Their `Dispose` must not wait for another thread that uses the cache.
+- `CreateLease(key, obj)` returns a `Lease` that offers the object to the cache when disposed, and disposes the object if the cache rejects it.
+  Dispose a lease only once; copies count as the same lease. `lease = lease.Return()` leaves an empty lease that is safe to dispose.
+- Disposing either pool or cache attempts to dispose every stored object. If any disposal fails, it throws an `AggregateException` after draining the remaining objects.
 
-### Byte ownership
+### BytePool
 
-`BytePool.CreateFlat` gives every bucket the same retention limit; `CreateExponential`
-retains more arrays in smaller buckets. Array sizes and retention limits are rounded up
-to powers of two, with at least two retained slots per bucket. Requests outside configured
-buckets allocate unpooled arrays. Configure `SetPoolLimit` before sharing the pool.
-
-A rent starts with one owned reference. Copying a handle, slicing, or calling `AsMemory`,
-`AsReadOnlyMemory`, or `ReadOnly` does **not** add an owner. Use `IncrementAndShare` for another
-owner and return each owned reference once. After the final return, every old handle and
-view is invalid because the pooled owner and array may be reused. Arrays are not cleared.
-
-```csharp
-using Arc.Collections;
-
-using var rented = BytePool.Default.Rent(128);
-var view = rented.AsMemory(0, 128); // Shares rented's ownership.
-view.Span.Clear();
-using var shared = view.IncrementAndShare(); // Owns one additional reference.
-shared.Span[0] = 42;
-```
-
-`RentedMemory.CreateFrom(byte[])` and its read-only counterpart track an unpooled array.
-Their `CreateFrom(ReadOnlyMemory<byte>)` overloads instead create an untracked view of
-array-backed memory, or return an empty view if the underlying array cannot be obtained.
-
-### Temporary buffers and builders
-
-Do not copy a `SpanOwner<T>`, `SequenceBuilder<T>`, or `PooledStringBuilder` while it owns
-pooled resources. Dispose the owner after use and do not retain pooled spans or sequences
-past disposal. `SpanOwner<T>` clears reference-containing arrays on return.
-`TemporaryList<T>` needs no disposal; copies share its heap-allocated overflow list.
+- `Rent(length)` returns a `RentedArray` with one owned reference. `RentedMemory` and `RentedReadOnlyMemory` are views of a range.
+- A pooled array has its bucket's power-of-two length and is **not cleared**. A request of 0 or above the largest bucket gets an unpooled array.
+- `Rent(0)` uses shared empty storage but returns a separate ownership handle that must be returned once.
+- `BytePool.Default` pools arrays up to 16 MiB and retains up to about 200 MiB in total. `CreateExponential` and `CreateFlat` set other limits.
+- Copying a handle and creating views (`AsMemory`, `AsReadOnlyMemory`, `ReadOnly`, `Slice`) do **not** add an owner.
+  `IncrementAndShare` does. Return or dispose each owned reference exactly once.
+- After the final return, every handle and view is invalid, because the array and its `RentedArray` can go to another renter.
+- `CreateFrom(byte[])` on `RentedArray`, `RentedMemory`, or `RentedReadOnlyMemory` tracks an unpooled array with the same rules.
+  `CreateFrom(ReadOnlyMemory<byte>)` creates an untracked view that needs no return; the view is empty if the memory is not array-backed.
 
 ```csharp
 using System;
 using Arc.Collections;
 
-int length = 300;
-using var owner = new SpanOwner<byte>(stackalloc byte[256], length);
-owner.Span.Clear();
+var rented = BytePool.Default.Rent(100);
+Console.WriteLine(rented.Array.Length); // 128
+var view = rented.AsMemory(0, 100); // A view, not an owner.
+view.Span.Clear();
+var shared = view.IncrementAndShare(); // A second owner.
+Console.WriteLine(rented.ReferenceCount); // 2
 
-using var builder = new SequenceBuilder<int>();
-builder.AddRange(new[] { 1, 2, 3 });
-var sequence = builder.ToReadOnlySequence();
-Console.WriteLine(sequence.Length); // 3; consume before builder disposal.
+rented.Return();
+shared.Return(); // The final return: all handles and views are now invalid.
 ```
 
-`PooledStringBuilder` uses invariant formatting by default and LF for `AppendLine`.
-`Clear()` retains its current character buffer for reuse.
-`SequenceBuilder<T>.AddRange` sizes new chunks for the remaining input, up to
-`MaxChunkCapacity`, to reduce array rents and sequence segments for large batches.
+### Temporary buffers and builders
+
+- `SpanOwner<T>`, `SequenceBuilder<T>`, and `PooledStringBuilder` are `ref struct` types that own pooled arrays.
+  Do not copy them while they own resources, dispose them once, and do not use their spans or sequences afterward.
+- `SpanOwner<T>` does not clear a rented array before use. `BaseHelper.StackallocThreshold` (1024) is the suggested size limit for a `stackalloc` scratch span.
+- `SequenceBuilder<T>.AddRange` copies a span into pooled chunks without requiring one contiguous array.
+  `ToReadOnlySequence()` finalizes the builder; later `Add` and `AddRange` calls throw `InvalidOperationException`.
+  Consume the returned sequence before disposing the builder. Reference-containing arrays are cleared on return by default;
+  the constructor's `clearArrayOnReturn` argument overrides this behavior.
+- `PooledStringBuilder` formats with the invariant culture unless you pass a provider; a null provider uses the current culture for numbers and dates. `AppendLine` appends `\n`.
+- `PooledStringBuilder.Clear()` retains its current character array for reuse; `Dispose()` returns every array and resets the builder for reuse.
+  `ToString()` creates an independent string that remains valid after either operation.
+
+```csharp
+using System;
+using Arc;
+using Arc.Collections;
+
+using var owner = new SpanOwner<byte>(stackalloc byte[BaseHelper.StackallocThreshold], 4096); // Rents: 4096 > 1024.
+owner.Span.Clear();
+
+using var text = new PooledStringBuilder();
+text.Append("Total: ");
+text.Append(1234.5);
+Console.WriteLine(text.ToString()); // Total: 1234.5
+```
 
 ## Helpers
 
 | Type or namespace | Purpose |
 | --- | --- |
-| `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing, ported from `System.IO.Hashing.XxHash3`. |
-| `CollectionHelper` | Power-of-two and prime capacity calculations. |
-| `TagObject` | Cached object instances for tags 0–255, avoiding boxing. |
-| `Arc.BaseHelper` | Span and text helpers, line/separator scanning, decimal digit counts, SIMD byte sums, and resource loading. `GetCompleteUtf8Length` excludes an incomplete trailing sequence; it does not validate UTF-8. |
-| `Arc.Struct128`, `Arc.Struct256` | Fixed-size binary values with overlapping numeric fields. Byte conversion uses native byte order; comparison uses signed 64-bit fields in field order. |
-| `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>` | Span-based UTF-16/UTF-8 parsing and formatting contracts. |
-| `Arc.IConversionOptions` | Typed options for parsing and formatting. |
-| `Arc.VersionHelper` | Version information for the entry assembly or a selected loaded assembly. `SetAssembly` matches an ordinal name substring. |
-| `Arc.AppCloseHandler` | `Register` accepts one handler, invoked at most once for process exit or a Windows console close event. |
-| `Arc.Collections.HotMethod` | `IHotMethod`, `IHotMethod<T>`, `IHotTreeMethod`, `IHotTreeMethod<TKey, TValue>`, `IHotMethodResolver`, and `HotMethodResolver` for specialized span bounds and tree searches. The built-in resolver supports selected types with default comparers. |
+| `XxHash3Slim` | Allocation-free, non-cryptographic XXH3 64-bit hashing; `Hash64(ReadOnlySpan<byte>, seed)` returns the same values as `System.IO.Hashing.XxHash3.HashToUInt64`. The string and character-span overloads hash UTF-16 bytes in native byte order with seed 0. `Combine` and `CombineRotateMultiply` mix two hashes in argument order. |
+| `CollectionHelper` | Power-of-two capacity rounding and a prime table for sizing hash tables. |
+| `TagObject` | One cached object per tag from 0 to 255, for storing a small tag in an `object` field without boxing. |
+| `Arc.BaseHelper` | Line, text-scanning, number, UTF-8, conversion, and embedded-resource helpers. |
+| `Arc.Struct128`, `Arc.Struct256` | Fixed-size binary values with overlapping fields. Bytes use native byte order; `CompareTo` compares the signed `long` fields in order. |
+| `Arc.IStringConvertible<T>`, `Arc.IUtf8Convertible<T>`, `Arc.IConversionOptions` | Span-based UTF-16 and UTF-8 parsing and formatting contracts, with typed options. |
+| `Arc.VersionHelper` | Version numbers of the entry assembly, or of a loaded assembly selected by name substring (`SetAssembly`). |
+| `Arc.AppCloseHandler` | Runs the first registered handler at most once, on process exit or a Windows console close event (not on Ctrl+C). Later `Register` calls are ignored. |
+| `Arc.Collections.HotMethod` | `HotMethodResolver` provides `IHotMethod<T>` and `IHotTreeMethod<TKey, TValue>` searches for the 8- to 128-bit integer types, `float`, `double`, and `DateTime`. `IHotMethod` and `IHotTreeMethod` are their non-generic markers. |
 
-Conversion interfaces require all members to be implemented. At least one of the two length
-members (`GetStringLength()`/`MaxStringLength` for UTF-16, `GetUtf8Length()`/`MaxUtf8Length` for UTF-8)
-must provide a nonnegative length; the other may return -1. Lengths and written counts use UTF-16 characters or UTF-8 bytes respectively.
-Formatting options may require additional destination space.
-`BaseHelper.ConvertToString` and `ConvertToUtf8` return an empty result when no length
-is available or formatting fails; they do not retry with a larger buffer.
+- `BaseHelper.GetCompleteUtf8Length` excludes an incomplete trailing sequence but does not validate the text.
+  `TryLoadResource(null, name)` loads from the Arc.Collections assembly, not from the caller's.
+- `BaseHelper.ConvertToString` and `ConvertToUtf8` use `IStringConvertible<T>`; `ConvertToUtf8` formats UTF-16 text first, then encodes it as UTF-8.
+  They return an empty result when no length is available or formatting returns `false`, and do not retry with a larger buffer. Exceptions from the formatter propagate.
+- In each conversion interface, at least one length member (`GetStringLength()` or `MaxStringLength`; `GetUtf8Length()` or `MaxUtf8Length`) must return a nonnegative length; the other may return -1.
+- `BaseHelper.TryParseFromSourceOrEnvironmentVariable` and `TryParseFromEnvironmentVariable` accept a successfully parsed prefix.
+  Call the conversion interface's `TryParse` directly and check the consumed length when the entire input must be valid.
+- `BaseHelper.CircularCompareTo`, `CircularMin`, and `CircularMax` compare wrapping counters. This order is not transitive over the entire integer range;
+  use it only when all compared values fit within a window narrower than half the integer range.
+- The sorted collections use the `HotMethod` searches automatically with the default comparer. The library never calls a custom `IHotMethodResolver`.
 
 ## Thread safety
 
-Unless documented otherwise, collections require external synchronization whenever a writer
-is present. Multiple readers are supported only while the instance is unchanged.
-
-- `CircularQueue<T>` supports concurrent producers and consumers.
-- `ObjectPool<T>.Rent` and `Return` are thread-safe; disposal must not overlap either operation.
-- `BytePool` rental, return, and reference counting are thread-safe; `SetPoolLimit` is not.
-  Reference counting does not synchronize reads and writes to the rented bytes.
-- `KeyedObjectCache<TKey, TObject>` synchronizes cache operations; retrieved objects remain
-  the caller's responsibility.
-- `*Hashtable<TValue>` types serialize writes and provide lock-free lookups.
-
-`UnorderedMapSlim<TKey, TValue>` and UTF unordered maps do not check enumeration versions.
-Do not mutate them during enumeration. Struct enumerators avoid boxing when iterated directly;
-enumeration through an interface may allocate.
+| Type | Concurrent use |
+| --- | --- |
+| `CircularQueue<T>` | Multiple producers and consumers. |
+| Numeric and UTF hashtables | Any mix of readers and writers. |
+| `ObjectPool<T>` | `Rent` and `Return` are thread-safe. `Dispose` must not overlap them. |
+| `KeyedObjectCache<TKey, TObject>` | All members are thread-safe. |
+| `BytePool` and its handles | Renting, returning, and reference counting are thread-safe; `SetPoolLimit` is not. Access to the bytes is not synchronized. |
+| `XxHash3Slim`, `HotMethodResolver`, `AppCloseHandler`, `VersionHelper` | Thread-safe, except `VersionHelper.SetAssembly`; call it at startup. |
+| `SpanOwner<T>`, `SequenceBuilder<T>`, `PooledStringBuilder`, `TemporaryList<T>` | Not thread-safe; do not share an instance. |
+| All other collections | Concurrent reads are safe while no thread writes; otherwise synchronize all access. `SlidingList<T>.GetFirstOrDefault()` is a write. |
 
 ## Build and test
 
@@ -264,46 +337,26 @@ dotnet build Arc.Collections.slnx -c Release --no-restore
 dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-build
 ```
 
-The tests use Microsoft.Testing.Platform, including direct execution through
-`dotnet run --project xUnitTest/xUnitTest.csproj -c Release --no-build -- --help`.
+The tests use xUnit v3 on Microsoft.Testing.Platform; `dotnet run --project xUnitTest/xUnitTest.csproj -c Release --no-build -- --help` lists their options.
+One test allocates about 2 GB and is skipped by default. Add `--explicit on` to the test command to include it, or `--explicit only` to run it alone.
+To test the scalar fallbacks of the SIMD paths, set `DOTNET_EnableHWIntrinsic=0` in the environment.
 
-### Coverage
-
-Collect line and branch coverage for the library in Cobertura format:
+Collect line and branch coverage of `Arc.Collections.dll` into `TestResults/coverage.cobertura.xml` (the same command as CI):
 
 ```sh
 dotnet test --project xUnitTest/xUnitTest.csproj -c Release --no-build --coverage --coverage-settings xUnitTest/coverage.config --coverage-output-format cobertura --coverage-output coverage.cobertura.xml --results-directory TestResults
 ```
 
-The coverage configuration selects `Arc.Collections.dll`; test and dependency assemblies
-are excluded. Tests include boundary values, duplicate ordering, interface contracts,
-buffer ownership, reentrant callbacks, and concurrent hashtable growth. Hardware-specific
-hashing and sum paths depend on the CPU. To exercise scalar fallbacks, run the tests in a
-new process with `DOTNET_EnableHWIntrinsic=0`.
+## Performance
 
-### Benchmarks
-
-`Benchmark` contains BenchmarkDotNet workloads; run a selected group with:
+The `Benchmark` project contains BenchmarkDotNet workloads. List them with `--list flat` and select them with `--filter`:
 
 ```sh
 dotnet run --project Benchmark/Benchmark.csproj -c Release -- --filter "*OrderedPublicTest*"
 ```
 
-## Performance
-
-Choose using the operations and data sizes your application needs, then benchmark that workload.
-Node reuse can avoid node allocation, and spans or direct value references can avoid repeated
-lookup or enumeration overhead.
-
-Hashtable growth reuses immutable chain suffixes, and empty snapshots reuse empty arrays.
-`SlidingList<T>.Clear` clears only its occupied window. To measure these paths and bulk
-sequence construction, filter benchmarks by `*HashtableGrowthBenchmark*`,
-`*SlidingListClearBenchmark*`, or `*SequenceBuilderRangeBenchmark*`.
-
-The following retained BenchmarkDotNet results compare `OrderedSet<T>` with
-`System.Collections.Generic.SortedSet<T>`. They are historical measurements; their runtime
-and hardware context is not recorded here, so they do not establish current performance.
-Run the benchmarks above to measure your environment.
+The results below (`OrderedPublicTest`) compare `OrderedSet<T>` with `System.Collections.Generic.SortedSet<T>`.
+They are historical: the runtime and hardware were not recorded, so they may not reflect current performance.
 
 | Method                      | Length    |                Mean |            Error |           StdDev |              Median |       Gen 0 |    Allocated |
 | --------------------------- | --------- | ------------------: | ---------------: | ---------------: | ------------------: | ----------: | -----------: |
@@ -318,3 +371,7 @@ Run the benchmarks above to measure your environment.
 | AddRemoveReplace_OrderedSet | 100       |            11.76 ns |         0.211 ns |         0.289 ns |            11.54 ns |           - |            - |
 | Enumerate_SortedSet         | 100       |         1,664.30 ns |        17.294 ns |        25.349 ns |         1,682.97 ns |      0.0401 |        168 B |
 | Enumerate_OrderedSet        | 100       |         1,218.03 ns |         4.344 ns |         6.230 ns |         1,219.51 ns |      0.0114 |         48 B |
+
+## License
+
+Arc.Collections is released under the [MIT License](LICENSE).

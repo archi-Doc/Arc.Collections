@@ -20,6 +20,7 @@ namespace Arc.Collections;
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 /// <remarks>
 /// Elements are not sorted. Insertion and removal shift subsequent elements.
+/// Searches use <see cref="EqualityComparer{T}.Default"/>.
 /// </remarks>
 public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 {
@@ -52,6 +53,9 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// Initializes a new instance of the <see cref="UnorderedList{T}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="capacity"/> is negative or greater than <see cref="Array.MaxLength"/>.
+    /// </exception>
     public UnorderedList(int capacity)
     {
         if (capacity < 0 || capacity > Array.MaxLength)
@@ -66,6 +70,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// Initializes a new instance of the <see cref="UnorderedList{T}"/> class.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedList(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -130,7 +135,8 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Adds the elements of the specified collection to the end of the list.
     /// </summary>
-    /// <param name="collection">The collection whose elements are added.</param>
+    /// <param name="collection">The collection whose elements are added. It may be this list.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public void AddRange(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -149,9 +155,8 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
                 // source range [0, size) never overlaps the destination range [size, size + count).
                 c.CopyTo(this.items, size);
                 this.size = size + count;
+                this.version++;
             }
-
-            this.version++;
         }
         else
         {
@@ -166,6 +171,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// Adds the elements of the specified array to the end of the list.
     /// </summary>
     /// <param name="array">The array whose elements are added.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
     /// <remarks>This overload also disambiguates arrays, which convert to both
     /// <see cref="IEnumerable{T}"/> and <see cref="ReadOnlySpan{T}"/>.</remarks>
     public void AddRange(T[] array)
@@ -190,9 +196,8 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
             source.CopyTo(this.items.AsSpan(size));
             this.size = size + source.Length;
+            this.version++;
         }
-
-        this.version++;
     }
 
     /// <summary>
@@ -227,19 +232,24 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="array">The destination array.</param>
     /// <param name="arrayIndex">The zero-based destination index.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative.</exception>
+    /// <exception cref="ArgumentException">The elements do not fit in <paramref name="array"/> from <paramref name="arrayIndex"/>.</exception>
     public void CopyTo(T[] array, int arrayIndex)
         => Array.Copy(this.items, 0, array, arrayIndex, this.size);
 
     /// <summary>
-    /// Copies the elements to an array.
+    /// Copies the elements to the beginning of an array.
     /// </summary>
     /// <param name="array">The destination array.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">The elements do not fit in <paramref name="array"/>.</exception>
     public void CopyTo(T[] array) => this.CopyTo(array, 0);
 
     /// <summary>
     /// Copies the elements to a new array.
     /// </summary>
-    /// <returns>A new array containing the elements.</returns>
+    /// <returns>A new array containing the elements, or <see cref="Array.Empty{T}"/> if the list is empty.</returns>
     public T[] ToArray()
     {
         var size = this.size;
@@ -322,6 +332,9 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="index">The zero-based insertion index.</param>
     /// <param name="item">The value to insert.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is negative or greater than <see cref="Count"/>.
+    /// </exception>
     public void Insert(int index, T item)
     {
         var size = this.size;
@@ -350,6 +363,7 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <br/>O(n) operation.
     /// </summary>
     /// <param name="index">The zero-based index of the element to remove.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range.</exception>
     public void RemoveAt(int index)
     {
         var size = this.size;
@@ -378,6 +392,9 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets or sets the number of elements the internal array can hold without resizing.
     /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is less than <see cref="Count"/> or greater than <see cref="Array.MaxLength"/>.
+    /// </exception>
     public int Capacity
     {
         get => this.items.Length;
@@ -411,9 +428,12 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Ensures that the capacity is at least the specified value.
+    /// When the list grows, the capacity may exceed <paramref name="capacity"/> (it is at least doubled when possible).
     /// </summary>
     /// <param name="capacity">The minimum capacity to ensure.</param>
-    /// <returns>The new capacity.</returns>
+    /// <returns>The capacity after the call.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="capacity"/> is greater than <see cref="Array.MaxLength"/>.</exception>
     public int EnsureCapacity(int capacity)
     {
         if (capacity < 0)
@@ -475,12 +495,18 @@ public class UnorderedList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Enumerates the elements of an <see cref="UnorderedList{T}"/>.
     /// </summary>
+    /// <remarks>
+    /// Adding, removing, or replacing elements through the list invalidates the enumerator;
+    /// <see cref="MoveNext"/> and <see cref="IEnumerator.Reset"/> then throw <see cref="InvalidOperationException"/>.
+    /// Writes through <see cref="AsSpan"/> are not detected.
+    /// </remarks>
     public struct Enumerator : IEnumerator<T>
     {
         // The array and size are snapshotted so the hot path reads at most one field
         // (version) through the list reference per MoveNext, instead of three
-        // (version, size, items). Any mutation changes the version, so a stale
-        // snapshot is never observed.
+        // (version, size, items). Any element change through the list changes the version,
+        // and a capacity change only replaces the array with an identical copy, so a stale
+        // snapshot is never observed (except for AsSpan writes made after a capacity change).
         private readonly UnorderedList<T> list;
         private readonly T[] items;
         private readonly int size;

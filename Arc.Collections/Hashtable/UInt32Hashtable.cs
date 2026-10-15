@@ -17,9 +17,14 @@ namespace Arc.Collections;
 /// <summary>
 /// Provides a thread-safe hash table with <see langword="uint" /> keys.
 /// </summary>
-/// <typeparam name="TValue">The type of value.</typeparam>
+/// <typeparam name="TValue">The type of values in the hashtable.</typeparam>
 /// <remarks>
-/// Writes are serialized and lookups are lock-free. TryAdd preserves existing values; AddOrUpdate replaces them.
+/// Writes are serialized by an internal lock. Lookups are lock-free and see each key either before or after a write;
+/// <see cref="Count"/> is updated separately and may briefly lag behind lookups.<br/>
+/// <see cref="TryAdd"/> preserves existing values; <see cref="AddOrUpdate"/> replaces them.<br/>
+/// The key is used as its own hash code, so keys that share their low-order bits
+/// (for example, multiples of a large power of two) fall into the same bucket.<br/>
+/// At most 2^29 (536,870,912) items can be stored; adding another key throws <see cref="InvalidOperationException"/>.
 /// </remarks>
 public class UInt32Hashtable<TValue>
 {
@@ -44,14 +49,14 @@ public class UInt32Hashtable<TValue>
     private int count;
 
     /// <summary>
-    /// Gets the number of elements in the collection.
+    /// Gets the number of items in the hashtable.
     /// </summary>
     public int Count => Volatile.Read(ref this.count);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UInt32Hashtable{TValue}"/> class.
     /// </summary>
-    /// <param name="capacity">The initial capacity.</param>
+    /// <param name="capacity">The minimum number of items the hashtable can hold before it grows.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^29 (536,870,912).</exception>
     public UInt32Hashtable(int capacity = 4)
     {
@@ -59,9 +64,10 @@ public class UInt32Hashtable<TValue>
     }
 
     /// <summary>
-    /// Gets an array containing all values.
+    /// Gets an array containing all values, in no particular order.
     /// </summary>
     /// <returns>A snapshot of the current values, or an empty array when the hashtable is empty.</returns>
+    /// <remarks>The snapshot is taken under the write lock.</remarks>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
@@ -88,32 +94,39 @@ public class UInt32Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to add a key-value pair.
+    /// Attempts to add a key-value pair. An existing value is left unchanged.
     /// </summary>
     /// <param name="key">The key to add.</param>
     /// <param name="value">The value to add.</param>
     /// <returns><see langword="true"/> if the pair was added;
     /// otherwise, <see langword="false"/> if the key already exists.</returns>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public bool TryAdd(uint key, TValue value)
         => this.AddInternal(key, value, false);
 
     /// <summary>
-    /// Adds or updates a key-value pair.
+    /// Adds a key-value pair, or replaces the value if the key already exists.
     /// </summary>
     /// <param name="key">The key to add or update.</param>
     /// <param name="value">The value to store.</param>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public void AddOrUpdate(uint key, TValue value)
         => this.AddInternal(key, value, true);
 
     /// <summary>
-    /// Gets the existing value, or creates and stores a value when the key is absent.
+    /// Gets the value associated with the specified key, or adds a value created by <paramref name="valueFactory"/> if the key is absent.
     /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
-    /// <returns>The existing value, or the newly created value.</returns>
-    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
-    /// it must not modify this hashtable. A modification that would invalidate the insertion
-    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.</remarks>
+    /// <param name="key">The key to locate or add.</param>
+    /// <param name="valueFactory">The function that creates the value for <paramref name="key"/> when the key is absent.</param>
+    /// <returns>The existing value, or the newly added value.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="valueFactory"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory"/> modified this hashtable in a way that invalidates the insertion,
+    /// or the hashtable already holds the maximum number of items.</exception>
+    /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
+    /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
+    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
+    /// If the factory throws or insertion fails, this call does not publish its value. Factory side effects are not rolled back,
+    /// and any created value is not disposed.</remarks>
     public TValue GetOrAdd(uint key, Func<uint, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -130,7 +143,7 @@ public class UInt32Hashtable<TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key to locate.</param>
-    /// <param name="value">When this method returns, the value associated with <paramref name="key"/>; otherwise, the default value.</param>
+    /// <param name="value">When this method returns, the value associated with <paramref name="key"/> if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(uint key, [MaybeNullWhen(false)] out TValue value)
@@ -163,19 +176,19 @@ public class UInt32Hashtable<TValue>
         => this.TryGetValue(key, out _);
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key to remove.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(uint key)
         => this.TryRemove(key, out _);
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key to remove.</param>
-    /// <param name="value">When this method returns, the removed value; otherwise, the default value.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <param name="value">When this method returns, the removed value if the key was found; otherwise, the default value.</param>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(uint key, [MaybeNullWhen(false)] out TValue value)
     {
         using (this.lockObject.EnterScope())
@@ -210,7 +223,7 @@ public class UInt32Hashtable<TValue>
     }
 
     /// <summary>
-    /// Removes all key-value pairs.
+    /// Removes all key-value pairs. The capacity is not reduced.
     /// </summary>
     public void Clear()
     {

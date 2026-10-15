@@ -17,7 +17,8 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 /// <remarks>
-/// Null elements are supported. Duplicate elements are allowed only when enabled at construction.
+/// Null elements are supported and are never passed to the comparer. Duplicate elements are allowed only when enabled at construction.<br/>
+/// Enumeration order is unspecified. The set wraps <see cref="UnorderedMap{TKey, TValue}"/> and shares its enumeration and thread-safety rules.
 /// </remarks>
 public sealed class UnorderedSet<T> : IEnumerable<T>
 {
@@ -26,27 +27,28 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified duplicate behavior.
     /// </summary>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
     public UnorderedSet(bool allowDuplicates = false)
         : this(0, null, allowDuplicates)
     {
     }
 
     /// <summary>
-    /// Initializes an empty set with the specified capacity.
+    /// Initializes an empty set with the specified capacity and duplicate behavior.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="capacity">The initial capacity, rounded up to a power of two (at least 4).</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedSet(int capacity, bool allowDuplicates = false)
         : this(capacity, null, allowDuplicates)
     {
     }
 
     /// <summary>
-    /// Initializes an empty set with the specified comparer.
+    /// Initializes an empty set with the specified comparer and duplicate behavior.
     /// </summary>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
     public UnorderedSet(IEqualityComparer<T>? comparer, bool allowDuplicates = false)
         : this(0, comparer, allowDuplicates)
     {
@@ -55,9 +57,10 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Initializes an empty set with the specified capacity, comparer, and duplicate behavior.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
+    /// <param name="capacity">The initial capacity, rounded up to a power of two (at least 4).</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedSet(int capacity, IEqualityComparer<T>? comparer, bool allowDuplicates)
     {
         this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicates);
@@ -67,6 +70,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Initializes a set containing the specified elements.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedSet(IEnumerable<T> collection)
         : this(collection, null, false)
     {
@@ -77,6 +81,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer)
         : this(collection, comparer, false)
     {
@@ -86,7 +91,8 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Initializes a set containing the specified elements using the specified duplicate behavior.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedSet(IEnumerable<T> collection, bool allowDuplicates)
         : this(collection, null, allowDuplicates)
     {
@@ -97,10 +103,31 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
-    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate elements.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool allowDuplicates)
     {
         ArgumentNullException.ThrowIfNull(collection);
+
+        if (collection is UnorderedSet<T> set)
+        {
+            // Presize from the source's count, which is exact with the same comparer and only an upper bound with a different one
+            // (as for ICollection<T> sources). Skip presizing when the source's duplicates must be merged,
+            // since its count could then far exceed the result.
+            var capacity = set.AllowDuplicates && !allowDuplicates ? 0 : set.Count;
+            this.map = new UnorderedMap<T, byte>(capacity, comparer, allowDuplicates);
+
+            // With the same comparer, the stored hash codes are reused and no element is probed.
+            if (!this.map.TryCopyFrom(set.map))
+            {
+                foreach (var item in set)
+                {
+                    this.map.Add(item, 0);
+                }
+            }
+
+            return;
+        }
 
         this.map = new UnorderedMap<T, byte>(
             GetCollectionCount(collection),
@@ -124,12 +151,12 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     public int Count => this.map.Count;
 
     /// <summary>
-    /// Gets the current capacity.
+    /// Gets the number of allocated node slots. It doubles when an element is added while all slots are in use.
     /// </summary>
     public int Capacity => this.map.Capacity;
 
     /// <summary>
-    /// Gets the comparer used for elements.
+    /// Gets the comparer used for non-null elements.
     /// </summary>
     public IEqualityComparer<T> Comparer => this.map.Comparer;
 
@@ -137,7 +164,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Adds the specified element to the set.
     /// </summary>
     /// <param name="item">The element.</param>
-    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the element was added; <see langword="false"/> if duplicates are disabled and an equal element already exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(T? item)
         => this.map.Add(item, 0).NewlyAdded;
@@ -161,7 +188,7 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
         => this.map.Remove(item);
 
     /// <summary>
-    /// Removes all elements from the set.
+    /// Removes all elements from the set. The capacity is unchanged.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
@@ -187,7 +214,10 @@ public sealed class UnorderedSet<T> : IEnumerable<T>
     /// Copies the elements to the specified array.
     /// </summary>
     /// <param name="array">The destination array.</param>
-    /// <param name="index">The zero-based index.</param>
+    /// <param name="index">The zero-based index in <paramref name="array"/> at which copying begins.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative or greater than the length of <paramref name="array"/>.</exception>
+    /// <exception cref="ArgumentException">The destination array is too small.</exception>
     public void CopyTo(T[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);

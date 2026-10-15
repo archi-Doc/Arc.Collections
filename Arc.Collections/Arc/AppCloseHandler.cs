@@ -11,7 +11,8 @@ namespace Arc;
 /// </summary>
 /// <remarks>
 /// Uses <see cref="AppDomain.ProcessExit" /> and, on Windows, CTRL_CLOSE_EVENT.
-/// Only the first registered handler is used.
+/// Only the first registered handler is used, and it may run on any thread.
+/// Other console control events, such as Ctrl+C, are not handled.
 /// </remarks>
 public static partial class AppCloseHandler
 {
@@ -27,6 +28,7 @@ public static partial class AppCloseHandler
     /// Registers a handler for process exit and, on Windows, console close events.
     /// </summary>
     /// <param name="handler">The action to execute when a close event occurs.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="handler"/> is <see langword="null"/>.</exception>
     /// <remarks>Only the first handler is registered; subsequent calls are ignored.
     /// The handler is invoked at most once.</remarks>
     public static void Register(Action handler)

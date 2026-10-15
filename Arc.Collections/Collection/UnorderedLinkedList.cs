@@ -19,10 +19,16 @@ namespace Arc.Collections;
 /// Represents a doubly linked list.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
+/// <remarks>
+/// A removed node is detached and can be added to a list again, which avoids allocating a new node.
+/// Values are compared with <see cref="EqualityComparer{T}.Default"/>.<br/>
+/// Enumeration detects structural modifications (adding, removing or moving nodes, and clearing the list);
+/// changing a node's value through <see cref="Node.ValueRef"/> or <see cref="Node.UnsafeChangeValue"/> does not invalidate enumerators.
+/// </remarks>
 public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection
 {
     /// <summary>
-    /// Represents a node in a <see cref="UnorderedLinkedList{T}"/>.
+    /// Represents a node in an <see cref="UnorderedLinkedList{T}"/>.
     /// </summary>
     public sealed class Node
     {
@@ -43,7 +49,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         public UnorderedLinkedList<T>? List => this.list;
 
         /// <summary>
-        /// Gets the previous node.
+        /// Gets the previous node, or <see langword="null"/> if this node is the first node or is detached.
         /// </summary>
         public Node? Previous
         {
@@ -58,7 +64,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         }
 
         /// <summary>
-        /// Gets the next node.
+        /// Gets the next node, or <see langword="null"/> if this node is the last node or is detached.
         /// </summary>
         public Node? Next
         {
@@ -124,6 +130,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// Initializes a new instance of the <see cref="UnorderedLinkedList{T}"/> class.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public UnorderedLinkedList(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -160,12 +167,12 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Gets the first node.
+    /// Gets the first node, or <see langword="null"/> if the list is empty.
     /// </summary>
     public Node? First => this.head;
 
     /// <summary>
-    /// Gets the last node.
+    /// Gets the last node, or <see langword="null"/> if the list is empty.
     /// </summary>
     public Node? Last => this.head?.previous;
 
@@ -191,7 +198,8 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     void ICollection<T>.Add(T value) => this.AddLast(value);
 
     /// <summary>
-    /// Removes all elements from the list.
+    /// Removes all elements from the list. Every node is detached and can be reused.
+    /// <br/>O(n) operation.
     /// </summary>
     public void Clear()
     {
@@ -223,10 +231,13 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     public bool Contains(T value) => this.Find(value) is not null;
 
     /// <summary>
-    /// Copies the list to an array.
+    /// Copies the elements of the list to an array, starting at the specified index.
     /// </summary>
     /// <param name="array">The destination array.</param>
     /// <param name="arrayIndex">The zero-based destination index.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative or greater than the array length.</exception>
+    /// <exception cref="ArgumentException">The destination array is too small.</exception>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -250,9 +261,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Copies the list to an array.
+    /// Copies the elements of the list to the start of an array.
     /// </summary>
     /// <param name="array">The destination array.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">The destination array is too small.</exception>
     public void CopyTo(T[] array) => this.CopyTo(array, 0);
 
     void ICollection.CopyTo(Array array, int index)
@@ -339,7 +352,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
     /// <summary>
-    /// Enumerates the elements of a <see cref="UnorderedLinkedList{T}"/>.
+    /// Enumerates the elements of an <see cref="UnorderedLinkedList{T}"/>.
     /// </summary>
     public struct Enumerator : IEnumerator<T>
     {
@@ -361,6 +374,9 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         /// <summary>
         /// Gets the element at the current position of the enumerator.
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// <see cref="MoveNext"/> has not been called, or it has returned <see langword="false"/>.
+        /// </exception>
         public T Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -382,6 +398,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
         /// Advances the enumerator to the next element.
         /// </summary>
         /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="InvalidOperationException">The list was modified after the enumerator was created.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -442,6 +459,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     /// <summary>
     /// Finds the first node containing the specified value.
+    /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
     /// <returns>The first matching node, or <see langword="null"/> if not found.</returns>
@@ -488,6 +506,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
 
     /// <summary>
     /// Finds the last node containing the specified value.
+    /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
     /// <returns>The last matching node, or <see langword="null"/> if not found.</returns>
@@ -534,9 +553,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a new value after the specified node.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The node in this list after which to insert.</param>
     /// <param name="value">The value.</param>
     /// <returns>The new node.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> does not belong to this list.</exception>
     public Node AddAfter(Node node, T value)
     {
         this.ValidateNode(node);
@@ -546,10 +567,14 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Adds the specified node after an existing node.
+    /// Adds a detached node after an existing node.
     /// </summary>
-    /// <param name="node">The node.</param>
-    /// <param name="newNode">The node to add.</param>
+    /// <param name="node">The node in this list after which to insert.</param>
+    /// <param name="newNode">The detached node to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> or <paramref name="newNode"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="node"/> does not belong to this list, or <paramref name="newNode"/> already belongs to a list.
+    /// </exception>
     public void AddAfter(Node node, Node newNode)
     {
         this.ValidateNode(node);
@@ -561,9 +586,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Adds a new value before the specified node.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The node in this list before which to insert.</param>
     /// <param name="value">The value.</param>
     /// <returns>The new node.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> does not belong to this list.</exception>
     public Node AddBefore(Node node, T value)
     {
         this.ValidateNode(node);
@@ -578,10 +605,14 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Adds the specified node before an existing node.
+    /// Adds a detached node before an existing node.
     /// </summary>
-    /// <param name="node">The node.</param>
-    /// <param name="newNode">The node to add.</param>
+    /// <param name="node">The node in this list before which to insert.</param>
+    /// <param name="newNode">The detached node to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> or <paramref name="newNode"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="node"/> does not belong to this list, or <paramref name="newNode"/> already belongs to a list.
+    /// </exception>
     public void AddBefore(Node node, Node newNode)
     {
         this.ValidateNode(node);
@@ -617,9 +648,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Adds a node at the start of the list.
+    /// Adds a detached node at the start of the list.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The detached node to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> already belongs to a list.</exception>
     public void AddFirst(Node node)
     {
         this.ValidateNewNode(node);
@@ -659,9 +692,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Adds a node at the end of the list.
+    /// Adds a detached node at the end of the list.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The detached node to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> already belongs to a list.</exception>
     public void AddLast(Node node)
     {
         this.ValidateNewNode(node);
@@ -679,9 +714,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Removes the specified node.
+    /// Removes the specified node. The node is detached and can be reused.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The node in this list to remove.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> does not belong to this list.</exception>
     public void Remove(Node node)
     {
         this.ValidateNode(node);
@@ -689,9 +726,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Moves the specified node to the start of the list.
+    /// Moves the specified node to the start of the list. Does nothing if it is already the first node.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The node in this list to move.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> does not belong to this list.</exception>
     public void MoveToFirst(Node node)
     {
         this.ValidateNode(node);
@@ -712,9 +751,11 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     }
 
     /// <summary>
-    /// Moves the specified node to the end of the list.
+    /// Moves the specified node to the end of the list. Does nothing if it is already the last node.
     /// </summary>
-    /// <param name="node">The node.</param>
+    /// <param name="node">The node in this list to move.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="node"/> does not belong to this list.</exception>
     public void MoveToLast(Node node)
     {
         this.ValidateNode(node);
@@ -742,6 +783,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Removes the node at the start of the list.
     /// </summary>
+    /// <exception cref="InvalidOperationException">The list is empty.</exception>
     public void RemoveFirst()
     {
         var head = this.head;
@@ -756,6 +798,7 @@ public class UnorderedLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>, IC
     /// <summary>
     /// Removes the node at the end of the list.
     /// </summary>
+    /// <exception cref="InvalidOperationException">The list is empty.</exception>
     public void RemoveLast()
     {
         var head = this.head;

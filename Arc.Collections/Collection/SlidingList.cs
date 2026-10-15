@@ -17,7 +17,7 @@ namespace Arc.Collections;
 /// A position is a 31-bit unsigned value (<c>0</c> to <see cref="int.MaxValue"/>) that increases as elements are
 /// added and wraps around to <c>0</c> after <see cref="int.MaxValue"/>. Positions returned by <see cref="Add(T)"/>
 /// remain valid until the element leaves the window, so they can be stored and used later as stable handles.<br/>
-/// The window of valid positions is <c>[<see cref="StartPosition"/>, StartPosition + <see cref="Capacity"/>)</c>.
+/// The window of valid positions is <c>[<see cref="StartPosition"/>, StartPosition + <see cref="Capacity"/>)</c>, modulo 2^31.
 /// It advances when the elements at the head are removed (see <see cref="Slide"/>), which discards the
 /// positions that fall behind it.<br/>
 /// Removing an element from the middle leaves a hole. <see cref="UsedSlotCount"/> counts the slots in use including
@@ -25,7 +25,11 @@ namespace Arc.Collections;
 /// <see cref="ToArray"/> and <see cref="CopyTo(T[], int)"/> skip holes.<br/>
 /// <b>Note:</b> because this class addresses elements by position, the whole <see cref="IList{T}"/> surface
 /// (<see cref="this[int]"/>, <see cref="IndexOf(T)"/>, <see cref="Insert(int, T)"/>, <see cref="RemoveAt(int)"/>)
-/// takes and returns positions rather than zero-based indexes.<br/>
+/// takes and returns positions rather than zero-based indexes. Code that indexes an <see cref="IList{T}"/> or
+/// <see cref="IReadOnlyList{T}"/> from <c>0</c> to <c>Count - 1</c>, including LINQ operators such as
+/// <c>First</c>, <c>Last</c>, <c>ElementAt</c>, <c>Skip</c> and <c>Select(...).ToArray()</c>, therefore returns wrong
+/// elements or throws unless <see cref="StartPosition"/> is <c>0</c> and there are no holes.
+/// Enumerate the list or call <see cref="ToArray"/> instead.<br/>
 /// Instance members are not thread-safe.
 /// </remarks>
 public class SlidingList<T> : IList<T>, IReadOnlyList<T>
@@ -60,11 +64,11 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets the position of the first slot in use, which is also the lower bound of the valid position window.
     /// </summary>
-    /// <remarks>When the list is empty this is the position the next added element will receive.</remarks>
+    /// <remarks>When <see cref="UsedSlotCount"/> is <c>0</c>, this is the position the next added element will receive.</remarks>
     public int StartPosition => this.startPosition;
 
     /// <summary>
-    /// Gets the position one past the last slot in use, that is, the exclusive end of <see cref="UsedSlotCount"/>.
+    /// Gets the position one past the last slot in use, that is, <see cref="StartPosition"/> + <see cref="UsedSlotCount"/> modulo 2^31.
     /// </summary>
     /// <remarks>This is the position that <see cref="Add(T)"/> will return next, provided <see cref="CanAdd"/> is <see langword="true"/>.</remarks>
     public int EndPosition => PositionMask & (this.startPosition + this.consumed);
@@ -83,7 +87,9 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets a value indicating whether the <see cref="SlidingList{T}"/> has a free slot, and therefore whether <see cref="Add(T)"/> will succeed.
     /// </summary>
-    /// <remarks>A hole in the middle of the window does not count as free space; only <see cref="Slide"/> reclaims slots.</remarks>
+    /// <remarks>Holes do not count as free space. A hole is freed when it reaches the head of the window and
+    /// <see cref="Slide"/> passes over it (removing the element at <see cref="StartPosition"/> or calling
+    /// <see cref="GetFirstOrDefault"/> does this automatically), or by <see cref="Clear"/>.</remarks>
     public bool CanAdd => this.consumed < this.items.Length;
 
     /// <summary>
@@ -91,13 +97,15 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     int ICollection<T>.Count => this.count;
 
-    /// <inheritdoc cref="ICollection{T}.Count"/>
+    /// <summary>
+    /// Gets the number of live elements, excluding the holes counted by <see cref="UsedSlotCount"/>.
+    /// </summary>
     int IReadOnlyCollection<T>.Count => this.count;
 
     #endregion
 
     /// <summary>
-    /// Returns the element at <see cref="StartPosition"/>, or <see langword="null"/> if the <see cref="SlidingList{T}"/> is empty.
+    /// Drops any leading holes and returns the element at <see cref="StartPosition"/>, or <see langword="null"/> if there is no live element.
     /// </summary>
     /// <returns>The first live element, or <see langword="null"/> if there is none.</returns>
     /// <remarks>
@@ -196,7 +204,7 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Advances the window past the holes at its head, freeing those slots for <see cref="Add(T)"/>.
     /// </summary>
-    /// <returns>The number of slots the window advanced by; <c>0</c> if the first slot holds a live element or the list is empty.</returns>
+    /// <returns>The number of slots the window advanced by; <c>0</c> if the first slot holds a live element or <see cref="UsedSlotCount"/> is <c>0</c>.</returns>
     /// <remarks>The positions skipped this way become invalid. A non-zero result invalidates outstanding enumerators.</remarks>
     public int Slide()
     {
@@ -255,10 +263,11 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             return -1;
         }
 
-        var i = this.headIndex + consumed;
-        if (i >= items.Length)
+        // Unsigned, because headIndex + consumed can exceed int.MaxValue when the capacity is above 2^30.
+        var i = (uint)this.headIndex + (uint)consumed;
+        if (i >= (uint)items.Length)
         {
-            i -= items.Length;
+            i -= (uint)items.Length;
         }
 
         items[i] = value;
@@ -374,8 +383,10 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int OffsetToIndex(int offset)
     {
-        var index = this.headIndex + offset;
-        return index < this.items.Length ? index : index - this.items.Length;
+        // Unsigned, because headIndex + offset can exceed int.MaxValue when the capacity is above 2^30.
+        var index = (uint)this.headIndex + (uint)offset;
+        var length = (uint)this.items.Length;
+        return (int)(index < length ? index : index - length);
     }
 
     /// <summary>
@@ -448,8 +459,9 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// <param name="array">The one-dimensional array that is the destination of the copied elements.</param>
     /// <param name="arrayIndex">The zero-based index in <paramref name="array"/> at which copying begins.</param>
     /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="arrayIndex"/> is out of range, or <paramref name="array"/> has
-    /// less than <see cref="ICollection{T}.Count"/> elements available from <paramref name="arrayIndex"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative or greater than the length of <paramref name="array"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="array"/> has fewer than <see cref="ICollection{T}.Count"/> elements
+    /// available from <paramref name="arrayIndex"/>.</exception>
     public void CopyTo(T[] array, int arrayIndex)
     {
         if (array is null)
@@ -457,8 +469,13 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             throw ThrowHelper.ArrayNull();
         }
 
+        if ((uint)arrayIndex > (uint)array.Length)
+        {
+            throw ThrowHelper.ArrayIndexOutOfRange();
+        }
+
         var count = this.count;
-        if ((uint)arrayIndex > (uint)array.Length || array.Length - arrayIndex < count)
+        if (array.Length - arrayIndex < count)
         {
             throw ThrowHelper.ArrayTooSmall();
         }
@@ -515,15 +532,17 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="array">The one-dimensional array that is the destination of the copied elements.</param>
     /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="array"/> has less than <see cref="ICollection{T}.Count"/> elements.</exception>
+    /// <exception cref="ArgumentException"><paramref name="array"/> has fewer than <see cref="ICollection{T}.Count"/> elements.</exception>
     public void CopyTo(T[] array) => this.CopyTo(array, 0);
 
     /// <summary>
-    /// Removes the first occurrence of a specific object, searching from <see cref="StartPosition"/>.
+    /// Removes the first occurrence of a value, searching from <see cref="StartPosition"/> with <see cref="EqualityComparer{T}.Default"/>.
+    /// The element is removed as with <see cref="TryRemoveAt(int)"/>, so a hole is left unless it is at <see cref="StartPosition"/>.
     /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The object to remove.</param>
-    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
+    /// <param name="value">The value to remove.</param>
+    /// <returns><see langword="true"/> if an element was removed; <see langword="false"/> if <paramref name="value"/> is
+    /// not found or is <see langword="null"/>.</returns>
     public bool Remove(T value)
     {
         var position = this.IndexOf(value);
@@ -535,8 +554,16 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     /// use <see cref="Add(T)"/> to detect that case.
     /// </summary>
     /// <param name="item">The value to add.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
     void ICollection<T>.Add(T item)
-        => this.Add(item);
+    {
+        if (item is null)
+        {
+            throw ThrowHelper.ItemNull();
+        }
+
+        this.Add(item);
+    }
 
     #endregion
 
@@ -600,14 +627,23 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Stores an element at the specified position. Unlike <see cref="IList{T}.Insert(int, T)"/>, this overwrites
-    /// the slot and does not shift the subsequent elements; it is equivalent to <see cref="TrySet(int, T)"/>.
+    /// Stores an element at the specified position. The parameter is a position, not a zero-based index.
+    /// Unlike the usual <see cref="IList{T}.Insert(int, T)"/> contract, this overwrites the slot and does not shift
+    /// the subsequent elements; it is <see cref="TrySet(int, T)"/> with an exception instead of a <see langword="false"/> result.
     /// </summary>
     /// <param name="position">The position at which the item is stored.</param>
     /// <param name="item">The object to store.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the window.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    public void Insert(int position, T item) => this[position] = item;
+    public void Insert(int position, T item)
+    {
+        if (item is null)
+        {
+            throw ThrowHelper.ItemNull();
+        }
+
+        this[position] = item;
+    }
 
     /// <summary>
     /// Removes the element at the specified position. The parameter is a position, not a zero-based index;
@@ -760,8 +796,16 @@ public class SlidingList<T> : IList<T>, IReadOnlyList<T>
             => new ArgumentNullException("value");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception ItemNull()
+            => new ArgumentNullException("item");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static Exception ArrayNull()
             => new ArgumentNullException("array");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static Exception ArrayIndexOutOfRange()
+            => new ArgumentOutOfRangeException("arrayIndex");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static Exception ArrayTooSmall()

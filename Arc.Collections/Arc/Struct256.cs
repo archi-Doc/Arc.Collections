@@ -138,7 +138,7 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     /// <summary>
     /// Initializes a new instance of the <see cref="Struct256"/> struct from a 32-bit value.
     /// </summary>
-    /// <param name="value">The value stored in the lowest 64 bits. The remaining bits are cleared.</param>
+    /// <param name="value">The value stored in the lowest 64 bits, sign-extended. The remaining bits are cleared.</param>
     public Struct256(int value)
     {
         this.Long0 = value;
@@ -220,7 +220,7 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
     /// <summary>
     /// Returns a read-only view over the raw bytes of this value.
     /// </summary>
-    /// <returns>A span of <see cref="Length"/> bytes.</returns>
+    /// <returns>A span of <see cref="Length"/> bytes that refers to this instance; it must not outlive the instance.</returns>
     [UnscopedRef]
     public ReadOnlySpan<byte> AsSpan()
         => MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref Unsafe.AsRef(in this), 1));
@@ -273,7 +273,7 @@ public readonly partial struct Struct256 : IEquatable<Struct256>, IComparable<St
 
     /// <summary>
     /// Compares this value with another value of the same type.
-    /// The fields are compared in ascending order, starting with <see cref="Long0"/>.
+    /// <see cref="Long0"/> through <see cref="Long3"/> are compared in order, as signed 64-bit values.
     /// </summary>
     /// <param name="other">The value to compare with.</param>
     /// <returns>A negative value, zero, or a positive value depending on the relative order.</returns>
