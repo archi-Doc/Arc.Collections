@@ -6,7 +6,7 @@
 <#@ output extension=".cs" #>
 <#
 // Total: use CompareTo() instead of the relational operators, so that the ordering matches
-// Comparer<T>.Default for IEEE-754 types (NaN and negative zero).
+// Comparer<T>.Default for IEEE-754 types (NaN equals NaN and sorts before every other value).
 var allTypes = new (string Simple, string Name, bool Total)[]
 {
     ("byte", "UInt8", false),

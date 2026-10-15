@@ -21,8 +21,10 @@ namespace Arc.Collections;
 /// <typeparam name="TKey">The type of keys in the map. Keys must be non-null.</typeparam>
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
 /// <remarks>
+/// Keys are compared with <see cref="EqualityComparer{T}.Default"/> and hashed with <see cref="object.GetHashCode"/>;
+/// custom comparers are not supported. Members that take a key throw <see cref="ArgumentNullException"/> for a <see langword="null"/> key.<br/>
 /// TryAdd preserves existing values; AddOrUpdate and indexer assignment replace them. All access requires external synchronization
-/// when a writer is present. Enumeration does not detect modifications.
+/// when a writer is present. Enumeration order is unspecified, and enumeration does not detect modifications.
 /// </remarks>
 public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
@@ -47,17 +49,18 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
         /// <summary>
-        /// Gets the key stored in the node.
+        /// Gets the key stored in the node. Valid only while the node is in use.
         /// </summary>
         public readonly TKey Key => this.key;
 
         /// <summary>
-        /// Gets the value stored in the node.
+        /// Gets the value stored in the node. Valid only while the node is in use.
         /// </summary>
         public readonly TValue Value => this.value;
 
         /// <summary>
-        /// Determines whether the node currently holds an element.
+        /// Determines whether the node currently holds an element.<br/>
+        /// The result is meaningful only for indexes below the slot count returned by <see cref="UnsafeGetNodes"/>.
         /// </summary>
         /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsInUse() => this.next >= -1;
@@ -78,7 +81,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Initializes an empty map with the specified minimum capacity.
     /// </summary>
-    /// <param name="minimumCapacity">The minimum required capacity.</param>
+    /// <param name="minimumCapacity">
+    /// The minimum required capacity. It is rounded up to a power of two of at least <see cref="CollectionHelper.MinimumCapacity"/>.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumCapacity"/> is greater than 2^30.</exception>
     public UnorderedMapSlim(uint minimumCapacity = 0)
     {
         if (minimumCapacity > MaximumCapacity)
@@ -99,25 +105,27 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     public int Count => this._count - this._freeCount;
 
     /// <summary>
-    /// Gets the current capacity.
+    /// Gets the number of allocated node slots. It doubles when an element is added while all slots are in use.
     /// </summary>
     public int Capacity => this._nodes.Length;
 
     /// <summary>
-    /// Gets or sets the value associated with the specified key.
+    /// Gets or sets the value associated with the specified key.<br/>
+    /// Setting a value adds the key or replaces its existing value.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <exception cref="KeyNotFoundException">The property is retrieved and <paramref name="key"/> does not exist.</exception>
     public TValue this[TKey key]
     {
         get
         {
-            var index = this.FindIndex(key);
-            if (index >= 0)
+            ref var value = ref this.FindValue(key);
+            if (Unsafe.IsNullRef(ref value))
             {
-                return this._nodes[index].value;
+                ThrowKeyNotFound();
             }
 
-            ThrowKeyNotFound();
-            return default!;
+            return value;
         }
 
         set => this.TryInsert(key, value, true);
@@ -126,14 +134,17 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Gets direct access to the internal node array.<br/>
     /// Inspect only indexes below the returned slot count, and use <see cref="Node.IsInUse"/> to skip removed nodes.
-    /// The array may be replaced when the map is resized.
+    /// The array may be replaced when the map is resized; do not hold it across mutations.
     /// </summary>
-    /// <returns>The internal node array and the number of node slots in use.</returns>
+    /// <returns>
+    /// The internal node array and the slot count: the number of slots used since the map was created or last cleared, including removed ones.
+    /// Slots at or above this count hold no elements.
+    /// </returns>
     public (Node[] Nodes, int SlotCount) UnsafeGetNodes()
         => (this._nodes, this._count);
 
     /// <summary>
-    /// Adds or updates an element with the specified key.
+    /// Adds an element, or replaces the value when the key already exists.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
@@ -158,10 +169,11 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey key)
-        => this.FindIndex(key) >= 0;
+        => !Unsafe.IsNullRef(ref this.FindValue(key));
 
     /// <summary>
-    /// Determines whether the map contains the specified value.
+    /// Determines whether the map contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
+    /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
@@ -201,15 +213,15 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the value associated with the key if found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
-        var index = this.FindIndex(key);
-        if (index >= 0)
+        ref var found = ref this.FindValue(key);
+        if (!Unsafe.IsNullRef(ref found))
         {
-            value = this._nodes[index].value;
+            value = found;
             return true;
         }
 
@@ -220,11 +232,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// <summary>
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.<br/>
-    /// Computes the hash and traverses the bucket once, avoiding the repeated lookup
-    /// of a TryGetValue/Add pair.
+    /// The key is hashed and looked up once, unlike separate <c>TryGetValue</c> and <c>AddOrUpdate</c> calls.
     /// </summary>
     /// <param name="key">The key to look up or add.</param>
-    /// <param name="exists"><see langword="true"/> if the key already existed.</param>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed; otherwise, <see langword="false"/>.</param>
     /// <returns>
     /// A reference to the value slot. Do not add or remove entries, or clear the map,
     /// while using the reference; these operations can invalidate it.
@@ -299,7 +310,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     /// Removes the element with the specified key and returns its value.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the removed value if the key was found; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
@@ -355,7 +366,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     }
 
     /// <summary>
-    /// Removes all elements from the map.
+    /// Removes all elements from the map. The capacity is unchanged.
     /// </summary>
     public void Clear()
     {
@@ -377,7 +388,7 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
     }
 
     /// <summary>
-    /// Returns an allocation-free enumerator.
+    /// Returns an allocation-free enumerator over the elements, in unspecified order.
     /// </summary>
     /// <returns>An enumerator for the collection.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -391,7 +402,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         => new Enumerator(this);
 
     /// <summary>
-    /// Enumerates the elements without allocation when used directly.
+    /// Enumerates the elements without allocation when used directly.<br/>
+    /// It does not detect modifications; do not modify the map during enumeration.
     /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
     {
@@ -410,7 +422,8 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
 
         /// <summary>
-        /// Gets the element at the current position of the enumerator.
+        /// Gets the element at the current position of the enumerator.<br/>
+        /// The value is undefined before the first call to <see cref="MoveNext"/> or after it returns <see langword="false"/>.
         /// </summary>
         public readonly KeyValuePair<TKey, TValue> Current
         {
@@ -473,8 +486,10 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
         }
     }
 
+    // Returns the value slot itself, so a successful lookup needs no second
+    // load and bounds check of the node array.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int FindIndex(TKey key)
+    private ref TValue FindValue(TKey key)
     {
         if (key is null)
         {
@@ -491,13 +506,13 @@ public class UnorderedMapSlim<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TVa
             if (node.hashCode == hashCode &&
                 comparer.Equals(node.key, key))
             {
-                return index;
+                return ref node.value;
             }
 
             index = node.next;
         }
 
-        return -1;
+        return ref Unsafe.NullRef<TValue>();
     }
 
     private bool TryInsert(TKey key, TValue value, bool overwrite)

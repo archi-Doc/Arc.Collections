@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -22,6 +23,13 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
+/// <remarks>
+/// Null keys are kept in a separate chain and are never passed to the comparer.
+/// Enumeration order is unspecified, and so is the order in which nodes with duplicate keys are found.<br/>
+/// Enumerators detect modifications made through any member except the unsafe ones:
+/// <see cref="UnsafeChangeValue(int, TValue)"/> and writes to the array returned by <see cref="UnsafeGetNodes"/>.
+/// All access requires external synchronization when a writer is present.
+/// </remarks>
 public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
 {
     private const int MinimumCapacity = 4;
@@ -33,7 +41,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public struct Node
     {
         /// <summary>
-        /// The <c>previous</c> value that marks a node as removed and available for reuse.
+        /// The internal link value that marks a removed node whose slot can be reused. Use <see cref="IsUnused"/> to test a node.
         /// </summary>
         public const int UnusedMarker = -2;
 
@@ -46,24 +54,26 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
 #pragma warning restore SA1307 // Accessible fields should begin with upper-case letter
 
         /// <summary>
-        /// Determines whether the node currently holds an element.
+        /// Determines whether the node currently holds an element.<br/>
+        /// The result is meaningful only for slots below the slot count returned by <see cref="UnsafeGetNodes"/>.
         /// </summary>
         /// <returns><see langword="true"/> if the node is in use; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsInUse() => this.previous != UnusedMarker;
 
         /// <summary>
-        /// Determines whether the node has been removed.
+        /// Determines whether the node has been removed.<br/>
+        /// The result is meaningful only for slots below the slot count returned by <see cref="UnsafeGetNodes"/>.
         /// </summary>
         /// <returns><see langword="true"/> if the node is unused; otherwise, <see langword="false"/>.</returns>
         public readonly bool IsUnused() => this.previous == UnusedMarker;
 
         /// <summary>
-        /// Gets the key stored in the node.
+        /// Gets the key stored in the node. Valid only while the node is in use.
         /// </summary>
         public readonly TKey? Key => this.key;
 
         /// <summary>
-        /// Gets the value stored in the node.
+        /// Gets the value stored in the node. Valid only while the node is in use.
         /// </summary>
         public readonly TValue Value => this.value;
     }
@@ -91,7 +101,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
+    /// <param name="capacity">The initial node capacity, rounded up to a power of two (at least 4).</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedMap(int capacity)
         : this(capacity, null, false)
     {
@@ -118,8 +129,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity and comparer.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
+    /// <param name="capacity">The initial node capacity, rounded up to a power of two (at least 4).</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer)
         : this(capacity, comparer, false)
     {
@@ -128,8 +140,9 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity and duplicate-key behavior.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
+    /// <param name="capacity">The initial node capacity, rounded up to a power of two (at least 4).</param>
     /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedMap(int capacity, bool allowDuplicates)
         : this(capacity, null, allowDuplicates)
     {
@@ -138,9 +151,10 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// <summary>
     /// Initializes an empty map with the specified capacity, comparer, and duplicate-key behavior.
     /// </summary>
-    /// <param name="capacity">The capacity.</param>
+    /// <param name="capacity">The initial node capacity, rounded up to a power of two (at least 4).</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     /// <param name="allowDuplicates"><see langword="true"/> to allow duplicate keys.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^30.</exception>
     public UnorderedMap(int capacity, IEqualityComparer<TKey>? comparer, bool allowDuplicates)
     {
         this.Initialize(capacity);
@@ -158,12 +172,12 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     public int Count => this.nodeCount - this.freeCount;
 
     /// <summary>
-    /// Gets the current node capacity.
+    /// Gets the number of allocated node slots. It doubles when an element is added while all slots are in use.
     /// </summary>
     public int Capacity => this.nodes.Length;
 
     /// <summary>
-    /// Gets the comparer used for keys.
+    /// Gets the comparer used for non-null keys.
     /// </summary>
     public IEqualityComparer<TKey> Comparer
         => this.comparer ?? EqualityComparer<TKey>.Default;
@@ -192,8 +206,11 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     }
 
     /// <summary>
-    /// Gets or sets the value associated with the specified key.
+    /// Gets or sets the value associated with the specified key.<br/>
+    /// The getter reads, and the setter updates, the first matching node found; the setter adds a node when none matches.
     /// </summary>
+    /// <param name="key">The key, which may be <see langword="null"/>.</param>
+    /// <exception cref="KeyNotFoundException">The property is retrieved and <paramref name="key"/> is not found.</exception>
     public TValue this[TKey? key]
     {
         get
@@ -216,13 +233,16 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// Inspect only indexes below the returned slot count, and use <see cref="Node.IsInUse"/> to skip removed nodes.
     /// The array may be replaced when the map is resized; do not hold it across mutations.
     /// </summary>
-    /// <returns>The internal node array and the number of node slots in use.</returns>
+    /// <returns>
+    /// The internal node array and the slot count: the number of slots used since the map was created or last cleared, including removed ones.
+    /// Slots at or above this count hold no elements.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (Node[] Nodes, int SlotCount) UnsafeGetNodes()
         => (this.nodes, this.nodeCount);
 
     /// <summary>
-    /// Adds an element, or returns the existing node when duplicate keys are disabled.
+    /// Adds an element. When duplicate keys are disabled and the key already exists, returns the existing node, which keeps its value.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
@@ -241,7 +261,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         => this.FindFirstNode(key) >= 0;
 
     /// <summary>
-    /// Determines whether the specified key and value exist.
+    /// Determines whether a node with the specified key and value exists.<br/>
+    /// Values are compared with <see cref="EqualityComparer{T}.Default"/>.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
@@ -251,7 +272,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         => this.FindNode(key, value) >= 0;
 
     /// <summary>
-    /// Determines whether the specified value exists.
+    /// Determines whether the map contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
+    /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
@@ -296,7 +318,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     /// Attempts to get the value associated with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="value">When this method returns, the value of the first matching node found, if any; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey? key, [MaybeNullWhen(false)] out TValue value)
@@ -418,7 +440,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     }
 
     /// <summary>
-    /// Finds the first node with the specified key and value.
+    /// Finds the first node with the specified key and value.<br/>
+    /// Values are compared with <see cref="EqualityComparer{T}.Default"/>.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
@@ -511,7 +534,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     }
 
     /// <summary>
-    /// Removes the first element with the specified key and value.
+    /// Removes the first element with the specified key and value.<br/>
+    /// Values are compared with <see cref="EqualityComparer{T}.Default"/>.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
@@ -602,11 +626,14 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     }
 
     /// <summary>
-    /// Updates the key of the specified node while preserving its node index.
+    /// Updates the key of the specified node while preserving its node index and value.
     /// </summary>
     /// <param name="nodeIndex">The node index.</param>
-    /// <param name="key">The key.</param>
-    /// <returns><see langword="true"/> if the key was changed; otherwise, <see langword="false"/>.</returns>
+    /// <param name="key">The new key, which may be <see langword="null"/>.</param>
+    /// <returns>
+    /// <see langword="true"/> if the key was changed; <see langword="false"/> if the node is not in use, the new key equals the current key,
+    /// or duplicate keys are disabled and another node already has the new key.
+    /// </returns>
     public bool SetNodeKey(int nodeIndex, TKey? key)
     {
         if ((uint)nodeIndex >= (uint)this.nodeCount)
@@ -635,18 +662,16 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             return false;
         }
 
-        if (!this.AllowDuplicates)
-        {
-            var existing = this.FindFirstNode(key);
+        // Hash once, before unlinking: a throwing GetHashCode must leave the map unchanged.
+        var hashCode = key is null ? 0 : this.GetKeyHashCode(key);
 
-            if (existing >= 0 && existing != nodeIndex)
-            {
-                return false;
-            }
+        // The current key differs from the new key, so any match is another node.
+        if (!this.AllowDuplicates &&
+            (key is null ? this.nullList >= 0 : this.ContainsHashedKey(key, hashCode)))
+        {
+            return false;
         }
 
-        // Hash before unlinking: a throwing GetHashCode must leave the map unchanged.
-        var hashCode = key is null ? 0 : this.GetKeyHashCode(key);
         var previous = node.previous;
         var next = node.next;
 
@@ -737,7 +762,8 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
     }
 
     /// <summary>
-    /// Changes a node value without validation or version tracking.
+    /// Changes a node value without validation or version tracking.<br/>
+    /// The caller must pass the index of a node in use; active enumerators are not invalidated.
     /// </summary>
     /// <param name="nodeIndex">The node index.</param>
     /// <param name="value">The value.</param>
@@ -746,7 +772,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         => this.nodes[nodeIndex].value = value;
 
     /// <summary>
-    /// Removes all elements from the map.
+    /// Removes all elements from the map. The capacity is unchanged, and all node indexes become invalid.
     /// </summary>
     public void Clear()
     {
@@ -769,6 +795,52 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         this.freeCount = 0;
         this.nullList = -1;
         this.version++;
+    }
+
+    /// <summary>
+    /// Adds the elements of <paramref name="source"/> to this map, which must be empty, reusing their stored hash codes.<br/>
+    /// Returns <see langword="false"/> without changes when the comparers differ,
+    /// or when this map disallows duplicate keys that <paramref name="source"/> allows.
+    /// </summary>
+    /// <param name="source">The map whose elements are copied.</param>
+    /// <returns><see langword="true"/> if the elements were copied; otherwise, <see langword="false"/>.</returns>
+    internal bool TryCopyFrom(UnorderedMap<TKey, TValue> source)
+    {
+        Debug.Assert(
+            this.Count == 0,
+            "The map must be empty: copied elements skip the duplicate probe.");
+
+        // Stored hash codes are valid only for the same comparer, and skipping the duplicate probe
+        // is valid only when the source cannot contain duplicate keys or this map keeps them.
+        if (!ReferenceEquals(this.comparer, source.comparer) ||
+            (source.AllowDuplicates && !this.AllowDuplicates))
+        {
+            return false;
+        }
+
+        var nodes = source.nodes;
+        var count = source.nodeCount;
+
+        for (var i = 0; i < count; i++)
+        {
+            ref var node = ref nodes[i];
+
+            if (node.previous == Node.UnusedMarker)
+            {
+                continue;
+            }
+
+            if (node.key is null)
+            {
+                this.InsertNull(node.value);
+            }
+            else
+            {
+                this.InsertNew(node.key, node.value, node.hashCode);
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -1221,7 +1293,7 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
             }
 
             /// <summary>
-            /// Gets the element at the current position of the enumerator.
+            /// Gets the index of the current node.
             /// </summary>
             public readonly int Current
             {
@@ -1728,6 +1800,27 @@ public class UnorderedMap<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>
         return comparer is null
             ? key!.GetHashCode()
             : comparer.GetHashCode(key!);
+    }
+
+    private bool ContainsHashedKey(TKey key, int hashCode)
+    {
+        var nodes = this.nodes;
+        var i = this.buckets[hashCode & this.hashMask];
+
+        while ((uint)i < (uint)nodes.Length)
+        {
+            ref var node = ref nodes[i];
+
+            if (node.hashCode == hashCode &&
+                this.KeysEqual(node.key, key))
+            {
+                return true;
+            }
+
+            i = node.next;
+        }
+
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

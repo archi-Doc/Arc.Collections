@@ -1,4 +1,4 @@
-using System;
+Ôªøusing System;
 using Xunit;
 using Arc.Collections;
 using System.Collections.Generic;
@@ -260,7 +260,9 @@ public class OrderedMapTest
     [Fact]
     public void BoundTest2()
     {
-        var array = new string[] { "Authority", "Authority\\", "Authority\\abb", "Authority\\abc", "Authority\\Ç†", "NodePrivateKey", };
+        Assert.SkipWhen(string.Compare("a", "B", StringComparison.InvariantCulture) > 0, "Requires linguistic string comparison; globalization-invariant mode compares ordinally.");
+
+        var array = new string[] { "Authority", "Authority\\", "Authority\\abb", "Authority\\abc", "Authority\\„ÅÇ", "NodePrivateKey", };
 
         var map = new OrderedMap<string, int>();
         foreach (var x in array)
@@ -274,9 +276,9 @@ public class OrderedMapTest
         map.GetLowerBound("Authority")!.Key.Is("Authority");
         map.GetLowerBound("Authority\\")!.Key.Is("Authority\\");
 
-        map.GetUpperBound("Authority\\\uffff")!.Key.Is("Authority\\Ç†");
+        map.GetUpperBound("Authority\\\uffff")!.Key.Is("Authority\\„ÅÇ");
         map.GetUpperBound("Authority\\X")!.Key.Is("Authority\\abc");
-        map.GetUpperBound("Authority\\" + char.MaxValue)!.Key.Is("Authority\\Ç†");
+        map.GetUpperBound("Authority\\" + char.MaxValue)!.Key.Is("Authority\\„ÅÇ");
     }
 
     [Fact]

@@ -12,7 +12,7 @@ public interface IConversionOptions
     /// </summary>
     /// <typeparam name="T">The type of the option to retrieve.</typeparam>
     /// <returns>
-    /// The option of the specified type, or <c>null</c> if an option of the specified type is not found.
+    /// The option of the specified type, or <see langword="null"/> if none is found.
     /// </returns>
     T? GetOption<T>()
         where T : class;

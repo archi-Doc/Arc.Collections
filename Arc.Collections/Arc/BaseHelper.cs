@@ -62,7 +62,8 @@ public static class BaseHelper
 
     /// <summary>
     /// A 256-entry lookup table indicating whether a character in the range U+0000 to U+00FF
-    /// is a separator or whitespace character. See <see cref="IsSeparator(char)"/>.
+    /// is a separator or whitespace character. See <see cref="IsSeparator(char)"/>.<br/>
+    /// The array is shared by the separator helpers; do not modify it.
     /// </summary>
     [Leash.Exempt("Explicit 256-entry lookup data enables direct indexed separator checks without computing character categories during initialization.")]
     public static readonly bool[] SeparatorCharFlags = [
@@ -115,7 +116,7 @@ public static class BaseHelper
     /// </summary>
     /// <param name="span">The character span to examine.</param>
     /// <returns>
-    /// The number of consecutive space characters (SpaceChar) at the beginning of the span.<br/>
+    /// The number of consecutive space characters (<see cref="SpaceChar"/>) at the beginning of the span.<br/>
     /// Returns 0 if the span is empty or does not start with a space character.
     /// </returns>
     public static int CountLeadingSpaces(ReadOnlySpan<char> span)
@@ -126,16 +127,16 @@ public static class BaseHelper
 
     /// <summary>
     /// Splits a span of characters into an array of strings based on line breaks.
-    /// Handles both LF (\n) and CRLF (\r\n) line endings.
+    /// Handles both LF (\n) and CRLF (\r\n) line endings; a carriage return not followed by LF stays in the line.
     /// </summary>
     /// <param name="source">The source character span to split into lines.</param>
     /// <param name="includeEmptyLines">
-    /// If <c>true</c>, includes empty lines in the result.
-    /// If <c>false</c>, filters out empty lines from the result.
+    /// If <see langword="true"/>, includes empty lines in the result.
+    /// If <see langword="false"/>, filters out empty lines from the result.
     /// </param>
     /// <returns>
     /// An array of strings where each element represents a line from the source.
-    /// Returns an empty array if the source contains no non-empty lines when <paramref name="includeEmptyLines"/> is <c>false</c>.
+    /// Returns an empty array if the source contains no non-empty lines when <paramref name="includeEmptyLines"/> is <see langword="false"/>.
     /// </returns>
     [Leash.Exempt("Separate span-scanning paths allocate the result array once and avoid intermediate collections and per-line helper calls.")]
     public static string[] SplitLines(ReadOnlySpan<char> source, bool includeEmptyLines = false)
@@ -244,9 +245,10 @@ public static class BaseHelper
     /// <summary>
     /// Determines whether the specified <see cref="Type"/> implements the <see cref="IStringConvertible{T}"/> interface for itself.
     /// </summary>
-    /// <param name="type">The type to check for <see cref="IStringConvertible{T}"/> implementation.</param>
+    /// <param name="type">The type to check. Must not be <see langword="null"/>.</param>
     /// <returns>
-    /// <c>true</c> if the type implements <see cref="IStringConvertible{T}"/> where <c>T</c> is the type itself; otherwise, <c>false</c>.
+    /// <see langword="true"/> if the type implements <see cref="IStringConvertible{T}"/> where <c>T</c> is the type itself; otherwise, <see langword="false"/>.
+    /// A derived type that only inherits <see cref="IStringConvertible{T}"/> for its base type returns <see langword="false"/>.
     /// </returns>
     public static bool ImplementsIStringConvertible([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type)
     {
@@ -317,7 +319,7 @@ public static class BaseHelper
     /// </summary>
     /// <param name="value">The character to evaluate.</param>
     /// <returns>
-    /// <c>true</c> if the character is a separator or whitespace character; otherwise, <c>false</c>.
+    /// <see langword="true"/> if the character is a separator or whitespace character; otherwise, <see langword="false"/>.
     /// Separators are U+0009 through U+000D, U+0020, ',', ';', U+0085, U+00A0,
     /// U+2000 through U+200A, U+2028, U+2029, and U+3000. Other Unicode whitespace is not included.
     /// </returns>
@@ -351,26 +353,7 @@ public static class BaseHelper
     /// Returns 0 if <paramref name="value"/> is empty or not found.
     /// </returns>
     public static int CountOccurrences(ReadOnlySpan<char> text, ReadOnlySpan<char> value)
-    {
-        if (value.IsEmpty)
-        {
-            return 0;
-        }
-
-        var span = text;
-        var count = 0;
-        while (true)
-        {
-            var index = span.IndexOf(value);
-            if (index == -1)
-            {
-                return count;
-            }
-
-            span = span.Slice(index + value.Length);
-            count++;
-        }
-    }
+        => text.Count(value); // MemoryExtensions.Count is non-overlapping and returns 0 for an empty value.
 
     /// <summary>
     /// Returns the minimum of two <see langword="ulong"/> values, considering cyclical wrap-around.
@@ -378,7 +361,7 @@ public static class BaseHelper
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
     /// <returns>
-    /// The value that is considered minimum in a cyclical comparison.
+    /// The value that is considered minimum by <see cref="CircularCompareTo(ulong, ulong)"/>.
     /// </returns>
     public static ulong CircularMin(ulong value1, ulong value2)
         => CircularCompareTo(value1, value2) < 0 ? value1 : value2;
@@ -389,13 +372,15 @@ public static class BaseHelper
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
     /// <returns>
-    /// The value that is considered maximum in a cyclical comparison.
+    /// The value that is considered maximum by <see cref="CircularCompareTo(ulong, ulong)"/>.
     /// </returns>
     public static ulong CircularMax(ulong value1, ulong value2)
         => CircularCompareTo(value1, value2) >= 0 ? value1 : value2;
 
     /// <summary>
-    /// Compares this value with a specified <see langword="ulong"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).
+    /// Compares this value with a specified <see langword="ulong"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).<br/>
+    /// <paramref name="value1"/> is greater when <c>value1 - value2</c> (with wrap-around) is between 1 and 2^63 - 1.
+    /// A difference of exactly 2^63 falls back to ordinary numeric comparison, so the result stays antisymmetric.
     /// </summary>
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
@@ -423,7 +408,9 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Compares this value with a specified <see langword="uint"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).
+    /// Compares this value with a specified <see langword="uint"/> value in a situation where the variables are cyclical (i.e., they reset to zero after reaching their maximum value).<br/>
+    /// <paramref name="value1"/> is greater when <c>value1 - value2</c> (with wrap-around) is between 1 and 2^31 - 1.
+    /// A difference of exactly 2^31 falls back to ordinary numeric comparison, so the result stays antisymmetric.
     /// </summary>
     /// <param name="value1">The first value to compare.</param>
     /// <param name="value2">The second value to compare.</param>
@@ -457,7 +444,7 @@ public static class BaseHelper
     /// <param name="value">The character to remove from the span.</param>
     /// <returns>
     /// A span containing the characters from <paramref name="input"/> with all occurrences of <paramref name="value"/> removed.
-    /// The returned span may be shorter than the original input.
+    /// The returned span is a prefix of <paramref name="input"/> and may be shorter; the remaining characters of <paramref name="input"/> are left unspecified.
     /// </returns>
     public static Span<char> RemoveAllOccurrences(Span<char> input, char value)
     {
@@ -496,7 +483,7 @@ public static class BaseHelper
     /// <param name="value">The character to remove from the string.</param>
     /// <returns>
     /// A new string with all occurrences of <paramref name="value"/> removed from <paramref name="input"/>.<br/>
-    /// If the character is not found, returns the original string.
+    /// If <paramref name="input"/> is <see langword="null"/>, empty, or does not contain the character, returns <paramref name="input"/> itself.
     /// </returns>
     public static string RemoveAllOccurrences(string input, char value)
     {
@@ -514,23 +501,44 @@ public static class BaseHelper
         var resultLength = input.Length - newlineCount;
         return string.Create(resultLength, (Input: input, Value: value), static (span, state) =>
         {
-            var position = 0;
-            foreach (var c in state.Input)
-            {
-                if (c != state.Value)
+            var source = state.Input.AsSpan();
+            if (source.Length - span.Length > (source.Length >> 4))
+            {// Dense: copying character by character is faster than searching for each occurrence.
+                var position = 0;
+                foreach (var c in state.Input)
                 {
-                    span[position++] = c;
+                    if (c != state.Value)
+                    {
+                        span[position++] = c;
+                    }
                 }
+
+                return;
+            }
+
+            // Sparse: copy the runs between occurrences.
+            while (true)
+            {
+                var index = source.IndexOf(state.Value);
+                if (index < 0)
+                {
+                    source.CopyTo(span);
+                    return;
+                }
+
+                source.Slice(0, index).CopyTo(span);
+                span = span.Slice(index);
+                source = source.Slice(index + 1);
             }
         });
     }
 
     /// <summary>
-    /// Removes all newline characters (CrChar and LfChar) from the input string.
+    /// Removes all newline characters (<see cref="CrChar"/> and <see cref="LfChar"/>) from the input string.
     /// </summary>
     /// <param name="input">The input string from which to remove newline characters.</param>
     /// <returns>
-    /// A new string with all newline characters removed. If the input is null or empty, returns an empty string.
+    /// A new string with all newline characters removed. If the input is <see langword="null"/> or empty, returns <see cref="string.Empty"/>.
     /// If there are no newline characters, returns the original string.
     /// </returns>
     public static string RemoveCrAndLfChars(string input)
@@ -546,25 +554,40 @@ public static class BaseHelper
             return input;
         }
 
-        var newlineCount = 1;
-        for (var i = firstNewline + 1; i < input.Length; i++)
-        {
-            if (input[i] == CrChar || input[i] == LfChar)
-            {
-                newlineCount++;
-            }
-        }
+        var rest = input.AsSpan(firstNewline + 1);
+        var newlineCount = 1 + rest.Count(CrChar) + rest.Count(LfChar);
 
         var resultLength = input.Length - newlineCount;
         return string.Create(resultLength, input, static (span, src) =>
         {
-            var position = 0;
-            for (var i = 0; i < src.Length; i++)
-            {
-                if (src[i] != CrChar && src[i] != LfChar)
+            if (src.Length - span.Length > (src.Length >> 4))
+            {// Dense: copying character by character is faster than searching for each newline.
+                var position = 0;
+                for (var i = 0; i < src.Length; i++)
                 {
-                    span[position++] = src[i];
+                    if (src[i] != CrChar && src[i] != LfChar)
+                    {
+                        span[position++] = src[i];
+                    }
                 }
+
+                return;
+            }
+
+            // Sparse: copy the runs between newlines.
+            var source = src.AsSpan();
+            while (true)
+            {
+                var index = source.IndexOfAny(CrChar, LfChar);
+                if (index < 0)
+                {
+                    source.CopyTo(span);
+                    return;
+                }
+
+                source.Slice(0, index).CopyTo(span);
+                span = span.Slice(index);
+                source = source.Slice(index + 1);
             }
         });
     }
@@ -729,15 +752,15 @@ public static class BaseHelper
     /// <summary>
     /// Finds the first LF or CRLF line ending. Standalone carriage returns are ignored.
     /// </summary>
-    /// <param name="text">The span of characters to search for line feed or carriage return characters.</param>
+    /// <param name="text">The span of characters to search.</param>
     /// <param name="newLineLength">When this method returns, contains the length of the detected line ending:
-    /// 1 for Lf (LfChar), 2 for CrLf ('\r\n'), or 0 if no line ending is found.</param>
-    /// <returns>The zero-based index of the line ending (Lf or CrLf) in the text span, or -1 if no line ending is found.</returns>
+    /// 1 for LF (<see cref="LfChar"/>), 2 for CRLF (<c>\r\n</c>), or 0 if no line ending is found.</param>
+    /// <returns>The zero-based index of the line ending (the carriage return of a CRLF pair) in the text span, or -1 if no line ending is found.</returns>
     public static int IndexOfLfOrCrLf(ReadOnlySpan<char> text, out int newLineLength)
     {// \r\n (CrLf) or \n (Lf)
         var index = text.IndexOf(LfChar);
         if (index < 0)
-        {// Not found]
+        {// Not found
             newLineLength = 0;
             return -1;
         }
@@ -754,47 +777,33 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Converts all line feed (LfChar) characters in the input string to carriage return and line feed ("\r\n") pairs,
+    /// Converts all line feed (<see cref="LfChar"/>) characters in the input string to carriage return and line feed ("\r\n") pairs,
     /// except where the line feed is already preceded by a carriage return. Standalone carriage returns are unchanged.
     /// </summary>
-    /// <param name="text">The input string to convert line endings for.</param>
+    /// <param name="text">The input string to convert line endings for. Must not be <see langword="null"/>.</param>
     /// <returns>
     /// A new string with all line feed characters converted to CRLF pairs, unless already in CRLF format.
     /// If no conversion is necessary, returns the original string.
     /// </returns>
     public static string ConvertLfToCrLf(string text)
     {
-        var extra = 0;
-        for (var i = 0; i < text.Length; i++)
-        {
-            if (text[i] == LfChar && (i == 0 || text[i - 1] != CrChar))
-            {
-                extra++;
-            }
+        var firstLf = text.IndexOf(LfChar);
+        if (firstLf < 0)
+        {// No line feed
+            return text;
         }
 
+        var rest = text.AsSpan(firstLf);
+        var dense = rest.Count(LfChar) > (text.Length >> 5);
+        var extra = dense ? CountLfWithoutCrDense(text, firstLf) : CountLfWithoutCrSparse(text, firstLf);
         if (extra == 0)
         {
             return text;
         }
 
-        return string.Create(text.Length + extra, text, static (dest, source) =>
-        {
-            var position = 0;
-            for (var i = 0; i < source.Length; i++)
-            {
-                char c = source[i];
-                if (c == LfChar && (i == 0 || source[i - 1] != CrChar))
-                {
-                    dest[position++] = CrChar;
-                    dest[position++] = LfChar;
-                }
-                else
-                {
-                    dest[position++] = c;
-                }
-            }
-        });
+        return dense ?
+            string.Create(text.Length + extra, text, static (destination, source) => CopyLfToCrLfDense(source, destination)) :
+            string.Create(text.Length + extra, text, static (destination, source) => CopyLfToCrLfSparse(source, destination));
     }
 
     /// <summary>
@@ -803,7 +812,7 @@ public static class BaseHelper
     /// <param name="destination">The span to which the character will be appended. The span is updated to exclude the written character.</param>
     /// <param name="written">A reference to the count of characters written so far. This value is incremented if the append succeeds.</param>
     /// <param name="c">The character to append.</param>
-    /// <returns><c>true</c> if the character was successfully appended; otherwise, <c>false</c> if there was not enough space.</returns>
+    /// <returns><see langword="true"/> if the character was appended; <see langword="false"/> if there was not enough space.</returns>
     public static bool TryAppend(scoped ref Span<char> destination, ref int written, char c)
     {
         if (destination.Length == 0)
@@ -823,7 +832,7 @@ public static class BaseHelper
     /// <param name="destination">The span to which the characters will be appended. The span is updated to exclude the written characters.</param>
     /// <param name="written">A reference to the count of characters written so far. This value is incremented by the length of <paramref name="span"/> if the append succeeds.</param>
     /// <param name="span">The span of characters to append.</param>
-    /// <returns><c>true</c> if the characters were successfully appended; otherwise, <c>false</c> if there was not enough space.</returns>
+    /// <returns><see langword="true"/> if the characters were appended; <see langword="false"/> if there was not enough space.</returns>
     public static bool TryAppend(scoped ref Span<char> destination, ref int written, ReadOnlySpan<char> span)
     {
         if (destination.Length < span.Length)
@@ -928,11 +937,13 @@ public static class BaseHelper
     /// <summary>
     /// Tries to load a resource from the specified assembly and returns it as a byte array.
     /// </summary>
-    /// <param name="assembly">The assembly to load the resource from. If null, the executing assembly is used.</param>
-    /// <param name="resourceName">The name of the resource to load.<br/>
-    /// e.g. 'Resources.Name.tinyhand'.</param>
-    /// <param name="data">When this method returns, contains the loaded resource data if successful; otherwise, null.</param>
-    /// <returns><c>true</c> if the resource was successfully loaded; otherwise, <c>false</c>.</returns>
+    /// <param name="assembly">The assembly to load the resource from.
+    /// If <see langword="null"/>, the assembly that contains <see cref="BaseHelper"/> (Arc.Collections) is used, not the caller's assembly.</param>
+    /// <param name="resourceName">The resource name without the assembly-name prefix; the manifest name is
+    /// <c>{simple assembly name}.{resourceName}</c>.<br/>
+    /// For example, <c>Resources.Name.tinyhand</c>.</param>
+    /// <param name="data">When this method returns, contains the loaded resource data if successful; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the resource was loaded; otherwise, <see langword="false"/>. Exceptions are caught and reported as <see langword="false"/>.</returns>
     public static bool TryLoadResource(Assembly? assembly, string resourceName, [MaybeNullWhen(false)] out byte[] data)
     {
         try
@@ -961,7 +972,8 @@ public static class BaseHelper
     /// Throws an <see cref="ArgumentOutOfRangeException"/> indicating a size mismatch.
     /// </summary>
     /// <param name="argumentName">The name of the argument.</param>
-    /// <param name="expectedSize">The expected size.</param>
+    /// <param name="expectedSize">The expected size, in bytes.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Always thrown.</exception>
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowSizeMismatchException(string argumentName, int expectedSize)
@@ -970,10 +982,10 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Trims the utf8 string at the first occurrence of a null byte.
+    /// Trims a UTF-8 string at its first null byte.
     /// </summary>
     /// <param name="utf8">The input byte span.</param>
-    /// <returns>A span of bytes trimmed at the first null byte.</returns>
+    /// <returns>The bytes before the first null byte, or <paramref name="utf8"/> itself if it contains no null byte.</returns>
     public static ReadOnlySpan<byte> TrimAtFirstNull(ReadOnlySpan<byte> utf8)
     {
         var firstNull = utf8.IndexOf((byte)0);
@@ -988,10 +1000,11 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Trims the utf8 string at the first occurrence of a null byte.
+    /// Trims a UTF-8 string at its first null byte.
     /// </summary>
     /// <param name="utf8">The input byte array.</param>
-    /// <returns>A byte array trimmed at the first null byte.</returns>
+    /// <returns>A new array containing the bytes before the first null byte, or <paramref name="utf8"/> itself if it contains no null byte.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="utf8"/> is <see langword="null"/>.</exception>
     public static byte[] TrimAtFirstNull(byte[] utf8)
     {
         var firstNull = Array.IndexOf(utf8, (byte)0);
@@ -1008,14 +1021,16 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="result"/> parameter.
+    /// Parses the value from the provided source or environment variable and assigns it to the <paramref name="result"/> parameter.<br/>
+    /// The input does not have to be consumed entirely; characters not read by <see cref="IStringConvertible{T}.TryParse"/> are ignored.
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
     /// <param name="source">The source value to parse.</param>
     /// <param name="environmentVariableName">The name of the environment variable to parse if <paramref name="source"/> cannot be parsed.</param>
     /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
-    /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
+    /// <returns><see langword="true"/> if the value was parsed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="environmentVariableName"/> is <see langword="null"/> and <paramref name="source"/> cannot be parsed.</exception>
     public static bool TryParseFromSourceOrEnvironmentVariable<T>(ReadOnlySpan<char> source, string environmentVariableName, [MaybeNullWhen(false)] out T result, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
@@ -1039,25 +1054,27 @@ public static class BaseHelper
     }
 
     /// <summary>
-    /// Parses the value from the provided environment variable and assigns it to the <paramref name="result"/> parameter.
+    /// Parses the value from the provided environment variable and assigns it to the <paramref name="result"/> parameter.<br/>
+    /// The value does not have to be consumed entirely; characters not read by <see cref="IStringConvertible{T}.TryParse"/> are ignored.
     /// </summary>
     /// <typeparam name="T">The type of the value to parse.</typeparam>
     /// <param name="environmentVariableName">The name of the environment variable to parse.</param>
     /// <param name="result">When this method returns, contains the parsed value if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
-    /// <returns><c>true</c> if the value was successfully parsed; otherwise, <c>false</c>.</returns>
+    /// <returns><see langword="true"/> if the value was parsed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="environmentVariableName"/> is <see langword="null"/>.</exception>
     public static bool TryParseFromEnvironmentVariable<T>(string environmentVariableName, [MaybeNullWhen(false)] out T result, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
     {
-        if (Environment.GetEnvironmentVariable(environmentVariableName) is { } source)
+        if (Environment.GetEnvironmentVariable(environmentVariableName) is { } source &&
+            T.TryParse(source, out result!, out _, conversionOptions))
         {
-            return T.TryParse(source, out result, out _, conversionOptions);
+            return true;
         }
-        else
-        {
-            result = default;
-            return false;
-        }
+
+        // Do not expose a partial result reported by a failed parse.
+        result = default;
+        return false;
     }
 
     /// <summary>
@@ -1067,6 +1084,10 @@ public static class BaseHelper
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns>The formatted string, or an empty string if no buffer length is available or formatting fails.</returns>
+    /// <remarks>
+    /// The buffer length is <see cref="IStringConvertible{T}.GetStringLength"/>, or <see cref="IStringConvertible{T}.MaxStringLength"/> when that is negative.
+    /// The buffer is not enlarged if <paramref name="conversionOptions"/> require more space.
+    /// </remarks>
     [SkipLocalsInit]
     public static string ConvertToString<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
@@ -1095,6 +1116,10 @@ public static class BaseHelper
     /// <param name="obj">The object to convert.</param>
     /// <param name="conversionOptions">Conversion options that may influence the formatting behavior.</param>
     /// <returns>The UTF-8 bytes, or an empty array if no buffer length is available or formatting fails.</returns>
+    /// <remarks>
+    /// Formats UTF-16 text with <see cref="IStringConvertible{T}.TryFormat"/> and encodes it as UTF-8;
+    /// buffer sizing follows <see cref="ConvertToString{T}(T, IConversionOptions?)"/>.
+    /// </remarks>
     [SkipLocalsInit]
     public static byte[] ConvertToUtf8<T>(this T obj, IConversionOptions? conversionOptions = default)
         where T : IStringConvertible<T>
@@ -1121,5 +1146,83 @@ public static class BaseHelper
         length = Encoding.UTF8.GetBytes(result, array);
         Debug.Assert(length == array.Length, string.Empty);
         return array;
+    }
+
+    private static int CountLfWithoutCrDense(string text, int firstLf)
+    {
+        var extra = 0;
+        for (var i = firstLf; (uint)i < (uint)text.Length; i++)
+        {
+            if (text[i] == LfChar && (i == 0 || text[i - 1] != CrChar))
+            {
+                extra++;
+            }
+        }
+
+        return extra;
+    }
+
+    private static int CountLfWithoutCrSparse(string text, int index)
+    {
+        var extra = 0;
+        while (true)
+        {
+            if (index == 0 || text[index - 1] != CrChar)
+            {
+                extra++;
+            }
+
+            var next = text.AsSpan(index + 1).IndexOf(LfChar);
+            if (next < 0)
+            {
+                return extra;
+            }
+
+            index += next + 1;
+        }
+    }
+
+    private static void CopyLfToCrLfDense(string source, Span<char> destination)
+    {
+        var position = 0;
+        for (var i = 0; i < source.Length; i++)
+        {
+            char c = source[i];
+            if (c == LfChar && (i == 0 || source[i - 1] != CrChar))
+            {
+                destination[position++] = CrChar;
+                destination[position++] = LfChar;
+            }
+            else
+            {
+                destination[position++] = c;
+            }
+        }
+    }
+
+    private static void CopyLfToCrLfSparse(string source, Span<char> destination)
+    {
+        var span = source.AsSpan();
+        while (true)
+        {
+            var index = span.IndexOf(LfChar);
+            if (index < 0)
+            {
+                span.CopyTo(destination);
+                return;
+            }
+
+            span.Slice(0, index).CopyTo(destination);
+            destination = destination.Slice(index);
+            if (index == 0 || span[index - 1] != CrChar)
+            {// The character before index 0 is either nothing or the previous line feed.
+                destination[0] = CrChar;
+                destination = destination.Slice(1);
+            }
+
+            destination[0] = LfChar;
+            destination = destination.Slice(1);
+            span = span.Slice(index + 1);
+        }
     }
 }

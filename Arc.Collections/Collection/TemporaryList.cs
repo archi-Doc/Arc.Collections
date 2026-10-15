@@ -6,11 +6,12 @@ using System.Collections.Generic;
 namespace Arc.Collections;
 
 /// <summary>
-/// Provides a temporary list with up to four elements stored inline.
+/// Provides an append-only list that stores its first four elements inline.
 /// </summary>
-/// <typeparam name="T">The type of the objects.</typeparam>
+/// <typeparam name="T">The type of elements in the list.</typeparam>
 /// <remarks>
-/// Additional elements use a heap-allocated list, which copies of this struct share; do not copy it.
+/// Additional elements use a heap-allocated overflow list, which copies of this struct share.
+/// Do not copy it: once the overflow list exists, adding through more than one copy mixes their elements.
 /// </remarks>
 public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struct types cannot implement interfaces or be boxed.
 {
@@ -24,14 +25,14 @@ public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struc
     private List<T>? list;
 
     /// <summary>
-    /// Gets the number of objects in the list.
+    /// Gets the number of elements in the list.
     /// </summary>
     public readonly int Count => this.count;
 
     /// <summary>
-    /// Adds an object to the list.
+    /// Adds an element to the end of the list.
     /// </summary>
-    /// <param name="item">The object to add to the list.</param>
+    /// <param name="item">The element to add.</param>
     public void Add(T item)
     {
         if (this.count == 0)
@@ -119,7 +120,8 @@ public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struc
     public readonly Enumerator GetEnumerator() => new(this);
 
     /// <summary>
-    /// Enumerates the elements of a <see cref="TemporaryList{T}"/>.
+    /// Enumerates the elements of a <see cref="TemporaryList{T}"/> in insertion order.<br/>
+    /// The enumerator holds a copy of the list; elements added after it is created are not enumerated.
     /// </summary>
     public ref struct Enumerator
     {
@@ -139,7 +141,8 @@ public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struc
         }
 
         /// <summary>
-        /// Gets the element at the current position of the enumerator.
+        /// Gets the element at the current position of the enumerator.<br/>
+        /// The value is undefined before the first call to <see cref="MoveNext"/> or after it returns <see langword="false"/>.
         /// </summary>
         public T Current => this.current!;
 
@@ -156,43 +159,41 @@ public ref struct TemporaryList<T> // : IEnumerable<T>, IEnumerable // ref struc
         /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
         public bool MoveNext()
         {
-            if (++this.index >= this.temporaryList.Count)
+            var index = this.index + 1;
+            var count = this.temporaryList.count;
+            if (index >= count)
             {
+                // Stop at the end so repeated calls cannot overflow the index.
+                this.index = count;
                 return false;
             }
 
-            if (this.index >= StackObjectCount &&
-                this.temporaryList.list is { } list)
+            this.index = index;
+
+            // An if chain rather than a switch keeps this method inlinable.
+            if (index >= StackObjectCount)
             {
-                var i = this.index - StackObjectCount;
-                if (i < list.Count)
-                {
-                    this.current = list[i];
-                    return true;
-                }
+                // index < count, so the overflow list exists and holds this element.
+                this.current = this.temporaryList.list![index - StackObjectCount];
             }
-            else if (this.index == 0)
+            else if (index == 0)
             {
                 this.current = this.temporaryList.obj0;
-                return true;
             }
-            else if (this.index == 1)
+            else if (index == 1)
             {
                 this.current = this.temporaryList.obj1;
-                return true;
             }
-            else if (this.index == 2)
+            else if (index == 2)
             {
                 this.current = this.temporaryList.obj2;
-                return true;
             }
-            else if (this.index == 3)
+            else
             {
                 this.current = this.temporaryList.obj3;
-                return true;
             }
 
-            return false;
+            return true;
         }
 
         /// <summary>

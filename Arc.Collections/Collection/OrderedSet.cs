@@ -18,6 +18,12 @@ namespace Arc.Collections;
 /// Uses <see cref="OrderedMap{TKey, TValue}"/> as the underlying Red-Black Tree.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
+/// <remarks>
+/// Adding an existing element leaves the set unchanged. Null elements are supported and ordered as in
+/// <see cref="OrderedMap{TKey, TValue}"/>.
+/// Active nodes passed to node operations must belong to this set; ownership is not checked.
+/// Advancing an enumerator after the set is modified throws <see cref="InvalidOperationException"/>.
+/// </remarks>
 public class OrderedSet<T> : IEnumerable<T>
 {
     private const byte DummyValue = 0;
@@ -44,21 +50,23 @@ public class OrderedSet<T> : IEnumerable<T>
     }
 
     /// <summary>
-    /// Initializes a set from the specified collection.
+    /// Initializes a set from the specified collection. Duplicate elements are ignored.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="reverse"><see langword="true"/> to sort in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedSet(IEnumerable<T> collection, bool reverse = false)
         : this(collection, Comparer<T>.Default, reverse)
     {
     }
 
     /// <summary>
-    /// Initializes a set from the specified collection and comparer.
+    /// Initializes a set from the specified collection and comparer. Duplicate elements are ignored.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     /// <param name="reverse"><see langword="true"/> to sort in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedSet(IEnumerable<T> collection, IComparer<T>? comparer, bool reverse = false)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -79,6 +87,7 @@ public class OrderedSet<T> : IEnumerable<T>
     /// <summary>
     /// Gets the comparer used to order elements.
     /// </summary>
+    /// <remarks>See <see cref="OrderedMap{TKey, TValue}.Comparer"/> for how the default comparer is applied.</remarks>
     public IComparer<T> Comparer => this.map.Comparer;
 
     /// <summary>
@@ -87,7 +96,7 @@ public class OrderedSet<T> : IEnumerable<T>
     public bool IsReversed => this.map.IsReversed;
 
     /// <summary>
-    /// Gets the first node in sort order.
+    /// Gets the first node in sort order, or <see langword="null"/> if the set is empty.
     /// </summary>
     public OrderedMap<T, byte>.Node? FirstNode
     {
@@ -96,7 +105,7 @@ public class OrderedSet<T> : IEnumerable<T>
     }
 
     /// <summary>
-    /// Gets the last node in sort order.
+    /// Gets the last node in sort order, or <see langword="null"/> if the set is empty.
     /// </summary>
     public OrderedMap<T, byte>.Node? LastNode
     {
@@ -108,13 +117,13 @@ public class OrderedSet<T> : IEnumerable<T>
     /// Adds an element to the set.
     /// </summary>
     /// <param name="item">The element.</param>
-    /// <returns><see langword="true"/> if the element was newly added.</returns>
+    /// <returns><see langword="true"/> if the element was newly added; <see langword="false"/> if it already exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(T item)
         => this.map.Add(item, DummyValue).NewlyAdded;
 
     /// <summary>
-    /// Adds an element and returns its node.
+    /// Adds an element if it does not already exist, and returns the node holding it.
     /// </summary>
     /// <param name="item">The element.</param>
     /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
@@ -123,10 +132,11 @@ public class OrderedSet<T> : IEnumerable<T>
         => this.map.Add(item, DummyValue);
 
     /// <summary>
-    /// Adds an element, optionally reusing an unused node.
+    /// Adds an element if it does not already exist, optionally reusing an unused node.
     /// </summary>
     /// <param name="item">The element.</param>
-    /// <param name="reuse">An unused node to reuse when possible.</param>
+    /// <param name="reuse">A node to hold the new element if it is unused; otherwise, a new node is allocated.
+    /// It is left untouched when the element already exists.</param>
     /// <returns>The node holding the element, and a flag that is <see langword="true"/> when the node was newly added.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (OrderedMap<T, byte>.Node Node, bool NewlyAdded) AddNode(T item, OrderedMap<T, byte>.Node reuse)
@@ -160,35 +170,41 @@ public class OrderedSet<T> : IEnumerable<T>
         => this.map.Remove(item);
 
     /// <summary>
-    /// Removes the specified node.
+    /// Removes the specified node. An unused node is ignored.
     /// </summary>
     /// <param name="node">The node.</param>
+    /// <remarks>The removed node becomes unused and can be reused with <see cref="AddNode(T, OrderedMap{T, byte}.Node)"/>.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RemoveNode(OrderedMap<T, byte>.Node node)
         => this.map.RemoveNode(node);
 
     /// <summary>
-    /// Changes the element stored in the specified node.
+    /// Changes the element stored in an active node, keeping the same node object.
     /// </summary>
     /// <param name="node">The node.</param>
     /// <param name="key">The new element.</param>
-    /// <returns><see langword="true"/> if the element was changed; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the element was changed; <see langword="false"/> if the node is unused,
+    /// <paramref name="key"/> compares equal to the current element (the stored element is kept),
+    /// or another node already holds <paramref name="key"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeKey(OrderedMap<T, byte>.Node node, T key)
         => this.map.SetNodeKey(node, key);
 
     /// <summary>
-    /// Removes all elements from the set.
+    /// Removes all elements. Their nodes become unused and can be reused with <see cref="AddNode(T, OrderedMap{T, byte}.Node)"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
         => this.map.Clear();
 
     /// <summary>
-    /// Copies the elements to the specified array.
+    /// Copies the elements to an array, in sort order.
     /// </summary>
     /// <param name="array">The destination array.</param>
-    /// <param name="index">The zero-based index.</param>
+    /// <param name="index">The zero-based destination index.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative or greater than the array length.</exception>
+    /// <exception cref="ArgumentException">The array is too small to hold the elements from <paramref name="index"/>.</exception>
     public void CopyTo(T[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -216,7 +232,7 @@ public class OrderedSet<T> : IEnumerable<T>
     /// Gets the first node equal to or after the specified value in sort order.
     /// </summary>
     /// <param name="value">The value.</param>
-    /// <returns>The first node at or after the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The first node at or after <paramref name="value"/> in sort order, or <see langword="null"/> if none exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OrderedMap<T, byte>.Node? GetLowerBound(T? value)
         => this.map.GetLowerBound(value);
@@ -225,23 +241,23 @@ public class OrderedSet<T> : IEnumerable<T>
     /// Gets the last node equal to or before the specified value in sort order.
     /// </summary>
     /// <param name="value">The value.</param>
-    /// <returns>The last node at or before the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The last node at or before <paramref name="value"/> in sort order, or <see langword="null"/> if none exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OrderedMap<T, byte>.Node? GetUpperBound(T? value)
         => this.map.GetUpperBound(value);
 
     /// <summary>
-    /// Gets the nodes delimiting the specified range.
+    /// Gets the nodes delimiting the inclusive range between two values in sort order.
     /// </summary>
-    /// <param name="lower">The lower key.</param>
-    /// <param name="upper">The upper key.</param>
-    /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before <paramref name="upper"/>, or <c>(null, null)</c> if the range is empty.</returns>
+    /// <param name="lower">The bound that comes first in sort order (the larger value when the set is reversed).</param>
+    /// <param name="upper">The bound that comes last in sort order (the smaller value when the set is reversed).</param>
+    /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before <paramref name="upper"/> in sort order, or <c>(null, null)</c> if the range is empty.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (OrderedMap<T, byte>.Node? Lower, OrderedMap<T, byte>.Node? Upper) GetRange(T? lower, T? upper)
         => this.map.GetRange(lower, upper);
 
     /// <summary>
-    /// Validates the underlying Red-Black Tree.
+    /// Checks the underlying red-black tree. O(n); intended for diagnostics.
     /// </summary>
     /// <returns><see langword="true"/> if the internal structure is valid; otherwise, <see langword="false"/>.</returns>
     public bool Validate()
@@ -264,8 +280,9 @@ public class OrderedSet<T> : IEnumerable<T>
         => new Enumerator(this.map);
 
     /// <summary>
-    /// Enumerates the elements in sort order.
+    /// Enumerates elements in sort order.
     /// </summary>
+    /// <remarks><see cref="IEnumerator.Reset"/> is not supported and throws <see cref="NotSupportedException"/>.</remarks>
     public struct Enumerator : IEnumerator<T>
     {
         private OrderedMap<T, byte>.KeyEnumerable.Enumerator enumerator;

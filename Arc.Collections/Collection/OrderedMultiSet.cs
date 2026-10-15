@@ -19,6 +19,12 @@ namespace Arc.Collections;
 /// and duplicate-group linked-list implementation.
 /// </summary>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
+/// <remarks>
+/// Equal elements are kept in insertion order. Null elements are supported and ordered as in
+/// <see cref="OrderedMultiMap{TKey, TValue}"/>.
+/// Active nodes passed to node operations must belong to this collection; ownership is not checked.
+/// Advancing an enumerator after the collection is modified throws <see cref="InvalidOperationException"/>.
+/// </remarks>
 public class OrderedMultiSet<T> : IEnumerable<T>
 {
     private const byte DummyValue = 0;
@@ -49,6 +55,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// </summary>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="reverse"><see langword="true"/> to sort in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedMultiSet(IEnumerable<T> collection, bool reverse = false)
         : this(collection, Comparer<T>.Default, reverse)
     {
@@ -60,6 +67,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// <param name="collection">The collection whose elements are copied.</param>
     /// <param name="comparer">The comparer to use, or <see langword="null"/> for the default comparer.</param>
     /// <param name="reverse"><see langword="true"/> to sort in descending order.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedMultiSet(IEnumerable<T> collection, IComparer<T>? comparer, bool reverse = false)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -80,6 +88,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// <summary>
     /// Gets the comparer used to order elements.
     /// </summary>
+    /// <remarks>See <see cref="OrderedMultiMap{TKey, TValue}.Comparer"/> for how the default comparer is applied.</remarks>
     public IComparer<T> Comparer => this.map.Comparer;
 
     /// <summary>
@@ -88,7 +97,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     public bool IsReversed => this.map.IsReversed;
 
     /// <summary>
-    /// Gets the first node in sort order.
+    /// Gets the first node in sort order, or <see langword="null"/> if the collection is empty.
     /// </summary>
     public OrderedMultiMap<T, byte>.Node? FirstNode
     {
@@ -97,7 +106,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     }
 
     /// <summary>
-    /// Gets the last node in sort order.
+    /// Gets the last node in sort order, or <see langword="null"/> if the collection is empty.
     /// </summary>
     public OrderedMultiMap<T, byte>.Node? LastNode
     {
@@ -106,7 +115,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     }
 
     /// <summary>
-    /// Adds an element and returns the created node.
+    /// Adds an element and returns the created node. A duplicate is placed after the existing occurrences of the element.
     /// </summary>
     /// <param name="item">The element.</param>
     /// <returns>The node that holds the element.</returns>
@@ -118,7 +127,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// Adds an element by reusing an unused node when possible.
     /// </summary>
     /// <param name="item">The element.</param>
-    /// <param name="reuse">An unused node to reuse when possible.</param>
+    /// <param name="reuse">A node to hold the new element if it is unused; otherwise, a new node is allocated.</param>
     /// <returns>The node that holds the element.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OrderedMultiMap<T, byte>.Node Add(T item, OrderedMultiMap<T, byte>.Node reuse)
@@ -134,7 +143,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
         => this.map.ContainsKey(item);
 
     /// <summary>
-    /// Finds the first node with the specified value.
+    /// Finds the first node with the specified element.
     /// </summary>
     /// <param name="item">The element.</param>
     /// <returns>The first matching node, or <see langword="null"/> if not found.</returns>
@@ -152,35 +161,41 @@ public class OrderedMultiSet<T> : IEnumerable<T>
         => this.map.Remove(item);
 
     /// <summary>
-    /// Removes the specified node.
+    /// Removes the specified node. An unused node is ignored.
     /// </summary>
     /// <param name="node">The node.</param>
+    /// <remarks>The removed node becomes unused and can be reused with <see cref="Add(T, OrderedMultiMap{T, byte}.Node)"/>.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RemoveNode(OrderedMultiMap<T, byte>.Node node)
         => this.map.RemoveNode(node);
 
     /// <summary>
-    /// Changes the element stored in the specified node.
+    /// Changes the element stored in an active node, keeping the same node object.
+    /// The node is placed after the existing occurrences of the new element.
     /// </summary>
     /// <param name="node">The node.</param>
     /// <param name="key">The new element.</param>
-    /// <returns><see langword="true"/> if the element was changed; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the element was changed; <see langword="false"/> if the node is unused
+    /// or <paramref name="key"/> compares equal to the current element.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool SetNodeKey(OrderedMultiMap<T, byte>.Node node, T key)
         => this.map.SetNodeKey(node, key);
 
     /// <summary>
-    /// Removes all elements.
+    /// Removes all elements. Their nodes become unused and can be reused with <see cref="Add(T, OrderedMultiMap{T, byte}.Node)"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
         => this.map.Clear();
 
     /// <summary>
-    /// Copies all elements to the specified array.
+    /// Copies all elements to the specified array, in sort order.
     /// </summary>
     /// <param name="array">The destination array.</param>
-    /// <param name="index">The zero-based index.</param>
+    /// <param name="index">The zero-based destination index.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative or greater than the array length.</exception>
+    /// <exception cref="ArgumentException">The array is too small to hold the elements starting at <paramref name="index"/>.</exception>
     public void CopyTo(T[] array, int index)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -252,7 +267,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// Gets the first node equal to or after the specified value in sort order.
     /// </summary>
     /// <param name="value">The value.</param>
-    /// <returns>The first node at or after the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The first node at or after <paramref name="value"/> in sort order, or <see langword="null"/> if none exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OrderedMultiMap<T, byte>.Node? GetLowerBound(T? value)
         => this.map.GetLowerBound(value);
@@ -261,23 +276,23 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// Gets the last node equal to or before the specified value in sort order.
     /// </summary>
     /// <param name="value">The value.</param>
-    /// <returns>The last node at or before the specified key in collection order, or <see langword="null"/> if none exists.</returns>
+    /// <returns>The last node at or before <paramref name="value"/> in sort order, or <see langword="null"/> if none exists.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OrderedMultiMap<T, byte>.Node? GetUpperBound(T? value)
         => this.map.GetUpperBound(value);
 
     /// <summary>
-    /// Gets the nodes delimiting the specified range.
+    /// Gets the nodes delimiting the inclusive range between two values in sort order.
     /// </summary>
-    /// <param name="lower">The lower key.</param>
-    /// <param name="upper">The upper key.</param>
-    /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before <paramref name="upper"/>, or <c>(null, null)</c> if the range is empty.</returns>
+    /// <param name="lower">The bound that comes first in sort order (the larger value when the collection is reversed).</param>
+    /// <param name="upper">The bound that comes last in sort order (the smaller value when the collection is reversed).</param>
+    /// <returns>The first node at or after <paramref name="lower"/> and the last node at or before <paramref name="upper"/> in sort order, or <c>(null, null)</c> if the range is empty.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (OrderedMultiMap<T, byte>.Node? Lower, OrderedMultiMap<T, byte>.Node? Upper) GetRange(T? lower, T? upper)
         => this.map.GetRange(lower, upper);
 
     /// <summary>
-    /// Enumerates nodes matching the specified element without allocation.
+    /// Enumerates nodes matching the specified element in insertion order, without allocation.
     /// </summary>
     /// <param name="item">The element.</param>
     /// <returns>An allocation-free enumerable over the matching nodes.</returns>
@@ -286,7 +301,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
         => this.map.EnumerateNodes(item);
 
     /// <summary>
-    /// Validates the underlying Red-Black Tree and duplicate lists.
+    /// Checks the underlying red-black tree and duplicate-group lists. O(n); intended for diagnostics.
     /// </summary>
     /// <returns><see langword="true"/> if the internal structure is valid; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -312,6 +327,7 @@ public class OrderedMultiSet<T> : IEnumerable<T>
     /// <summary>
     /// Enumerates elements in sort order.
     /// </summary>
+    /// <remarks><see cref="IEnumerator.Reset"/> is not supported and throws <see cref="NotSupportedException"/>.</remarks>
     public struct Enumerator : IEnumerator<T>
     {
         private OrderedMultiMap<T, byte>.KeyEnumerable.Enumerator enumerator;

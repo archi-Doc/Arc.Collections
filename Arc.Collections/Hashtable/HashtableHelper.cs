@@ -5,10 +5,13 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Arc.Collections;
 
+/// <summary>
+/// Capacity and error helpers shared by the numeric and UTF hashtables.
+/// </summary>
 internal static class HashtableHelper
 {
     /// <summary>
-    /// The largest initial capacity: the tables are kept at most half full, and hold at most 2^30 buckets.
+    /// The largest initial capacity: a table grows when it is about half full and holds at most 2^30 buckets.
     /// </summary>
     public const int MaximumInitialCapacity = 1 << 29;
 

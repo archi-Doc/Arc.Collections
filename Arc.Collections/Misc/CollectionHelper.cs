@@ -79,7 +79,8 @@ public static class CollectionHelper
     public const int MaxPrimeArrayLength = 0x7FEFFFFD;
 
     /// <summary>
-    /// A table of prime numbers used to size prime-bucketed hash tables.
+    /// A table of prime numbers, in ascending order, used to size prime-bucketed hash tables.<br/>
+    /// Do not modify the array.
     /// </summary>
     public static readonly int[] Primes =
     {
@@ -112,7 +113,10 @@ public static class CollectionHelper
     /// Gets the prime capacity to grow to, roughly doubling the specified size.
     /// </summary>
     /// <param name="oldSize">The current size.</param>
-    /// <returns>The new capacity, capped at <see cref="MaxPrimeArrayLength"/>.</returns>
+    /// <returns>
+    /// For a non-negative <paramref name="oldSize"/>, <see cref="GetPrime(int)"/> for twice <paramref name="oldSize"/>,
+    /// or <see cref="MaxPrimeArrayLength"/> when twice <paramref name="oldSize"/> exceeds it.
+    /// </returns>
     public static int ExpandPrime(int oldSize)
     {
         int newSize = 2 * oldSize;

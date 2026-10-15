@@ -12,7 +12,7 @@ namespace Arc;
 /// <remarks>
 /// Implement all members. At least one of <see cref="GetStringLength" /> and
 /// <see cref="MaxStringLength" /> must provide a nonnegative length in characters;
-/// the other may return -1. Formatting options may affect the required length.
+/// the other may return -1. Conversion options may affect the required length.
 /// </remarks>
 public interface IStringConvertible<T>
     where T : IStringConvertible<T>
@@ -21,8 +21,8 @@ public interface IStringConvertible<T>
     /// Attempts to parse an instance from a UTF-16 span and reports the consumed characters.
     /// </summary>
     /// <param name="source">The source UTF-16 span.</param>
-    /// <param name="result">An object converted from the UTF-16 span.</param>
-    /// <param name="charsRead">The number of chars read from the source span.</param>
+    /// <param name="result">When this method returns <see langword="true"/>, the instance parsed from the UTF-16 span.</param>
+    /// <param name="charsRead">The number of characters read from <paramref name="source"/>.</param>
     /// <param name="conversionOptions">Conversion options that may influence the parsing behavior.</param>
     /// <returns><see langword="true"/> if the conversion was successful; otherwise, <see langword="false"/>.</returns>
     [Leash.Exempt("The public parsing contract returns both the parsed value and consumed character count through out parameters; preserve compatibility and direct result passing.")]

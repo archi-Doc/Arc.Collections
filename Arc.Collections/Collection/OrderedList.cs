@@ -22,11 +22,15 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 /// <remarks>
+/// Elements are ordered and searched with <see cref="Comparer"/>: an element matches a value when the two compare equal.
+/// With the default comparer, <see langword="null"/> sorts first, and elements that implement <see cref="IComparable{T}"/>
+/// are compared through it even when <typeparamref name="T"/> does not (e.g., an interface).<br/>
 /// The members that would break the sort order (<see cref="Insert(int, T)"/> and the
 /// <see cref="this[int]"/> setter) throw <see cref="InvalidOperationException"/>.<br/>
 /// <see cref="IList{T}"/> is re-implemented so that interface calls also honor the sort order.
 /// Mutating an instance through an <see cref="UnorderedList{T}"/>-typed reference bypasses that
-/// and can corrupt the order. Writes through <see cref="UnorderedList{T}.AsSpan"/> also bypass ordering.
+/// and can corrupt the order; searches through such a reference are linear and use
+/// <see cref="EqualityComparer{T}.Default"/>. Writes through <see cref="UnorderedList{T}.AsSpan"/> also bypass ordering.
 /// </remarks>
 public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 {
@@ -52,6 +56,9 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="capacity"/> is negative or greater than <see cref="Array.MaxLength"/>.
+    /// </exception>
     public OrderedList(int capacity)
         : this(capacity, null)
     {
@@ -60,7 +67,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
     /// </summary>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
+    /// <param name="comparer">The comparer to use for comparing elements, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
     public OrderedList(IComparer<T>? comparer)
         : this(0, comparer)
     {
@@ -70,7 +77,10 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
+    /// <param name="comparer">The comparer to use for comparing elements, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="capacity"/> is negative or greater than <see cref="Array.MaxLength"/>.
+    /// </exception>
     public OrderedList(int capacity, IComparer<T>? comparer)
         : base(capacity)
     {
@@ -80,19 +90,23 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+    /// Initializes a new instance of the <see cref="OrderedList{T}"/> class that contains the sorted elements
+    /// of the specified collection. Equal elements keep their order in the collection.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedList(IEnumerable<T> collection)
         : this(collection, null)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OrderedList{T}"/> class.
+    /// Initializes a new instance of the <see cref="OrderedList{T}"/> class that contains the sorted elements
+    /// of the specified collection. Equal elements keep their order in the collection.
     /// </summary>
     /// <param name="collection">The collection whose elements are copied to the new list.</param>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
+    /// <param name="comparer">The comparer to use for comparing elements, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
     public OrderedList(IEnumerable<T> collection, IComparer<T>? comparer)
         : this(0, comparer)
     {
@@ -106,17 +120,26 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// <summary>
     /// Gets the comparer used to order the elements.
     /// </summary>
+    /// <remarks>
+    /// When this is <see cref="Comparer{T}.Default"/> and <typeparamref name="T"/> does not implement <see cref="IComparable{T}"/>
+    /// (e.g., an interface), the list compares elements through their own <see cref="IComparable{T}"/> implementation,
+    /// which this comparer does not use (it may throw <see cref="ArgumentException"/> for such elements).
+    /// </remarks>
     public IComparer<T> Comparer { get; }
 
     /// <summary>
-    /// Gets the specialized comparison implementation for <typeparamref name="T"/>,
-    /// or <see langword="null"/> when none is available.
+    /// Gets the specialized search implementation for <typeparamref name="T"/>, or <see langword="null"/>
+    /// when none is available. One is resolved only when <see cref="Comparer"/> is <see cref="Comparer{T}.Default"/>.
     /// </summary>
     public IHotMethod<T>? HotMethod { get; }
+
+    // Whether batches are compared with CompareDefault instead of through the Comparer instance.
+    private bool CompareByDefault => this.comparerIsDefault && (typeof(T).IsValueType || !TypeIsComparable);
 
     /// <summary>
     /// Adds an element while maintaining sorted order.
     /// Elements equal to existing elements are inserted after them.
+    /// <br/>O(n) operation (O(log n) comparisons).
     /// </summary>
     /// <param name="value">The value to add.</param>
     public new void Add(T value)
@@ -126,8 +149,11 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Adds the elements of the specified collection while maintaining sorted order.
+    /// Added elements are placed after existing equal elements and keep their relative order.
     /// </summary>
-    /// <param name="collection">The collection whose elements are added.</param>
+    /// <param name="collection">The collection whose elements are added. It may be this list.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="collection"/> is <see langword="null"/>.</exception>
+    /// <remarks>If the comparer throws, the list stays sorted but may contain only some of the added elements.</remarks>
     public new void AddRange(IEnumerable<T> collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
@@ -152,8 +178,11 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Adds the elements of the specified array while maintaining sorted order.
+    /// Added elements are placed after existing equal elements and keep their relative order.
     /// </summary>
     /// <param name="array">The array whose elements are added.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <remarks>If the comparer throws, the list stays sorted but may contain only some of the added elements.</remarks>
     public new void AddRange(T[] array)
     {
         ArgumentNullException.ThrowIfNull(array);
@@ -162,8 +191,10 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Adds the elements of the specified span while maintaining sorted order.
+    /// Added elements are placed after existing equal elements and keep their relative order.
     /// </summary>
-    /// <param name="source">The span whose elements are added.</param>
+    /// <param name="source">The span whose elements are added. It may overlap the elements of this list.</param>
+    /// <remarks>If the comparer throws, the list stays sorted but may contain only some of the added elements.</remarks>
     public new void AddRange(ReadOnlySpan<T> source)
     {
         if (!source.IsEmpty)
@@ -185,12 +216,13 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         => throw new InvalidOperationException("Elements cannot be inserted at an arbitrary index in an ordered list.");
 
     /// <summary>
-    /// Searches for the specified value.
+    /// Searches for the first element that compares equal to the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to search for.</param>
     /// <returns>
-    /// The index of the first matching element, or the bitwise complement of its insertion index
-    /// if no matching element exists.
+    /// The index of the first matching element, or the bitwise complement of the index at which
+    /// <paramref name="value"/> would be inserted if no matching element exists.
     /// </returns>
     public int BinarySearch(T value)
     {
@@ -199,6 +231,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Gets the index of the first element equal to or greater than the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to search for.</param>
     /// <returns>The index, or -1 if all elements are less than the specified value.</returns>
@@ -210,6 +243,7 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
 
     /// <summary>
     /// Gets the index of the last element equal to or less than the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to search for.</param>
     /// <returns>The index, or -1 if all elements are greater than the specified value.</returns>
@@ -219,7 +253,8 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Returns the half-open range containing all elements equal to the specified value.
+    /// Returns the half-open range containing all elements that compare equal to the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
     /// <returns>A range in the form [Start, End), or (-1, -1) if the value is not found.</returns>
@@ -236,20 +271,22 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     }
 
     /// <summary>
-    /// Determines whether the specified value is in the list.
+    /// Determines whether the list contains an element that compares equal to the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
-    /// <returns><see langword="true"/> if the value is found.</returns>
+    /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
     public new bool Contains(T value)
     {
         return this.IndexOfFirstCore(value) >= 0;
     }
 
     /// <summary>
-    /// Removes the first occurrence of the specified value.
+    /// Removes the first element that compares equal to the specified value.
+    /// <br/>O(n) operation (O(log n) comparisons).
     /// </summary>
     /// <param name="value">The value to remove.</param>
-    /// <returns><see langword="true"/> if the value was removed.</returns>
+    /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
     public new bool Remove(T value)
     {
         var index = this.IndexOfFirstCore(value);
@@ -268,25 +305,20 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     /// </summary>
     /// <param name="index">The zero-based index of the element.</param>
     /// <returns>The element at <paramref name="index"/>.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range (getter only).</exception>
     /// <exception cref="InvalidOperationException">The setter is used.</exception>
     public new T this[int index]
     {
-        get
-        {
-            if ((uint)index >= (uint)this.size)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            return this.items[index];
-        }
+        // The base getter keeps its throw out of line, so the whole access can be inlined.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => base[index];
 
         set => throw new InvalidOperationException("Elements cannot be replaced directly in an ordered list.");
     }
 
     /// <summary>
-    /// Returns the index of the first occurrence of the specified value.
+    /// Returns the index of the first element that compares equal to the specified value.
+    /// <br/>O(log n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
     /// <returns>The first matching index, or -1 if the value is not found.</returns>
@@ -309,33 +341,26 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         var count = end - start;
         if (count < MergeThreshold)
         {
-            // Few elements: insert each one (a binary search and a block move).
-            // Add writes at most up to index i (== size), which is already read.
-            this.size = start;
-            try
-            {
-                for (var i = start; i < end; i++)
-                {
-                    this.Add(items[i]);
-                }
-            }
-            catch
-            {
-                this.ClearAfterSize(end);
-                throw;
-            }
-
+            this.InsertAppended(start, end);
             return;
         }
 
         // Many elements: sort them stably (ties by original position), then insert them from the largest.
         // A binary search over the unmerged existing elements finds those that follow each one, and they
         // move as a block, so the cost is O(m log m + m log n) comparisons and O(n + m) moves.
+        // A sorted batch (e.g., from a sorted source) is detected first with O(m) comparisons: it skips the sort,
+        // and also the merge when no element precedes the last existing one.
         SortEntry[]? pooled = null;
         var existingEnd = start; // The unmerged existing elements are [0, existingEnd).
         var mergedStart = end; // The merged elements are [mergedStart, end).
         try
         {
+            var order = this.GetAppendedOrder(items, start, end);
+            if (order == AppendedOrder.InPlace)
+            {
+                return;
+            }
+
             pooled = ArrayPool<SortEntry>.Shared.Rent(count);
             var buffer = pooled.AsSpan(0, count);
             for (var i = 0; i < buffer.Length; i++)
@@ -343,20 +368,9 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
                 buffer[i] = new(items[start + i], i);
             }
 
-            try
+            if (order == AppendedOrder.Unsorted)
             {
-                if (this.comparerIsDefault && (typeof(T).IsValueType || !TypeIsComparable))
-                {// Direct IComparable<SortEntry> calls: devirtualized for value types.
-                    buffer.Sort();
-                }
-                else
-                {// A class comparer: calls on a struct shared by reference types would go through instantiating stubs.
-                    buffer.Sort(new StableComparer(this.Comparer));
-                }
-            }
-            catch (InvalidOperationException e) when (e.InnerException is not null)
-            {// Sort wraps the comparer's exception; throw it as Add does.
-                ExceptionDispatchInfo.Throw(e.InnerException);
+                this.SortStable(buffer);
             }
 
             for (var i = count - 1; i >= 0; i--)
@@ -401,6 +415,102 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
         this.version++;
     }
 
+    /// <summary>
+    /// Inserts the few elements appended at [<paramref name="start"/>, <paramref name="end"/>) one by one
+    /// (a binary search and a block move each).
+    /// </summary>
+    private void InsertAppended(int start, int end)
+    {
+        // Add writes at most up to index i (== size), which is already read.
+        var items = this.items;
+        this.size = start;
+        try
+        {
+            for (var i = start; i < end; i++)
+            {
+                this.Add(items[i]);
+            }
+        }
+        catch
+        {
+            this.ClearAfterSize(end);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Determines how the appended elements at [<paramref name="start"/>, <paramref name="end"/>) relate to the sort order,
+    /// comparing like <see cref="SortStable"/>.
+    /// </summary>
+    private AppendedOrder GetAppendedOrder(T[] items, int start, int end)
+    {
+        // The batch is checked before its first element is compared with the last existing one,
+        // so a sorted batch that interleaves with the existing elements still skips the sort.
+        bool afterExisting;
+        if (this.CompareByDefault)
+        {
+            for (var i = start + 1; i < end; i++)
+            {
+                if (CompareDefault(items[i - 1], items[i]) > 0)
+                {
+                    return AppendedOrder.Unsorted;
+                }
+            }
+
+            afterExisting = start == 0 || CompareDefault(items[start - 1], items[start]) <= 0;
+        }
+        else
+        {
+            var comparer = this.Comparer;
+            for (var i = start + 1; i < end; i++)
+            {
+                if (comparer.Compare(items[i - 1], items[i]) > 0)
+                {
+                    return AppendedOrder.Unsorted;
+                }
+            }
+
+            afterExisting = start == 0 || comparer.Compare(items[start - 1], items[start]) <= 0;
+        }
+
+        return afterExisting ? AppendedOrder.InPlace : AppendedOrder.Sorted;
+    }
+
+    /// <summary>
+    /// Sorts the batch stably; the comparer's exception is rethrown unwrapped.
+    /// </summary>
+    private void SortStable(Span<SortEntry> buffer)
+    {
+        try
+        {
+            if (this.CompareByDefault)
+            {// Direct IComparable<SortEntry> calls: devirtualized for value types.
+                buffer.Sort();
+            }
+            else
+            {// A class comparer: calls on a struct shared by reference types would go through instantiating stubs.
+                buffer.Sort(new StableComparer(this.Comparer));
+            }
+        }
+        catch (InvalidOperationException e) when (e.InnerException is not null)
+        {// Sort wraps the comparer's exception; throw it as Add does.
+            ExceptionDispatchInfo.Throw(e.InnerException);
+        }
+    }
+
+    // How the elements appended at the end of the list relate to the sort order.
+    private enum AppendedOrder
+    {
+        // Sorted, and none precedes the last existing element: already in their merged positions.
+        InPlace,
+
+        // Sorted, but some precede the last existing element: only a merge is needed.
+        Sorted,
+
+        // Not sorted: a sort and a merge are needed.
+        Unsorted,
+    }
+
     // An element and its position in the batch: ties are ordered by position, which makes the sort stable.
     private readonly struct SortEntry : IComparable<SortEntry>
     {
@@ -413,22 +523,25 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
             this.Index = index;
         }
 
-        // Used with the default comparer for value types, and for reference types that do not implement
-        // IComparable<T> (e.g., interfaces); compares like the search strategies (see IndexOfFirstCore).
+        // Used when CompareByDefault is true.
         public int CompareTo(SortEntry other)
         {
-            int cmp;
-            if (!typeof(T).IsValueType && this.Value is IComparable<T> comparable)
-            {// Comparer<T>.Default would not use the element's IComparable<T>, but the search does.
-                cmp = other.Value is null ? 1 : comparable.CompareTo(other.Value);
-            }
-            else
-            {
-                cmp = Comparer<T>.Default.Compare(this.Value, other.Value);
-            }
-
+            var cmp = CompareDefault(this.Value, other.Value);
             return cmp != 0 ? cmp : this.Index.CompareTo(other.Index);
         }
+    }
+
+    // Used with the default comparer for value types, and for reference types that do not implement
+    // IComparable<T> (e.g., interfaces); compares like the search strategies (see IndexOfFirstCore).
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareDefault(T x, T y)
+    {
+        if (!typeof(T).IsValueType && x is IComparable<T> comparable)
+        {// Comparer<T>.Default would not use the element's IComparable<T>, but the search does.
+            return y is null ? 1 : comparable.CompareTo(y);
+        }
+
+        return Comparer<T>.Default.Compare(x, y);
     }
 
     private sealed class StableComparer : IComparer<SortEntry>
@@ -475,10 +588,10 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     // instantiated per strategy: for value-type elements with the default comparer the JIT
     // devirtualizes and inlines Comparer<T>.Default.Compare (no boxing, no virtual call);
     // for reference-type comparable elements a single interface call remains; the
-    // custom-comparer path matches the previous behavior.
+    // custom-comparer path makes one IComparer<T> interface call per comparison.
     private interface IValueCompare
     {
-        /// <summary>Returns the sign of Compare(value, element).</summary>
+        /// <summary>Compares the search value with <paramref name="element"/>, like Compare(value, element); only the sign is meaningful.</summary>
         int CompareValueTo(T element);
     }
 
@@ -595,10 +708,12 @@ public class OrderedList<T> : UnorderedList<T>, IList<T>, IReadOnlyList<T>
     {
         var hotMethod = this.HotMethod;
         if (hotMethod is not null)
-        {
-            var index = hotMethod.LowerBound(new ReadOnlySpan<T>(this.items, 0, this.size), value);
-            if ((uint)index < (uint)this.size &&
-                this.Comparer.Compare(this.items[index], value) == 0)
+        {// A HotMethod is resolved only for Comparer<T>.Default, which the JIT can devirtualize and inline here.
+            var items = this.items;
+            var size = this.size;
+            var index = hotMethod.LowerBound(new ReadOnlySpan<T>(items, 0, size), value);
+            if ((uint)index < (uint)size &&
+                Comparer<T>.Default.Compare(items[index], value) == 0)
             {
                 return index;
             }

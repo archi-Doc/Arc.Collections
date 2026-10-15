@@ -2,6 +2,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -66,9 +67,7 @@ public ref struct SequenceBuilder<T>
     /// If <see langword="null"/>, the value is inferred from
     /// <see cref="RuntimeHelpers.IsReferenceOrContainsReferences{T}"/>.
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="initialCapacity"/> is outside the valid range.
-    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialCapacity"/> is less than 1 or greater than <see cref="MaxChunkCapacity"/>.</exception>
     public SequenceBuilder(int initialCapacity, bool? clearArrayOnReturn = null)
     {
         if (initialCapacity <= 0 || initialCapacity > MaxChunkCapacity)
@@ -113,9 +112,7 @@ public ref struct SequenceBuilder<T>
     /// Appends a single value to the sequence under construction.
     /// </summary>
     /// <param name="value">The value to append.</param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the builder has already been finalized.
-    /// </exception>
+    /// <exception cref="InvalidOperationException">The builder has been finalized or disposed.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T value)
     {
@@ -148,9 +145,7 @@ public ref struct SequenceBuilder<T>
     /// </summary>
     /// <param name="values">The values to append.</param>
     /// <remarks>Large ranges use larger chunks, up to <see cref="MaxChunkCapacity"/>, to reduce pool traffic.</remarks>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the builder has already been finalized.
-    /// </exception>
+    /// <exception cref="InvalidOperationException">The builder has been finalized or disposed.</exception>
     public void AddRange(ReadOnlySpan<T> values)
     {
         if (this.isFinalized)
@@ -191,6 +186,9 @@ public ref struct SequenceBuilder<T>
     /// A sequence over the data written to this builder. The returned value remains valid
     /// only until <see cref="Dispose"/> is called.
     /// </returns>
+    /// <remarks>
+    /// Later calls return the same sequence; after <see cref="Dispose"/>, the sequence is empty.
+    /// </remarks>
     public ReadOnlySequence<T> ToReadOnlySequence()
     {
         if (this.isFinalized)
@@ -232,7 +230,8 @@ public ref struct SequenceBuilder<T>
     /// Returns all rented arrays and pooled segment instances used by this builder.
     /// </summary>
     /// <remarks>
-    /// After disposal, previously returned sequences from this builder must be considered invalid.
+    /// After disposal, previously returned sequences from this builder must be considered invalid,
+    /// and the builder rejects further additions. Calling this method more than once is safe.
     /// </remarks>
     public void Dispose()
     {
@@ -314,20 +313,14 @@ public ref struct SequenceBuilder<T>
         return array;
     }
 
+    /// <summary>
+    /// Moves the current chunk, which must contain at least one element, to the end of the segment list.
+    /// </summary>
     private void CommitCurrentChunk()
     {
         var array = this.currentArray;
-        if (array is null)
-        {
-            return;
-        }
-
         var written = this.currentIndex;
-        if (written == 0)
-        {
-            // Keep the current rented array for subsequent writes.
-            return;
-        }
+        Debug.Assert(array is not null && written > 0, "The current chunk must contain at least one element.");
 
         var runningIndex = this.length - written;
 

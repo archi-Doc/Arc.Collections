@@ -57,9 +57,12 @@ public ref struct SpanOwner<T>
     /// using <paramref name="scratchBuffer"/> when it is large enough and
     /// renting from the shared pool otherwise.
     /// </summary>
-    /// <param name="scratchBuffer">A scratch buffer, typically <c>stackalloc T[Threshold]</c>.</param>
+    /// <param name="scratchBuffer">A caller-supplied scratch buffer, typically a fixed-size <c>stackalloc</c>
+    /// of <see cref="Arc.BaseHelper.StackallocThreshold"/> elements.</param>
     /// <param name="length">The required number of elements.</param>
-    /// <remarks>If you want to disable zero-initialization, add the [SkipLocalsInit] attribute to the method or assembly</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative.</exception>
+    /// <remarks>The caller's <c>stackalloc</c> is zero-initialized unless <see cref="SkipLocalsInitAttribute"/>
+    /// is applied to the calling method that performs it (or to its type or module).</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public SpanOwner(Span<T> scratchBuffer, int length)
     {
@@ -82,6 +85,7 @@ public ref struct SpanOwner<T>
     /// scratch buffer is available).
     /// </summary>
     /// <param name="length">The required number of elements.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public SpanOwner(int length)
     {

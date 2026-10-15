@@ -18,7 +18,10 @@ namespace Arc.Collections;
 /// <summary>
 /// Provides a slim, allocation-free XXH3 (64-bit) implementation.
 /// </summary>
-/// <remarks>Ported from <c>System.IO.Hashing.XxHash3</c>.</remarks>
+/// <remarks>
+/// Ported from <c>System.IO.Hashing.XxHash3</c>; <see cref="Hash64(ReadOnlySpan{byte}, long)"/> returns the same values as
+/// <c>XxHash3.HashToUInt64</c>. The hash is non-cryptographic. All members are stateless and thread-safe.
+/// </remarks>
 [SkipLocalsInit]
 public static unsafe class XxHash3Slim
 {
@@ -102,7 +105,8 @@ public static unsafe class XxHash3Slim
     ];
 
     /// <summary>
-    /// Combines two hash values using a rotate-and-multiply mixing step.
+    /// Combines two hash values using a rotate-and-multiply mixing step.<br/>
+    /// The result depends on the argument order.
     /// </summary>
     /// <param name="hash1">The first hash value.</param>
     /// <param name="hash2">The second hash value.</param>
@@ -124,7 +128,8 @@ public static unsafe class XxHash3Slim
     }
 
     /// <summary>
-    /// Combines two hash values using the XXH3 multiply-fold mixing step.
+    /// Combines two hash values using the XXH3 multiply-fold mixing step.<br/>
+    /// The result depends on the argument order.
     /// </summary>
     /// <param name="hash1">The first hash value.</param>
     /// <param name="hash2">The second hash value.</param>
@@ -139,10 +144,10 @@ public static unsafe class XxHash3Slim
         return Avalanche(mixed + hash1 + BitOperations.RotateLeft(hash2, 27));
     }
 
-    /// <summary>Computes the XXH3 hash of the provided data.</summary>
+    /// <summary>Computes the XXH3 64-bit hash of the provided data.</summary>
     /// <param name="source">The data to hash.</param>
     /// <param name="seed">The seed value for this hash computation.</param>
-    /// <returns>The computed XXH3 hash.</returns>
+    /// <returns>The computed XXH3 64-bit hash.</returns>
     public static unsafe ulong Hash64(ReadOnlySpan<byte> source, long seed = 0)
     {
         uint length = (uint)source.Length;
@@ -168,19 +173,19 @@ public static unsafe class XxHash3Slim
     }
 
     /// <summary>
-    /// Static function: Calculates a 64bit hash from the given string.
+    /// Computes the XXH3 64-bit hash of the UTF-16 code units in the specified span, using seed 0.
     /// </summary>
-    /// <param name="source">The read-only span that contains input data.</param>
-    /// <returns>A 64bit hash.</returns>
+    /// <param name="source">The characters to hash.</param>
+    /// <returns>The hash of the characters' raw bytes in native byte order.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe ulong Hash64(ReadOnlySpan<char> source)
         => Hash64(MemoryMarshal.Cast<char, byte>(source));
 
     /// <summary>
-    /// Static function: Calculates a 64bit hash from the given string.
+    /// Computes the XXH3 64-bit hash of the UTF-16 code units in the specified string, using seed 0.
     /// </summary>
-    /// <param name="source">The string containing the characters to calculates.</param>
-    /// <returns>A 64bit hash.</returns>
+    /// <param name="source">The string to hash.</param>
+    /// <returns>The hash of the string's raw character bytes in native byte order.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe ulong Hash64(string source)
         => Hash64(MemoryMarshal.Cast<char, byte>(source));
@@ -649,41 +654,17 @@ public static unsafe class XxHash3Slim
         }
     }
 
+    /// <summary>Scalar accumulator scrambling; the SIMD paths of <see cref="Accumulate"/> scramble their vectors inline.</summary>
     private static void ScrambleAccumulators(ulong* accumulators, byte* secret)
     {
-        if (Vector256.IsHardwareAccelerated && BitConverter.IsLittleEndian)
+        for (int i = 0; i < AccumulatorCount; i++)
         {
-            for (int i = 0; i < AccumulatorCount / Vector256<ulong>.Count; i++)
-            {
-                Vector256<ulong> accVec = ScrambleAccumulator256(Vector256.Load(accumulators), Vector256.Load((ulong*)secret));
-                Vector256.Store(accVec, accumulators);
+            ulong xorShift = XorShift(*accumulators, 47);
+            ulong xorWithKey = xorShift ^ ReadUInt64LE(secret);
+            *accumulators = xorWithKey * Prime32_1;
 
-                accumulators += Vector256<ulong>.Count;
-                secret += Vector256<byte>.Count;
-            }
-        }
-        else if (Vector128.IsHardwareAccelerated && BitConverter.IsLittleEndian)
-        {
-            for (int i = 0; i < AccumulatorCount / Vector128<ulong>.Count; i++)
-            {
-                Vector128<ulong> accVec = ScrambleAccumulator128(Vector128.Load(accumulators), Vector128.Load((ulong*)secret));
-                Vector128.Store(accVec, accumulators);
-
-                accumulators += Vector128<ulong>.Count;
-                secret += Vector128<byte>.Count;
-            }
-        }
-        else
-        {
-            for (int i = 0; i < AccumulatorCount; i++)
-            {
-                ulong xorShift = XorShift(*accumulators, 47);
-                ulong xorWithKey = xorShift ^ ReadUInt64LE(secret);
-                *accumulators = xorWithKey * Prime32_1;
-
-                accumulators++;
-                secret += sizeof(ulong);
-            }
+            accumulators++;
+            secret += sizeof(ulong);
         }
     }
 

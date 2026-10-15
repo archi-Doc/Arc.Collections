@@ -17,11 +17,14 @@ namespace Arc.Collections;
 /// <summary>
 /// Provides a thread-safe hash table with ordinal UTF-8 keys and span-based lookup.
 /// </summary>
-/// <typeparam name="TValue">The type of value.</typeparam>
+/// <typeparam name="TValue">The type of values in the hashtable.</typeparam>
 /// <remarks>
-/// Writes are serialized and lookups are lock-free. Keys are compared without text validation or normalization.
+/// Writes are serialized by an internal lock. Lookups are lock-free and see each key either before or after a write;
+/// <see cref="Count"/> is updated separately and may briefly lag behind lookups.<br/>
+/// Keys are compared without text validation or normalization.
 /// TryAdd preserves existing values; AddOrUpdate replaces them.
-/// Array keys are retained; span keys are copied only on insertion. Stored arrays must not be modified, including inside a value factory.
+/// Members that take an array key throw <see cref="ArgumentNullException"/> for a <see langword="null"/> key. Array keys are retained and span keys are copied only on insertion; stored arrays must not be modified, including inside a value factory.<br/>
+/// At most 2^29 + 1 (536,870,913) items can be stored; adding another key throws <see cref="InvalidOperationException"/>.
 /// </remarks>
 public class Utf8Hashtable<TValue>
 {
@@ -55,7 +58,7 @@ public class Utf8Hashtable<TValue>
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf8Hashtable{TValue}"/> class.
     /// </summary>
-    /// <param name="capacity">The initial capacity.</param>
+    /// <param name="capacity">The minimum number of items the hashtable can hold before it grows.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative or greater than 2^29 (536,870,912).</exception>
     public Utf8Hashtable(int capacity = 4)
     {
@@ -63,9 +66,10 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Gets an array containing all values.
+    /// Gets an array containing all values, in no particular order.
     /// </summary>
     /// <returns>A snapshot of the current values, or an empty array when the hashtable is empty.</returns>
+    /// <remarks>The snapshot is taken under the write lock.</remarks>
     public TValue[] ToArray()
     {
         using (this.lockObject.EnterScope())
@@ -92,10 +96,10 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Gets an array containing all key-value pairs.
+    /// Gets an array containing all key-value pairs, in no particular order.
     /// </summary>
     /// <returns>A snapshot of the current key-value pairs, or an empty array when the hashtable is empty.</returns>
-    /// <remarks>The key arrays are shared with the hashtable and must not be modified.</remarks>
+    /// <remarks>The snapshot is taken under the write lock. The key arrays are shared with the hashtable and must not be modified.</remarks>
     public KeyValuePair<byte[], TValue>[] ToKeyValuePairs()
     {
         using (this.lockObject.EnterScope())
@@ -122,11 +126,13 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to add a key-value pair.
+    /// Attempts to add a key-value pair. An existing value is left unchanged.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the pair was added;
+    /// otherwise, <see langword="false"/> if the key already exists.</returns>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public bool TryAdd(byte[] key, TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -134,19 +140,22 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to add a key-value pair.
+    /// Attempts to add a key-value pair. An existing value is left unchanged.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
-    /// <returns><see langword="true"/> if the element was added; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the pair was added;
+    /// otherwise, <see langword="false"/> if the key already exists.</returns>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public bool TryAdd(ReadOnlySpan<byte> key, TValue value)
         => this.AddInternal(key, value, false);
 
     /// <summary>
-    /// Adds or updates a key-value pair.
+    /// Adds a key-value pair, or replaces the value if the key already exists.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public void AddOrUpdate(byte[] key, TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -154,22 +163,28 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Adds or updates a key-value pair.
+    /// Adds a key-value pair, or replaces the value if the key already exists.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
+    /// <exception cref="InvalidOperationException">The key is absent and the hashtable already holds the maximum number of items.</exception>
     public void AddOrUpdate(ReadOnlySpan<byte> key, TValue value)
         => this.AddInternal(key, value, true);
 
     /// <summary>
-    /// Gets the existing value or adds a newly created value.
+    /// Gets the value associated with the specified key, or adds a value created by <paramref name="valueFactory"/> if the key is absent.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
-    /// <returns>The existing value, or the newly created value.</returns>
-    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
-    /// it must not modify this hashtable. A modification that would invalidate the insertion
-    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.</remarks>
+    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.
+    /// It receives <paramref name="key"/>, which is stored.</param>
+    /// <returns>The existing value, or the newly added value.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> or <paramref name="valueFactory"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory"/> modified this hashtable in a way that invalidates the insertion,
+    /// or the hashtable already holds the maximum number of items.</exception>
+    /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
+    /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
+    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
+    /// If <paramref name="valueFactory"/> throws or the insertion fails, <paramref name="key"/> is not added and any created value is discarded.</remarks>
     public TValue GetOrAdd(byte[] key, Func<byte[], TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -184,14 +199,19 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Gets the existing value or adds a newly created value.
+    /// Gets the value associated with the specified key, or adds a value created by <paramref name="valueFactory"/> if the key is absent.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.</param>
-    /// <returns>The existing value, or the newly created value.</returns>
-    /// <remarks><paramref name="valueFactory"/> is invoked while holding the internal lock;
-    /// it must not modify this hashtable. A modification that would invalidate the insertion
-    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.</remarks>
+    /// <param name="valueFactory">The factory invoked to create the value when the key is absent.
+    /// It receives the copy of <paramref name="key"/> that is stored.</param>
+    /// <returns>The existing value, or the newly added value.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="valueFactory"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory"/> modified this hashtable in a way that invalidates the insertion,
+    /// or the hashtable already holds the maximum number of items.</exception>
+    /// <remarks><paramref name="valueFactory"/> runs under the write lock, at most once per call and only while the key is absent;
+    /// other writers wait until it returns. It must not modify this hashtable. A modification that would invalidate the insertion
+    /// (to the same bucket, a resize, or <see cref="Clear"/>) throws <see cref="InvalidOperationException"/>.
+    /// If <paramref name="valueFactory"/> throws or the insertion fails, <paramref name="key"/> is not added and any created value is discarded.</remarks>
     public TValue GetOrAdd(ReadOnlySpan<byte> key, Func<byte[], TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
@@ -281,10 +301,10 @@ public class Utf8Hashtable<TValue>
         => this.TryGetValue(key, out _);
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(byte[] key)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -292,11 +312,11 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">When this method returns, the removed value if found; otherwise, the default value.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(byte[] key, [MaybeNullWhen(false)] out TValue value)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -304,19 +324,19 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(ReadOnlySpan<byte> key)
         => this.TryRemove(key, out _);
 
     /// <summary>
-    /// Attempts to remove the value with the specified key.
+    /// Attempts to remove the item with the specified key.
     /// </summary>
     /// <param name="key">The key.</param>
     /// <param name="value">When this method returns, the removed value if found; otherwise, the default value.</param>
-    /// <returns><see langword="true"/> if the key was found and removed.</returns>
+    /// <returns><see langword="true"/> if the key was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool TryRemove(ReadOnlySpan<byte> key, [MaybeNullWhen(false)] out TValue value)
     {
         var hash = GetHashCode(key);
@@ -354,7 +374,7 @@ public class Utf8Hashtable<TValue>
     }
 
     /// <summary>
-    /// Removes all key-value pairs.
+    /// Removes all key-value pairs. The capacity is not reduced.
     /// </summary>
     public void Clear()
     {

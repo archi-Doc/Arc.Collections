@@ -21,8 +21,8 @@ namespace Arc.Collections;
 /// <typeparam name="TValue">The type of values in the map.</typeparam>
 /// <remarks>
 /// TryAdd preserves existing values; AddOrUpdate replaces them. Keys are compared without text validation or normalization.
-/// Span keys are copied only on insertion. All access requires external synchronization when a writer is present.
-/// Enumeration does not detect modifications.
+/// Members that take a string key throw <see cref="ArgumentNullException"/> for a <see langword="null"/> key; span keys are copied only on insertion. All access requires external synchronization when a writer is present.
+/// Enumeration order is unspecified, and enumeration does not detect modifications.
 /// </remarks>
 public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue>>
 {
@@ -68,14 +68,16 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     public int Count => this._count - this._freeCount;
 
     /// <summary>
-    /// Gets the total capacity of the map.
+    /// Gets the number of allocated node slots. It doubles when an element is added while all slots are in use.
     /// </summary>
     public int Capacity => this._nodes.Length;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Utf16UnorderedMap{TValue}"/> class.
     /// </summary>
-    /// <param name="minimumCapacity">The minimum required capacity.</param>
+    /// <param name="minimumCapacity">
+    /// The minimum required capacity. It is rounded up to a power of two of at least <see cref="CollectionHelper.MinimumCapacity"/>.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="minimumCapacity"/> is greater than 2^30 (1,073,741,824).</exception>
     public Utf16UnorderedMap(uint minimumCapacity = 0)
     {
@@ -90,6 +92,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Gets or sets the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The value associated with <paramref name="key"/>.</returns>
+    /// <exception cref="KeyNotFoundException">The key does not exist (getter only).</exception>
     public TValue this[string key]
     {
         get
@@ -140,7 +145,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         => this.TryInsert(key, value, false);
 
     /// <summary>
-    /// Removes all keys and values from the map.
+    /// Removes all elements from the map. The capacity is unchanged.
     /// </summary>
     public void Clear()
     {
@@ -164,10 +169,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(string key)
-    {
-        ArgumentNullException.ThrowIfNull(key);
-        return this.TryGetValue(key, out _);
-    }
+        => this.TryGetValue(key, out _);
 
     /// <summary>
     /// Determines whether the map contains the specified key.
@@ -179,7 +181,8 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         => this.TryGetValue(key, out _);
 
     /// <summary>
-    /// Determines whether the map contains the specified value.
+    /// Determines whether the map contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
+    /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> if the value is found; otherwise, <see langword="false"/>.</returns>
@@ -353,11 +356,10 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
     /// <summary>
     /// Gets a reference to the value associated with the specified key, adding a new entry
     /// with a default value when the key does not exist.<br/>
-    /// Computes the hash and traverses the bucket once, avoiding the repeated lookup
-    /// of a TryGetValue/AddOrUpdate pair.
+    /// The key is hashed and looked up once, unlike separate <c>TryGetValue</c> and <c>AddOrUpdate</c> calls.
     /// </summary>
-    /// <param name="key">The key to look up or add.</param>
-    /// <param name="exists"><see langword="true"/> if the key already existed.</param>
+    /// <param name="key">The key.</param>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed; otherwise, <see langword="false"/>.</param>
     /// <returns>
     /// A reference to the value slot. Do not add or remove entries, or clear the map,
     /// while using the reference; these operations can invalidate it.
@@ -407,13 +409,15 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
 
     /// <summary>
     /// Gets a reference to the value associated with the specified key, adding a new entry
-    /// with a default value when the key does not exist.
-    /// See <see cref="GetValueRefOrAddDefault(string, out bool)"/> for details and the
-    /// reference invalidation rules.
+    /// with a default value when the key does not exist.<br/>
+    /// The key is hashed and looked up once, and copied only when a new entry is added.
     /// </summary>
     /// <param name="key">The key.</param>
-    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed.</param>
-    /// <returns>A reference to the value slot. Do not add or remove entries, or clear the map, while using it.</returns>
+    /// <param name="exists">When this method returns, <see langword="true"/> if the key already existed; otherwise, <see langword="false"/>.</param>
+    /// <returns>
+    /// A reference to the value slot. Do not add or remove entries, or clear the map,
+    /// while using the reference; these operations can invalidate it.
+    /// </returns>
     public ref TValue GetValueRefOrAddDefault(ReadOnlySpan<char> key, out bool exists)
     {
         var nodes = this._nodes;
@@ -439,6 +443,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
             }
         }
 
+        // Allocate only after confirming that the key does not already exist, and before
+        // claiming a node, so that a failed copy leaves the map unchanged.
+        var stringKey = key.ToString();
         var index = this.GetNewNodeIndex();
 
         // Resize may have replaced both arrays: re-fetch them. Note that ref-reassigning
@@ -449,9 +456,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         ref var node = ref nodes[index];
         node.hashCode = hashCode;
         node.next = bucket - 1;
-
-        // Allocate only after confirming that the key does not already exist.
-        node.key = key.ToString();
+        node.key = stringKey;
         node.value = default!;
         bucket = index + 1;
         exists = false;
@@ -545,6 +550,9 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
             }
         }
 
+        // Allocate only after confirming that the key does not already exist, and before
+        // claiming a node, so that a failed copy leaves the map unchanged.
+        var stringKey = key.ToString();
         var index = this.GetNewNodeIndex();
 
         // Resize may have replaced both arrays: re-fetch them. Note that ref-reassigning
@@ -555,9 +563,7 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         ref var node = ref nodes[index];
         node.hashCode = hashCode;
         node.next = bucket - 1;
-
-        // Allocate only after confirming that the key does not already exist.
-        node.key = key.ToString();
+        node.key = stringKey;
         node.value = value;
         bucket = index + 1;
         return true;
@@ -594,19 +600,17 @@ public class Utf16UnorderedMap<TValue> : IEnumerable<KeyValuePair<string, TValue
         }
 
         var newSize = oldSize << 1;
+        var count = this._count;
         var nodes = new Node[newSize];
-        Array.Copy(this._nodes, nodes, this._count);
+        Array.Copy(this._nodes, nodes, count);
 
         var buckets = new int[newSize];
         var mask = newSize - 1;
-        for (var i = 0; i < this._count; i++)
+
+        // Resize is called only after all free nodes have been reused, so every node is in use.
+        for (var i = 0; i < count; i++)
         {
             ref var node = ref nodes[i];
-            if (node.next < -1)
-            {
-                continue;
-            }
-
             ref var bucket = ref buckets[node.hashCode & mask];
             node.next = bucket - 1;
             bucket = i + 1;

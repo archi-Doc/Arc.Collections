@@ -10,18 +10,20 @@ using System.Threading;
 namespace Arc.Collections;
 
 /// <summary>
-/// Provides a thread-safe, bounded queue for multiple producers and consumers.
+/// Provides a thread-safe, bounded first-in, first-out queue for multiple producers and consumers.
 /// </summary>
 /// <typeparam name="T">The type of elements in the queue.</typeparam>
 /// <remarks>
-/// Capacity is rounded up to a power of two, between two and <see cref="MaximumCapacity"/>.
-/// Enqueue attempts can fail when the queue is full; concurrent operations may retry or wait.
+/// The capacity is fixed at construction: it is rounded up to a power of two, between two and <see cref="MaximumCapacity"/>.
+/// <see cref="TryEnqueue(T)"/> returns <see langword="false"/> instead of growing or blocking when the queue is full.
+/// Concurrent operations may retry or wait; in particular, <see cref="TryDequeue(out T)"/> spins while a producer has
+/// reserved the head slot but not yet stored its element.
 /// <see cref="Count" /> is an estimate during concurrent access.
 /// </remarks>
 public sealed class CircularQueue<T>
 {
     /// <summary>
-    /// The largest capacity the queue can be created with.
+    /// The largest capacity the queue can be created with (2^30). Larger requested capacities are clamped to this value.
     /// </summary>
     public const int MaximumCapacity = 1 << 30;
 
@@ -31,7 +33,7 @@ public sealed class CircularQueue<T>
 
     /// <summary>Initializes a new instance of the <see cref="CircularQueue{T}"/> class.</summary>
     /// <param name="capacity">The requested capacity, rounded up to a power of two
-    /// and clamped between 2 and <see cref="MaximumCapacity"/>.</param>
+    /// and clamped between 2 and <see cref="MaximumCapacity"/>. Values below 2, including negative values, select 2.</param>
     public CircularQueue(int capacity)
     {
         if (capacity < 2)
@@ -64,6 +66,10 @@ public sealed class CircularQueue<T>
     /// <summary>
     /// Gets an approximate number of elements currently contained in the queue.
     /// </summary>
+    /// <remarks>
+    /// The value is exact while no other thread is using the queue. During concurrent access it may be stale and
+    /// includes elements that are still being enqueued, but it always lies between 0 and <see cref="Capacity"/>.
+    /// </remarks>
     public int Count
     {
         get
@@ -82,10 +88,14 @@ public sealed class CircularQueue<T>
     }
 
     /// <summary>
-    /// Tries to dequeue an element from the circular queue.
+    /// Tries to remove and return the element at the head of the queue.
     /// </summary>
     /// <param name="item">The dequeued item, if successful; otherwise, the default value of <typeparamref name="T"/>.</param>
-    /// <returns><see langword="true"/> if an item was successfully dequeued; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if an item was dequeued; <see langword="false"/> if the queue is empty.</returns>
+    /// <remarks>
+    /// If a producer has reserved the head slot but not yet stored its element, this method spins until the element is published.
+    /// When <typeparamref name="T"/> is or contains a reference type, the slot is cleared so that the queue does not keep the item alive.
+    /// </remarks>
     public bool TryDequeue([MaybeNullWhen(false)] out T item)
     {
         var array = this.slotArray;
@@ -135,7 +145,7 @@ public sealed class CircularQueue<T>
     }
 
     /// <summary>
-    /// Tries to enqueue an element into the queue.
+    /// Tries to add an element at the tail of the queue.
     /// </summary>
     /// <param name="item">The item to enqueue.</param>
     /// <returns>

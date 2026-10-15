@@ -6,7 +6,8 @@ using System.Collections.Generic;
 namespace Arc.Collections.HotMethod;
 
 /// <summary>
-/// Resolves specialized comparison implementations for supported primitive types.
+/// Resolves the specialized span and tree searches for the supported built-in types
+/// (the 8- to 128-bit integers, <see cref="float"/>, <see cref="double"/>, and <see cref="DateTime"/>).
 /// </summary>
 internal sealed class PrimitiveResolver : IHotMethodResolver
 {

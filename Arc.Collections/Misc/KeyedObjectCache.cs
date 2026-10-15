@@ -13,8 +13,11 @@ namespace Arc.Collections;
 /// <typeparam name="TObject">The type of objects contained in the cache.</typeparam>
 /// <remarks>
 /// Stores at most one object per key and evicts the oldest cached object when full.
-/// Cached objects implementing <see cref="IDisposable" /> are disposed on eviction or cache disposal.
 /// Cache operations are thread-safe; callers manage objects they retrieve.
+/// Cached objects implementing <see cref="IDisposable" /> are disposed on eviction or cache disposal,
+/// synchronously under the cache lock: their <see cref="IDisposable.Dispose" /> may reenter the cache,
+/// but must not wait for another thread that uses it.
+/// An object rejected by <see cref="Lease.Return"/> is disposed after the lock is released.
 /// </remarks>
 public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     where TKey : IEquatable<TKey>
@@ -59,7 +62,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         /// If the object cannot be cached,
         /// it is disposed when it implements <see cref="IDisposable"/>.
         /// </summary>
-        /// <returns>A <see cref="Lease"/> with the object set to its default value.</returns>
+        /// <returns>An empty <see cref="Lease"/> for the same cache and key; disposing it does nothing.</returns>
         public Lease Return()
         {
             if (this.hasObject &&
@@ -79,24 +82,24 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
             => this.Return();
     }
 
-    private class Item
+    private struct Entry
     {
-        public Item(TObject obj)
+        public Entry(TObject obj, int previous)
         {
             this.Object = obj;
-            this.MapIndex = -1;
-            this.LinkedListNode = null;
+            this.Previous = previous;
+            this.Next = -1;
         }
 
 #pragma warning disable SA1401 // Fields should be private
         internal TObject Object;
-        internal int MapIndex;
-        internal UnorderedLinkedList<Item>.Node? LinkedListNode;
+        internal int Previous; // The node index of the next older entry, or -1.
+        internal int Next; // The node index of the next newer entry, or -1.
 #pragma warning restore SA1401 // Fields should be private
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeyedObjectCache{TKey, TObject}"/> class.<br/>
+    /// Initializes a new instance of the <see cref="KeyedObjectCache{TKey, TObject}"/> class.
     /// </summary>
     /// <param name="cacheSize">The maximum number of objects in the cache. Must be greater than zero.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cacheSize"/> is less than 1.</exception>
@@ -112,7 +115,7 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     /// <param name="key">The key associated with the object.</param>
     /// <param name="obj">The object to be returned to the cache, or <see langword="null"/>.</param>
-    /// <returns>A <see cref="Lease"/> instance.</returns>
+    /// <returns>A <see cref="Lease"/> instance; it is empty when <paramref name="obj"/> is <see langword="null"/>.</returns>
     public Lease CreateLease(TKey key, TObject? obj)
         => new(this, key, obj);
 
@@ -123,13 +126,12 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <returns>The cached object, or the default value if the key is absent.</returns>
     public TObject? TakeOrDefault(TKey key)
     {
-        Item? item;
         using (this.lockObject.EnterScope())
         {
-            if (this.map.TryGetValue(key, out item))
+            var index = this.map.FindFirstNode(key);
+            if (index >= 0)
             {// Remove
-                this.RemoveFromCollection(item);
-                return item.Object;
+                return this.RemoveEntry(index);
             }
             else
             {
@@ -143,32 +145,54 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// </summary>
     /// <param name="key">The key of the object to cache.</param>
     /// <param name="obj">The object to cache.</param>
-    /// <returns><see langword="true"/>; The object is successfully cached.<br/>
-    /// <see langword="false"/>; The key already exists, the cache is disposed, or an eviction callback refills it.
-    /// The caller retains ownership when this method returns <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the object was cached.<br/>
+    /// <see langword="false"/> if the key is already cached, the cache is disposed, or disposing the evicted
+    /// object disposed or refilled the cache. The caller retains ownership in that case.</returns>
+    /// <remarks>An evicted object is disposed synchronously while the cache lock is held.</remarks>
     public bool TryAdd(TKey key, TObject obj)
     {
         using (this.lockObject.EnterScope())
         {
-            if (this.disposed || this.map.ContainsKey(key))
+            if (this.disposed)
             {
                 return false;
             }
 
-            if (this.linkedList.Count >= this.CacheSize && this.linkedList.First is { } first)
-            {
-                this.DisposeItem(first.Value);
+            if (this.map.Count >= this.CacheSize)
+            {// Evict the oldest object, unless the key is already cached.
+                if (this.map.ContainsKey(key))
+                {
+                    return false;
+                }
+
+                DisposeObject(this.RemoveEntry(this.oldest));
 
                 // Disposal can reenter this cache and change its state.
-                if (this.disposed || this.linkedList.Count >= this.CacheSize || this.map.ContainsKey(key))
+                if (this.disposed || this.map.Count >= this.CacheSize)
                 {
                     return false;
                 }
             }
 
-            var item = new Item(obj);
-            (item.MapIndex, _) = this.map.Add(key, item);
-            item.LinkedListNode = this.linkedList.AddLast(item);
+            // Add() rejects an existing key, so the key is hashed only once when the cache is not full.
+            var (index, newlyAdded) = this.map.Add(key, new(obj, this.newest));
+            if (!newlyAdded)
+            {
+                return false;
+            }
+
+            if (this.newest >= 0)
+            {
+                var last = this.GetEntry(this.newest);
+                last.Next = index;
+                this.map.UnsafeChangeValue(this.newest, last);
+            }
+            else
+            {
+                this.oldest = index;
+            }
+
+            this.newest = index;
             return true;
         }
     }
@@ -187,39 +211,63 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
         {
             using (this.lockObject.EnterScope())
             {
-                return this.linkedList.Count;
+                return this.map.Count;
             }
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RemoveFromCollection(Item item)
+    private static void DisposeObject(TObject obj)
     {
-        if (item.MapIndex >= 0)
-        {
-            this.map.RemoveNode(item.MapIndex);
-            item.MapIndex = -1;
-        }
-
-        if (item.LinkedListNode != null)
-        {
-            this.linkedList.Remove(item.LinkedListNode);
-            item.LinkedListNode = null;
-        }
-    }
-
-    private void DisposeItem(Item item)
-    {
-        this.RemoveFromCollection(item);
-        if (item.Object is IDisposable disposable)
+        if (obj is IDisposable disposable)
         {
             disposable.Dispose();
         }
     }
 
-    private Lock lockObject = new();
-    private UnorderedMap<TKey, Item> map = new();
-    private UnorderedLinkedList<Item> linkedList = new();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Entry GetEntry(int index)
+        => this.map.UnsafeGetNodes().Nodes[index].Value;
+
+    /// <summary>
+    /// Unlinks and removes an entry before its object is handed out or disposed,
+    /// so that reentrant calls observe a consistent cache.
+    /// </summary>
+    private TObject RemoveEntry(int index)
+    {
+        var entry = this.GetEntry(index);
+        if (entry.Previous >= 0)
+        {
+            var previous = this.GetEntry(entry.Previous);
+            previous.Next = entry.Next;
+            this.map.UnsafeChangeValue(entry.Previous, previous);
+        }
+        else
+        {
+            this.oldest = entry.Next;
+        }
+
+        if (entry.Next >= 0)
+        {
+            var next = this.GetEntry(entry.Next);
+            next.Previous = entry.Previous;
+            this.map.UnsafeChangeValue(entry.Next, next);
+        }
+        else
+        {
+            this.newest = entry.Previous;
+        }
+
+        this.map.RemoveNode(index);
+        return entry.Object;
+    }
+
+    private readonly Lock lockObject = new();
+
+    // Entries form a doubly linked list from oldest to newest through their stable node indexes,
+    // so caching an object does not allocate once the map has grown.
+    private readonly UnorderedMap<TKey, Entry> map = new();
+    private int oldest = -1; // The node index of the oldest entry, or -1 if the cache is empty.
+    private int newest = -1; // The node index of the newest entry, or -1 if the cache is empty.
 
 #pragma warning disable SA1124 // Do not use regions
     #region IDisposable Support
@@ -230,7 +278,8 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
     /// <summary>
     /// Disposes all cached objects that implement <see cref="IDisposable"/> and empties the cache.
     /// </summary>
-    /// <remarks>Call this to release disposable objects still owned by the cache.</remarks>
+    /// <remarks>Call this to release disposable objects still owned by the cache.
+    /// Later <see cref="TryAdd"/> calls fail, so leases returned afterward dispose their objects.</remarks>
     public void Dispose()
     {
         using (this.lockObject.EnterScope())
@@ -242,9 +291,9 @@ public sealed class KeyedObjectCache<TKey, TObject> : IDisposable
 
             this.disposed = true;
 
-            while (this.linkedList.First is { } first)
+            while (this.oldest >= 0)
             {
-                this.DisposeItem(first.Value);
+                DisposeObject(this.RemoveEntry(this.oldest));
             }
         }
     }

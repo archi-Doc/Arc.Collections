@@ -23,6 +23,12 @@ namespace Arc.Collections;
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the collection.</typeparam>
 /// <typeparam name="TValue">The type of values in the collection.</typeparam>
+/// <remarks>
+/// Keys and values are stored in parallel arrays sorted by key: lookup is O(log n), while insertion and removal
+/// shift O(n) entries. <see cref="Add(TKey, TValue)"/> inserts an entry after existing entries with an equal key,
+/// so duplicates keep their insertion order; for copies, see
+/// <see cref="OrderedKeyValueList(IDictionary{TKey, TValue}, IComparer{TKey}?)"/>. Null keys are rejected.
+/// </remarks>
 public class OrderedKeyValueList<TKey, TValue> :
     IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>
     where TKey : notnull
@@ -65,11 +71,16 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <summary>
     /// Gets the comparer used to order the keys.
     /// </summary>
+    /// <remarks>
+    /// With <see cref="Comparer{T}.Default"/>, when <typeparamref name="TKey"/> is a reference type that does not itself implement
+    /// <c>IComparable&lt;TKey&gt;</c> (such as <see cref="object"/>, or an interface that does not extend it), a key that
+    /// implements <c>IComparable&lt;TKey&gt;</c> is compared through that interface rather than through this comparer.
+    /// </remarks>
     public IComparer<TKey> Comparer { get; }
 
     /// <summary>
-    /// Gets the specialized comparison implementation for <typeparamref name="TKey"/>,
-    /// or <see langword="null"/> when none is available.
+    /// Gets the specialized search implementation for <typeparamref name="TKey"/>, or <see langword="null"/>
+    /// when none is available. One is resolved only when <see cref="Comparer"/> is <see cref="Comparer{T}.Default"/>.
     /// </summary>
     public IHotMethod<TKey>? HotMethod { get; }
 
@@ -85,6 +96,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public OrderedKeyValueList(int capacity)
         : this(capacity, null)
     {
@@ -93,7 +105,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
-    /// <param name="comparer">The comparer to use for comparing keys.</param>
+    /// <param name="comparer">The comparer to use for comparing keys, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
     public OrderedKeyValueList(IComparer<TKey>? comparer)
         : this(0, comparer)
     {
@@ -103,7 +115,8 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// Initializes a new instance of the <see cref="OrderedKeyValueList{TKey, TValue}"/> class.
     /// </summary>
     /// <param name="capacity">The number of elements that the new list can initially store.</param>
-    /// <param name="comparer">The comparer to use for comparing keys.</param>
+    /// <param name="comparer">The comparer to use for comparing keys, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public OrderedKeyValueList(int capacity, IComparer<TKey>? comparer)
     {
         if (capacity < 0)
@@ -128,9 +141,13 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Initializes a new instance by copying the specified dictionary.
+    /// Initializes a new instance by copying the specified dictionary, using <see cref="Comparer{T}.Default"/>.
     /// </summary>
     /// <param name="dictionary">The dictionary to copy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="dictionary"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Comparing keys failed while the entries were sorted, for example
+    /// because the keys are not comparable. The original exception is the <see cref="Exception.InnerException"/>.</exception>
+    /// <remarks>See <see cref="OrderedKeyValueList(IDictionary{TKey, TValue}, IComparer{TKey}?)"/>.</remarks>
     public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary)
         : this(dictionary, null)
     {
@@ -140,9 +157,14 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// Initializes a new instance by copying the specified dictionary.
     /// </summary>
     /// <param name="dictionary">The dictionary to copy.</param>
-    /// <param name="comparer">The comparer to use for comparing keys.</param>
-    /// <remarks>Copying another <see cref="OrderedKeyValueList{TKey, TValue}"/> with the same comparer preserves
-    /// duplicate order and does not sort the entries again.</remarks>
+    /// <param name="comparer">The comparer to use for comparing keys, or <see langword="null"/> to use <see cref="Comparer{T}.Default"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="dictionary"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Comparing keys failed while the entries were sorted, for example
+    /// because the comparer threw or the keys are not comparable. The original exception is the
+    /// <see cref="Exception.InnerException"/>; <see cref="Add(TKey, TValue)"/> would throw it directly.</exception>
+    /// <remarks>Copying another <see cref="OrderedKeyValueList{TKey, TValue}"/> with the same comparer instance preserves
+    /// duplicate order and does not sort the entries again. Otherwise the entries are sorted, and the relative
+    /// order of entries with equal keys is unspecified.</remarks>
     public OrderedKeyValueList(IDictionary<TKey, TValue> dictionary, IComparer<TKey>? comparer)
         : this(dictionary is null ? 0 : dictionary.Count, comparer)
     {
@@ -168,7 +190,16 @@ public class OrderedKeyValueList<TKey, TValue> :
             if (count > 1 &&
                 (source is null || !ReferenceEquals(source.Comparer, this.Comparer)))
             {
-                Array.Sort(this.keys, this.values, 0, count, this.Comparer);
+                // Comparer<TKey>.Default ignores a key's IComparable<TKey> when TKey itself does not implement it
+                // (e.g., object or an interface), but the search uses it (see IndexOfFirstCore): sort the same way.
+                var sortComparer = this.Comparer;
+                if (this.comparerIsDefault && !typeof(TKey).IsValueType &&
+                    !typeof(IComparable<TKey>).IsAssignableFrom(typeof(TKey)))
+                {
+                    sortComparer = SearchOrderComparer.Instance;
+                }
+
+                Array.Sort(this.keys, this.values, 0, count, sortComparer);
             }
         }
 
@@ -220,7 +251,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     public int Count => this.size;
 
     /// <summary>
-    /// Gets a read-only, index-accessible view of the keys, in sort order.
+    /// Gets a live, read-only, index-accessible view of the keys in sort order, including duplicates.
     /// </summary>
     public IList<TKey> Keys => this.GetKeyListHelper();
 
@@ -231,7 +262,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => this.GetKeyListHelper();
 
     /// <summary>
-    /// Gets a read-only, index-accessible view of the values, ordered by their keys.
+    /// Gets a live, read-only, index-accessible view of the values, ordered by their keys.
     /// </summary>
     public IList<TValue> Values => this.GetValueListHelper();
 
@@ -258,6 +289,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <returns>
     /// The index of the first matching key, or the bitwise complement of the insertion index if no match exists.
     /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public int BinarySearch(TKey key)
     {
         if (key is null)
@@ -269,10 +301,11 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Gets the index of the first element equal to or greater than the specified key.
+    /// Gets the index of the first entry whose key is equal to or greater than the specified key.
     /// </summary>
     /// <param name="key">The key to search for.</param>
-    /// <returns>The matching index, or -1 if all elements are less than the key.</returns>
+    /// <returns>The index, or -1 if every key is less than <paramref name="key"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public int GetLowerBound(TKey key)
     {
         if (key is null)
@@ -285,10 +318,11 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Gets the index of the last element equal to or less than the specified key.
+    /// Gets the index of the last entry whose key is equal to or less than the specified key.
     /// </summary>
     /// <param name="key">The key to search for.</param>
-    /// <returns>The matching index, or -1 if all elements are greater than the key.</returns>
+    /// <returns>The index, or -1 if every key is greater than <paramref name="key"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public int GetUpperBound(TKey key)
     {
         if (key is null)
@@ -373,7 +407,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Removes all entries from the list.
+    /// Removes all entries from the list. The capacity is unchanged.
     /// </summary>
     public void Clear()
     {
@@ -401,6 +435,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="key">The key to locate.</param>
     /// <returns><see langword="true"/> if the key is found; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public bool ContainsKey(TKey key)
     {
         if (key is null)
@@ -412,7 +447,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Determines whether the list contains the specified value.
+    /// Determines whether the list contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
     /// <br/>O(n) operation.
     /// </summary>
     /// <param name="value">The value to locate.</param>
@@ -518,6 +553,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="key">The key of the entry.</param>
     /// <returns>The value of the first entry with <paramref name="key"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     /// <exception cref="KeyNotFoundException">The key does not exist (getter only).</exception>
     public TValue this[TKey key]
     {
@@ -564,6 +600,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="key">The key to locate.</param>
     /// <returns>The first matching index, or -1 if the key is not found.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public int IndexOfKey(TKey key)
     {
         if (key is null)
@@ -582,6 +619,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <returns>
     /// A range in the form [Start, End), or (-1, -1) if the key is not found.
     /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public (int Start, int End) RangeOfKey(TKey key)
     {
         if (key is null)
@@ -600,9 +638,10 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Returns the index of the first occurrence of the specified value.
+    /// Returns the index of the first occurrence of the specified value, using <see cref="EqualityComparer{T}.Default"/>.
+    /// <br/>O(n) operation.
     /// </summary>
-    /// <param name="value">The value.</param>
+    /// <param name="value">The value to locate.</param>
     /// <returns>The zero-based index of the first occurrence, or -1 if not found.</returns>
     public int IndexOfValue(TValue value)
     {
@@ -615,6 +654,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// <param name="key">The key to locate.</param>
     /// <param name="value">When this method returns, the value of the first matching entry; otherwise, the default value.</param>
     /// <returns><see langword="true"/> if the key was found; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         if (key is null)
@@ -637,6 +677,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// Removes the element at the specified index.
     /// </summary>
     /// <param name="index">The zero-based index of the element to remove.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative or not less than <see cref="Count"/>.</exception>
     public void RemoveAt(int index)
     {
         if ((uint)index >= (uint)this.size)
@@ -671,6 +712,8 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="index">The zero-based starting index of the range to remove.</param>
     /// <param name="count">The number of elements to remove.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> or <paramref name="count"/> is negative,
+    /// or the range extends past <see cref="Count"/>.</exception>
     public void RemoveRange(int index, int count)
     {
         if (index < 0)
@@ -710,10 +753,11 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Removes the first entry with the specified key.
+    /// Removes the first entry with the specified key. Use <see cref="RemoveAll(TKey)"/> to remove every duplicate.
     /// </summary>
-    /// <param name="key">The key.</param>
+    /// <param name="key">The key of the entry to remove.</param>
     /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public bool Remove(TKey key)
     {
         if (key is null)
@@ -733,10 +777,12 @@ public class OrderedKeyValueList<TKey, TValue> :
 
     /// <summary>
     /// Removes the first entry matching both the specified key and value.
+    /// Values are compared with <see cref="EqualityComparer{T}.Default"/>.
     /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="value">The value.</param>
+    /// <param name="key">The key of the entry to remove.</param>
+    /// <param name="value">The value of the entry to remove.</param>
     /// <returns><see langword="true"/> if an element was removed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public bool Remove(TKey key, TValue value)
     {
         if (key is null)
@@ -769,6 +815,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// </summary>
     /// <param name="key">The key to remove.</param>
     /// <returns>The number of entries removed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
     public int RemoveAll(TKey key)
     {
         var (start, end) = this.RangeOfKey(key);
@@ -794,7 +841,8 @@ public class OrderedKeyValueList<TKey, TValue> :
     /// Ensures that the capacity is at least the specified value.
     /// </summary>
     /// <param name="capacity">The minimum capacity to ensure.</param>
-    /// <returns>The new capacity.</returns>
+    /// <returns>The current capacity, which is at least <paramref name="capacity"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     public int EnsureCapacity(int capacity)
     {
         if (capacity < 0)
@@ -827,11 +875,11 @@ public class OrderedKeyValueList<TKey, TValue> :
     // The comparison strategies below let a single generic search implementation be
     // instantiated per strategy: for value-type keys with the default comparer the JIT
     // devirtualizes and inlines Comparer<TKey>.Default.Compare (no boxing, no virtual
-    // call); for reference-type comparable keys a single interface call remains; the
-    // custom-comparer path matches the previous behavior.
+    // call); for reference-type comparable keys a single interface call remains; a
+    // custom comparer is called through IComparer<TKey>.
     private interface IKeyCompare
     {
-        /// <summary>Returns the sign of Compare(key, element).</summary>
+        /// <summary>Compares the search key with <paramref name="element"/>: negative, zero, or positive.</summary>
         int CompareKeyTo(TKey element);
     }
 
@@ -948,9 +996,10 @@ public class OrderedKeyValueList<TKey, TValue> :
         var hotMethod = this.HotMethod;
         if (hotMethod is not null)
         {
+            // A HotMethod exists only for Comparer<TKey>.Default, whose Compare the JIT devirtualizes.
             var index = hotMethod.LowerBound(new ReadOnlySpan<TKey>(this.keys, 0, this.size), key);
             if ((uint)index < (uint)this.size &&
-                this.Comparer.Compare(this.keys[index], key) == 0)
+                Comparer<TKey>.Default.Compare(this.keys[index], key) == 0)
             {
                 return index;
             }
@@ -1031,6 +1080,15 @@ public class OrderedKeyValueList<TKey, TValue> :
         }
 
         return UpperBound(this.keys, start, this.size, new ComparerCompare(this.Comparer, key));
+    }
+
+    // Orders keys like the default-comparer search above: by the left key's IComparable<TKey> when it has one.
+    private sealed class SearchOrderComparer : IComparer<TKey>
+    {
+        public static readonly SearchOrderComparer Instance = new();
+
+        public int Compare(TKey? x, TKey? y)
+            => x is IComparable<TKey> comparable ? comparable.CompareTo(y) : Comparer<TKey>.Default.Compare(x, y);
     }
 
     #endregion
@@ -1148,7 +1206,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     #region Enumerator
 
     /// <summary>
-    /// Enumerates the elements of a <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// Enumerates the elements of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
     /// </summary>
     public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IDictionaryEnumerator
     {
@@ -1220,6 +1278,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         /// Advances the enumerator to the next element.
         /// </summary>
         /// <returns><see langword="true"/> if the enumerator was advanced; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="InvalidOperationException">The list was modified after the enumerator was created.</exception>
         public bool MoveNext()
         {
             var list = this.list;
@@ -1404,7 +1463,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Represents a read-only, index-accessible view of the keys of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// Represents a live, read-only, index-accessible view of the keys of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
     /// </summary>
     public sealed class KeyList : IList<TKey>, ICollection
     {
@@ -1434,6 +1493,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         /// </summary>
         /// <param name="index">The zero-based index.</param>
         /// <returns>The key at <paramref name="index"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range (getter only).</exception>
         /// <exception cref="NotSupportedException">The setter is used.</exception>
         public TKey this[int index]
         {
@@ -1457,18 +1517,22 @@ public class OrderedKeyValueList<TKey, TValue> :
             => throw new NotSupportedException();
 
         /// <summary>
-        /// Determines whether the view contains the specified key.
+        /// Determines whether the view contains the specified key, using the list's key ordering.
         /// </summary>
         /// <param name="key">The key to locate.</param>
         /// <returns><see langword="true"/> if found; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
         public bool Contains(TKey key)
             => this.list.ContainsKey(key);
 
         /// <summary>
-        /// Copies the keys to an array, in order.
+        /// Copies the keys to an array, in sort order.
         /// </summary>
         /// <param name="array">The destination array.</param>
         /// <param name="arrayIndex">The zero-based destination index.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative.</exception>
+        /// <exception cref="ArgumentException">The keys do not fit in <paramref name="array"/> starting at <paramref name="arrayIndex"/>.</exception>
         public void CopyTo(TKey[] array, int arrayIndex)
             => Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.size);
 
@@ -1484,8 +1548,8 @@ public class OrderedKeyValueList<TKey, TValue> :
             {
                 Array.Copy(this.list.keys, 0, array, arrayIndex, this.list.size);
             }
-            catch (ArrayTypeMismatchException)
-            {
+            catch (Exception e) when (e is ArrayTypeMismatchException or InvalidCastException)
+            {// Array.Copy throws InvalidCastException when an element cannot be cast down to the destination type.
                 throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
             }
         }
@@ -1510,10 +1574,11 @@ public class OrderedKeyValueList<TKey, TValue> :
             => new SortedListKeyEnumerator(this.list);
 
         /// <summary>
-        /// Returns the index of the first occurrence of the specified key.
+        /// Returns the index of the first occurrence of the specified key, using the list's key ordering.
         /// </summary>
         /// <param name="key">The key to locate.</param>
         /// <returns>The zero-based index, or -1 if not found.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="key"/> is <see langword="null"/>.</exception>
         public int IndexOf(TKey key)
             => this.list.IndexOfKey(key);
 
@@ -1536,7 +1601,7 @@ public class OrderedKeyValueList<TKey, TValue> :
     }
 
     /// <summary>
-    /// Represents a read-only, index-accessible view of the values of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
+    /// Represents a live, read-only, index-accessible view of the values of an <see cref="OrderedKeyValueList{TKey, TValue}"/>.
     /// </summary>
     public sealed class ValueList : IList<TValue>, ICollection
     {
@@ -1566,6 +1631,7 @@ public class OrderedKeyValueList<TKey, TValue> :
         /// </summary>
         /// <param name="index">The zero-based index.</param>
         /// <returns>The value at <paramref name="index"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is out of range (getter only).</exception>
         /// <exception cref="NotSupportedException">The setter is used.</exception>
         public TValue this[int index]
         {
@@ -1589,7 +1655,7 @@ public class OrderedKeyValueList<TKey, TValue> :
             => throw new NotSupportedException();
 
         /// <summary>
-        /// Determines whether the view contains the specified value.
+        /// Determines whether the view contains the specified value, using <see cref="EqualityComparer{T}.Default"/>.
         /// </summary>
         /// <param name="value">The value to locate.</param>
         /// <returns><see langword="true"/> if found; otherwise, <see langword="false"/>.</returns>
@@ -1597,10 +1663,13 @@ public class OrderedKeyValueList<TKey, TValue> :
             => this.list.ContainsValue(value);
 
         /// <summary>
-        /// Copies the values to an array, in order.
+        /// Copies the values to an array, ordered by their keys.
         /// </summary>
         /// <param name="array">The destination array.</param>
         /// <param name="arrayIndex">The zero-based destination index.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative.</exception>
+        /// <exception cref="ArgumentException">The values do not fit in <paramref name="array"/> starting at <paramref name="arrayIndex"/>.</exception>
         public void CopyTo(TValue[] array, int arrayIndex)
             => Array.Copy(this.list.values, 0, array, arrayIndex, this.list.size);
 
@@ -1616,8 +1685,8 @@ public class OrderedKeyValueList<TKey, TValue> :
             {
                 Array.Copy(this.list.values, 0, array, index, this.list.size);
             }
-            catch (ArrayTypeMismatchException)
-            {
+            catch (Exception e) when (e is ArrayTypeMismatchException or InvalidCastException)
+            {// Array.Copy throws InvalidCastException when an element cannot be cast down to the destination type.
                 throw new ArgumentException("The destination array has an incompatible type.", nameof(array));
             }
         }
@@ -1642,7 +1711,7 @@ public class OrderedKeyValueList<TKey, TValue> :
             => new SortedListValueEnumerator(this.list);
 
         /// <summary>
-        /// Returns the index of the first occurrence of the specified value.
+        /// Returns the index of the first occurrence of the specified value, using <see cref="EqualityComparer{T}.Default"/>.
         /// </summary>
         /// <param name="value">The value to locate.</param>
         /// <returns>The zero-based index, or -1 if not found.</returns>
